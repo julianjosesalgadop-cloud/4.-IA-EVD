@@ -290,7 +290,13 @@ function StepLaboral({
   );
 }
 
-function StepJerarquia({ form }: { form: ReturnType<typeof useForm<Step3Data>> }) {
+function StepJerarquia({ 
+  form,
+  collaborators 
+}: { 
+  form: ReturnType<typeof useForm<Step3Data>>,
+  collaborators: any[] 
+}) {
   const { register } = form;
 
   return (
@@ -309,9 +315,9 @@ function StepJerarquia({ form }: { form: ReturnType<typeof useForm<Step3Data>> }
           className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Seleccionar jefe inmediato...</option>
-          <option value="3">Carlos Martínez — Jefe de Operaciones</option>
-          <option value="5">Jorge Castro — Jefe de Mantenimiento</option>
-          <option value="7">Rosa Suárez — Coordinadora G. Humana</option>
+          {collaborators.map((c) => (
+            <option key={c.id} value={c.id}>{c.full_name} — {c.positions?.name || 'N/A'}</option>
+          ))}
         </select>
         <p className="text-xs text-muted-foreground">Quien realizará la evaluación directa del colaborador</p>
       </div>
@@ -323,9 +329,9 @@ function StepJerarquia({ form }: { form: ReturnType<typeof useForm<Step3Data>> }
           className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Seleccionar líder de área...</option>
-          <option value="3">Carlos Martínez — Operaciones</option>
-          <option value="5">Jorge Castro — Mantenimiento</option>
-          <option value="7">Rosa Suárez — Gestión Humana</option>
+          {collaborators.map((c) => (
+            <option key={c.id} value={c.id}>{c.full_name} — {c.areas?.name || 'N/A'}</option>
+          ))}
         </select>
       </div>
 
@@ -336,8 +342,9 @@ function StepJerarquia({ form }: { form: ReturnType<typeof useForm<Step3Data>> }
           className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Seleccionar gerente...</option>
-          <option value="gerente1">Gerente General — Flota Sugamuxi</option>
-          <option value="subgerente1">Subgerente Operativo</option>
+          {collaborators.map((c) => (
+            <option key={c.id} value={c.id}>{c.full_name}</option>
+          ))}
         </select>
         <p className="text-xs text-muted-foreground">Recibirá notificaciones de evaluaciones y PMI de este colaborador</p>
       </div>
@@ -353,16 +360,20 @@ export default function NuevoColaboradorPage() {
   
   const [areas, setAreas] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
 
   React.useEffect(() => {
     async function loadData() {
       try {
-        const [areasData, positionsData] = await Promise.all([
+        const { getCollaborators } = await import("@/app/actions/collaborators");
+        const [areasData, positionsData, collabsData] = await Promise.all([
           getAreas(),
-          getPositions()
+          getPositions(),
+          getCollaborators()
         ]);
         setAreas(areasData || []);
         setPositions(positionsData || []);
+        setCollaborators(collabsData?.data || []);
       } catch (err) {
         console.error("Error loading config data", err);
       }
@@ -496,7 +507,7 @@ export default function NuevoColaboradorPage() {
         <AnimatePresence mode="wait">
           {currentStep === 1 && <StepPersonal form={form1} />}
           {currentStep === 2 && <StepLaboral form={form2} areas={areas} positions={positions} />}
-          {currentStep === 3 && <StepJerarquia form={form3} />}
+          {currentStep === 3 && <StepJerarquia form={form3} collaborators={collaborators} />}
           {currentStep === 4 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
