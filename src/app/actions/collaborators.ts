@@ -1,0 +1,198 @@
+"use server";
+
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+
+async function getSupabase() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch (error) {
+            // Ignore
+          }
+        },
+      },
+    }
+  );
+}
+
+export async function createCollaborator(collaboratorData: any) {
+  const supabase = await getSupabase();
+  
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error("No autenticado");
+  
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (!profile?.company_id) throw new Error("Compañía no encontrada");
+
+  // Format data
+  const dataToInsert = {
+    company_id: profile.company_id,
+    document_type: collaboratorData.document_type,
+    document_number: collaboratorData.document_number,
+    first_name: collaboratorData.first_name,
+    last_name: collaboratorData.last_name,
+    email: collaboratorData.email || null,
+    phone: collaboratorData.phone || null,
+    address: collaboratorData.address || null,
+    city: collaboratorData.city || null,
+    birth_date: collaboratorData.birth_date || null,
+    gender: collaboratorData.gender || null,
+    internal_code: collaboratorData.internal_code || null,
+    area_id: collaboratorData.area_id || null,
+    position_id: collaboratorData.position_id || null,
+    workplace_city: collaboratorData.workplace_city || null,
+    workplace: collaboratorData.workplace || null,
+    contract_type: collaboratorData.contract_type || null,
+    hire_date: collaboratorData.hire_date || null,
+    status: collaboratorData.status || "activo",
+    immediate_boss_id: collaboratorData.immediate_boss_id || null,
+    area_leader_id: collaboratorData.area_leader_id || null,
+    responsible_manager_id: collaboratorData.responsible_manager_id || null,
+  };
+
+  const { data, error } = await supabase
+    .from("collaborators")
+    .insert(dataToInsert)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating collaborator:", error);
+    return { error: error.message };
+  }
+
+  revalidatePath("/colaboradores");
+  return { success: true, data };
+}
+
+export async function getCollaborators() {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("collaborators")
+    .select(`
+      *,
+      areas(name),
+      positions(name)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching collaborators:", error);
+    return { data: [], error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+export async function importCollaborators(rows: any[]) {
+  const supabase = await getSupabase();
+  
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+  
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (!profile?.company_id) return { error: "Compañía no encontrada" };
+
+  const companyId = profile.company_id;
+
+  // Fetch existing areas and positions
+  const { data: existingAreas } = await supabase.from("areas").select("id, name").eq("company_id", companyId);
+  const { data: existingPositions } = await supabase.from("positions").select("id, name").eq("company_id", companyId);
+
+  let areasMap = new Map((existingAreas || []).map(a => [a.name.toLowerCase(), a.id]));
+  let posMap = new Map((existingPositions || []).map(p => [p.name.toLowerCase(), p.id]));
+
+  const recordsToInsert = [];
+
+  for (const row of rows) {
+    const areaName = row["Area"] || row["Área"];
+    const posName = row["Cargo"];
+    
+    let areaId = null;
+    if (areaName) {
+      const key = String(areaName).trim().toLowerCase();
+      if (areasMap.has(key)) {
+        areaId = areasMap.get(key);
+      } else {
+        const { data: newArea } = await supabase
+          .from("areas")
+          .insert({ name: String(areaName).trim(), company_id: companyId, code: key.substring(0,3).toUpperCase() })
+          .select("id")
+          .single();
+        if (newArea) {
+          areaId = newArea.id;
+          areasMap.set(key, areaId);
+        }
+      }
+    }
+
+    let posId = null;
+    if (posName) {
+      const key = String(posName).trim().toLowerCase();
+      if (posMap.has(key)) {
+        posId = posMap.get(key);
+      } else {
+        const { data: newPos } = await supabase
+          .from("positions")
+          .insert({ name: String(posName).trim(), company_id: companyId })
+          .select("id")
+          .single();
+        if (newPos) {
+          posId = newPos.id;
+          posMap.set(key, posId);
+        }
+      }
+    }
+
+    recordsToInsert.push({
+      company_id: companyId,
+      document_type: String(row["Tipo Documento"] || "CC"),
+      document_number: String(row["Numero Documento"] || ""),
+      first_name: String(row["Nombres Completos"]?.split(" ")[0] || ""),
+      last_name: String(row["Nombres Completos"]?.split(" ").slice(1).join(" ") || ""),
+      email: row["Email"] ? String(row["Email"]) : null,
+      area_id: areaId,
+      position_id: posId,
+      full_name: String(row["Nombres Completos"] || ""),
+      status: "activo"
+    });
+  }
+
+  // Bulk insert
+  if (recordsToInsert.length > 0) {
+    const { error } = await supabase
+      .from("collaborators")
+      .insert(recordsToInsert);
+
+    if (error) {
+      console.error("Error bulk inserting:", error);
+      return { error: error.message };
+    }
+  }
+
+  revalidatePath("/colaboradores");
+  return { success: true, count: recordsToInsert.length };
+}
