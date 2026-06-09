@@ -661,11 +661,12 @@ DECLARE
   v_pmi_required BOOLEAN := false;
   v_pmi_reason TEXT := '';
   v_version_id UUID;
-  v_thresholds RECORD;
+  v_approved_threshold NUMERIC(3,1);
+  v_pmi_threshold NUMERIC(3,1);
 BEGIN
   -- Obtener version y umbrales
   SELECT ev.id, ev.approved_threshold, ev.pmi_threshold
-  INTO v_version_id, v_thresholds.approved_threshold, v_thresholds.pmi_threshold
+  INTO v_version_id, v_approved_threshold, v_pmi_threshold
   FROM evaluations e
   JOIN evaluation_versions ev ON e.version_id = ev.id
   WHERE e.id = p_evaluation_id;
@@ -718,10 +719,10 @@ BEGIN
   v_has_critical_fails := (v_critical_fails IS NOT NULL AND jsonb_array_length(COALESCE(v_critical_fails, '[]')) > 0);
 
   -- Determinar resultado
-  IF v_overall_avg >= v_thresholds.approved_threshold THEN
+  IF v_overall_avg >= v_approved_threshold THEN
     v_result_status := 'aprobado';
     v_pmi_required := false;
-  ELSIF v_overall_avg >= v_thresholds.pmi_threshold THEN
+  ELSIF v_overall_avg >= v_pmi_threshold THEN
     v_result_status := 'plan_mejoramiento';
     v_pmi_required := true;
     v_pmi_reason := 'Promedio general entre 3.1 y 3.9';

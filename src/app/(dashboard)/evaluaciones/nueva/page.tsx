@@ -8,8 +8,11 @@ import {
 } from "lucide-react";
 import { cn, getScoreLabel, formatScore } from "@/lib/utils";
 import { toast } from "sonner";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getEvaluationConfig, saveEvaluation } from "@/app/actions/evaluations";
+import { getCollaborators } from "@/app/actions/collaborators";
+import type { Collaborator } from "@/types";
 
 // ---- Types ----
 interface Question {
@@ -49,12 +52,13 @@ function ScoreButton({ score, selected, onSelect }: { score: typeof SCORES[0]; s
       onClick={onSelect}
       whileTap={{ scale: 0.95 }}
       className={cn(
-        "score-btn flex-1",
+        "score-btn flex-shrink-0 min-w-fit",
         selected && `selected-${score.value}`
       )}
+      title={score.label}
     >
-      <span className="text-xl font-bold">{score.value}</span>
-      <span className="text-[10px] font-medium text-center leading-tight">{score.label}</span>
+      <span>{score.value}</span>
+      <span>{score.label.split(' ')[0]}</span>
     </motion.button>
   );
 }
@@ -62,11 +66,17 @@ function ScoreButton({ score, selected, onSelect }: { score: typeof SCORES[0]; s
 export default function NuevaEvaluacionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const evaluateeId = searchParams?.get("collab");
+  const initialEvaluateeId = searchParams?.get("collab");
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [versionId, setVersionId] = useState<string | null>(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [selectedCollaboratorId, setSelectedCollaboratorId] = useState<string | null>(initialEvaluateeId);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [evaluationYear, setEvaluationYear] = useState<string>(new Date().getFullYear().toString());
 
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, { category_id: string, score: number; comment?: string }>>({});
@@ -83,6 +93,12 @@ export default function NuevaEvaluacionPage() {
     async function loadConfig() {
       try {
         const { categories: cats, questions, version } = await getEvaluationConfig();
+        
+        if (!cats || !questions) {
+          toast.error("No se encontró configuración de evaluación");
+          return;
+        }
+        
         if (version) {
           setVersionId(version.id);
         }
@@ -104,9 +120,35 @@ export default function NuevaEvaluacionPage() {
     loadConfig();
   }, []);
 
+  useEffect(() => {
+    async function loadCollaborators() {
+      try {
+        const res = await getCollaborators();
+        if (res.error) {
+          toast.error("Error al cargar colaboradores");
+          return;
+        }
+        setCollaborators(res.data || []);
+      } catch (err) {
+        console.error(err);
+        toast.error("Error al cargar colaboradores");
+      }
+    }
+    loadCollaborators();
+  }, []);
+
   const category = categories[currentCategoryIndex];
   const totalCategories = categories.length;
   const isLastCategory = currentCategoryIndex === totalCategories - 1;
+  const selectedCollaborator = collaborators.find((c) => c.id === selectedCollaboratorId) ?? null;
+  
+  // Filter collaborators based on search term
+  const filteredCollaborators = collaborators.filter((c) => {
+    const fullName = (c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim()).toLowerCase();
+    const docNumber = (c.document_number || "").toLowerCase();
+    const search = searchTerm.toLowerCase();
+    return fullName.includes(search) || docNumber.includes(search);
+  });
 
   // Calculate progress
   const totalQuestions = categories.reduce((sum, c) => sum + c.questions.length, 0);
@@ -134,7 +176,8 @@ export default function NuevaEvaluacionPage() {
   };
 
   // Calculate current category average
-  const getCategoryAverage = (cat: Category) => {
+  const getCategoryAverage = (cat: Category | undefined) => {
+    if (!cat) return null;
     const catAnswers = cat.questions.filter((q) => answers[q.id]?.score);
     if (catAnswers.length === 0) return null;
     const totalWeight = catAnswers.reduce((sum, q) => sum + q.weight, 0);
@@ -157,10 +200,10 @@ export default function NuevaEvaluacionPage() {
     return totalWeight > 0 ? weightedSum / totalWeight : 0;
   };
 
-  const categoryComplete = (cat: Category) =>
-    cat.questions.filter((q) => q.is_required).every((q) => answers[q.id]?.score);
+  const categoryComplete = (cat: Category | undefined) =>
+    cat ? cat.questions.filter((q) => q.is_required).every((q) => answers[q.id]?.score) : false;
 
-  const canProceed = categoryComplete(category);
+  const canProceed = category ? categoryComplete(category) : false;
 
   const handleFinalize = async () => {
     // Check all required
@@ -170,8 +213,8 @@ export default function NuevaEvaluacionPage() {
       return;
     }
     
-    if (!evaluateeId) {
-      toast.error("No se ha especificado un colaborador para evaluar.");
+    if (!selectedCollaboratorId) {
+      toast.error("Selecciona el colaborador a evaluar.");
       return;
     }
 
@@ -186,7 +229,7 @@ export default function NuevaEvaluacionPage() {
 
     const payload = {
       version_id: versionId,
-      evaluatee_id: evaluateeId,
+      evaluatee_id: selectedCollaboratorId,
       answers: formattedAnswers,
       ...narrativa
     };
@@ -208,11 +251,13 @@ export default function NuevaEvaluacionPage() {
   const resultColor = overall >= 4.0 ? "text-success-600" : overall >= 3.1 ? "text-warning-600" : overall > 0 ? "text-danger-600" : "text-muted-foreground";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <div className="w-full min-h-screen space-y-4 sm:space-y-6 animate-fade-in px-3 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-4xl mx-auto w-full space-y-4 sm:space-y-6">
       {/* Back */}
-      <Link href="/evaluaciones" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ChevronLeft className="w-4 h-4" />
-        Volver a Evaluaciones
+      <Link href="/evaluaciones" className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        <span className="hidden sm:inline">Volver a Evaluaciones</span>
+        <span className="sm:hidden">Atrás</span>
       </Link>
 
       {isLoadingConfig ? (
@@ -227,23 +272,85 @@ export default function NuevaEvaluacionPage() {
       ) : (
       <>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Nueva Evaluación de Desempeño</h1>
-          <p className="text-muted-foreground text-sm mt-1">Carlos Alberto Martínez Rojas · Conductor · Operaciones</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">Nueva Evaluación de Desempeño</h1>
+          {selectedCollaborator && (
+            <p className="text-muted-foreground text-xs sm:text-sm mt-1 truncate">
+              {selectedCollaborator.full_name} · {selectedCollaborator.position?.name} · {selectedCollaborator.areas?.name || selectedCollaborator.area?.name}
+            </p>
+          )}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
           {autoSaveStatus === "saved" && <span className="text-success-500 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Guardado</span>}
           {autoSaveStatus === "saving" && <span className="flex items-center gap-1"><div className="w-3 h-3 border border-muted-foreground/40 border-t-muted-foreground rounded-full animate-spin" /> Guardando...</span>}
           {autoSaveStatus === "unsaved" && <span className="flex items-center gap-1">Sin guardar</span>}
         </div>
       </div>
 
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+        <div className="space-y-1.5 sm:space-y-2 relative">
+          <label className="block text-xs sm:text-sm font-medium">Colaborador a evaluar</label>
+          <div className="relative">
+            <input
+              type="text"
+              value={selectedCollaborator ? `${selectedCollaborator.full_name} (${selectedCollaborator.document_number})` : searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              placeholder="Buscar por nombre o documento..."
+              className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            {showDropdown && filteredCollaborators.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg sm:rounded-xl border bg-card shadow-lg z-20 max-h-40 sm:max-h-56 overflow-y-auto">
+                {filteredCollaborators.map((collab) => (
+                  <button
+                    key={collab.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCollaboratorId(collab.id);
+                      setSearchTerm("");
+                      setShowDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-muted/50 transition-colors border-b last:border-b-0 text-xs sm:text-sm"
+                  >
+                    <p className="font-medium truncate">{collab.full_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{collab.document_number}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="space-y-1.5 sm:space-y-2">
+          <label className="block text-xs sm:text-sm font-medium">Año de evaluación</label>
+          <input
+            type="number"
+            value={evaluationYear}
+            onChange={(e) => setEvaluationYear(e.target.value)}
+            min={2020}
+            max={new Date().getFullYear()}
+            className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        {selectedCollaborator ? (
+          <div className="rounded-lg sm:rounded-xl border border-success-200 bg-success-50 dark:bg-success-950/30 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-success-700 dark:text-success-400 font-semibold whitespace-nowrap justify-center">
+            ✓ Listo
+          </div>
+        ) : (
+          <div className="rounded-lg sm:rounded-xl border border-warning-200 bg-warning-50 dark:bg-warning-950/30 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-warning-700 dark:text-warning-400 font-semibold whitespace-nowrap justify-center">
+            Seleccionar
+          </div>
+        )}
+      </div>
+
       {/* Progress Bar */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{answeredQuestions}/{totalQuestions} preguntas respondidas</span>
-          <span className="font-semibold">{progress}%</span>
+        <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+          <span className="text-muted-foreground truncate">{answeredQuestions}/{totalQuestions} preguntas respondidas</span>
+          <span className="font-semibold flex-shrink-0">{progress}%</span>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
           <motion.div
@@ -254,50 +361,52 @@ export default function NuevaEvaluacionPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
         {/* Category Nav */}
         <div className="lg:col-span-1 space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Categorías</p>
-          {categories.map((cat, i) => {
-            const catAvg = getCategoryAverage(cat);
-            const catComplete = categoryComplete(cat);
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setCurrentCategoryIndex(i)}
-                className={cn(
-                  "w-full text-left p-3 rounded-xl border transition-all",
-                  i === currentCategoryIndex
-                    ? "border-primary bg-primary/8 shadow-sm"
-                    : "hover:bg-accent border-transparent"
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <div className={cn(
-                    "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0",
-                    catComplete ? "bg-success-500 text-white" : i === currentCategoryIndex ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                  )}>
-                    {catComplete ? "✓" : i + 1}
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-3">
+            {categories.map((cat, i) => {
+              const catAvg = getCategoryAverage(cat);
+              const catComplete = categoryComplete(cat);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setCurrentCategoryIndex(i)}
+                  className={cn(
+                    "text-left p-2 lg:p-3 rounded-xl border transition-all",
+                    i === currentCategoryIndex
+                      ? "border-primary bg-primary/8 shadow-sm"
+                      : "hover:bg-accent border-transparent"
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0",
+                      catComplete ? "bg-success-500 text-white" : i === currentCategoryIndex ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                    )}>
+                      {catComplete ? "✓" : i + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs lg:text-xs font-medium leading-tight line-clamp-2">{cat.name}</p>
+                      {catAvg !== null && (
+                        <p className={cn(
+                          "text-xs font-bold mt-0.5",
+                          catAvg >= 4.0 ? "text-success-600" : catAvg >= 3.1 ? "text-warning-600" : "text-danger-600"
+                        )}>
+                          Prom: {formatScore(catAvg)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium leading-tight truncate">{cat.name}</p>
-                    {catAvg !== null && (
-                      <p className={cn(
-                        "text-xs font-bold mt-0.5",
-                        catAvg >= 4.0 ? "text-success-600" : catAvg >= 3.1 ? "text-warning-600" : "text-danger-600"
-                      )}>
-                        Prom: {formatScore(catAvg)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Live result */}
           {overall > 0 && (
-            <div className="mt-4 p-3 rounded-xl border bg-card">
+            <div className="mt-4 p-3 rounded-xl border bg-card col-span-2 lg:col-span-1">
               <p className="text-xs text-muted-foreground mb-1">Promedio actual</p>
               <p className={cn("text-2xl font-bold", resultColor)}>{formatScore(overall)}</p>
               <p className={cn("text-xs font-semibold mt-0.5", resultColor)}>{resultLabel}</p>
@@ -317,20 +426,20 @@ export default function NuevaEvaluacionPage() {
               className="rounded-xl border bg-card overflow-hidden"
             >
               {/* Category Header */}
-              <div className="p-5 border-b bg-muted/20">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+              <div className="p-3 sm:p-5 border-b bg-muted/20">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-xs font-semibold text-muted-foreground uppercase">
                         Categoría {currentCategoryIndex + 1} de {totalCategories}
                       </span>
-                      <span className="text-xs bg-brand-100 dark:bg-brand-950/30 text-brand-600 px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-brand-100 dark:bg-brand-950/30 text-brand-600 px-2 py-0.5 rounded-full flex-shrink-0">
                         Peso: {category.weight}%
                       </span>
                     </div>
-                    <h2 className="font-semibold text-lg">{category.name}</h2>
+                    <h2 className="font-semibold text-base sm:text-lg">{category.name}</h2>
                     {category.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">{category.description}</p>
                     )}
                   </div>
                 </div>
@@ -339,20 +448,20 @@ export default function NuevaEvaluacionPage() {
               {/* Questions */}
               <div className="divide-y divide-border">
                 {category.questions.map((question, qi) => (
-                  <div key={question.id} className="p-5 space-y-4">
+                  <div key={question.id} className="p-3 sm:p-5 space-y-3 sm:space-y-4">
                     {/* Question Header */}
-                    <div className="flex items-start gap-3">
-                      <span className="flex-shrink-0 text-xs font-bold text-muted-foreground bg-muted w-8 h-5 rounded flex items-center justify-center">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <span className="flex-shrink-0 text-xs font-bold text-muted-foreground bg-muted w-6 h-4 sm:w-8 sm:h-5 rounded flex items-center justify-center">
                         {question.code}
                       </span>
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2">
-                          <p className="text-sm font-medium leading-relaxed">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                          <p className="text-xs sm:text-sm font-medium leading-relaxed">
                             {question.question}
                             {question.is_required && <span className="text-danger-500 ml-1">*</span>}
                           </p>
                           {question.is_critical && (
-                            <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger-100 dark:bg-danger-950/30 text-danger-600 border border-danger-200">
+                            <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger-100 dark:bg-danger-950/30 text-danger-600 border border-danger-200 whitespace-nowrap">
                               <AlertCircle className="w-3 h-3" />
                               Crítico ≥{question.min_score_required}
                             </span>
@@ -368,7 +477,7 @@ export default function NuevaEvaluacionPage() {
                     </div>
 
                     {/* Score Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-1">
                       {SCORES.map((score) => (
                         <ScoreButton
                           key={score.value}
@@ -384,7 +493,7 @@ export default function NuevaEvaluacionPage() {
                       <motion.div
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-2 p-3 rounded-lg bg-danger-50 dark:bg-danger-950/20 border border-danger-200 text-danger-600 text-xs"
+                        className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-danger-50 dark:bg-danger-950/20 border border-danger-200 text-danger-600 text-xs"
                       >
                         <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                         <p>
@@ -406,7 +515,7 @@ export default function NuevaEvaluacionPage() {
                           onChange={(e) => setComment(question.id, category.id, e.target.value)}
                           placeholder="Observación opcional sobre esta calificación..."
                           rows={2}
-                          className="w-full rounded-lg border bg-background/50 px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
+                          className="w-full rounded-lg border bg-background/50 px-2 sm:px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
                         />
                       </motion.div>
                     )}
@@ -421,51 +530,51 @@ export default function NuevaEvaluacionPage() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-6 rounded-xl border bg-card p-5 space-y-4"
+              className="mt-4 sm:mt-6 rounded-xl border bg-card p-3 sm:p-5 space-y-4"
             >
-              <h3 className="font-semibold flex items-center gap-2">
-                <Star className="w-5 h-5 text-brand-500" />
+              <h3 className="font-semibold text-sm sm:text-base flex items-center gap-2">
+                <Star className="w-4 sm:w-5 h-4 sm:h-5 text-brand-500 flex-shrink-0" />
                 Narrativa de la Evaluación
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Fortalezas identificadas</label>
+                  <label className="text-xs sm:text-sm font-medium">Fortalezas identificadas</label>
                   <textarea
                     value={narrativa.strengths}
                     onChange={(e) => setNarrativa((p) => ({ ...p, strengths: e.target.value }))}
                     rows={3}
                     placeholder="Describe las principales fortalezas del colaborador..."
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    className="w-full rounded-lg border bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Oportunidades de mejora</label>
+                  <label className="text-xs sm:text-sm font-medium">Oportunidades de mejora</label>
                   <textarea
                     value={narrativa.improvement_opportunities}
                     onChange={(e) => setNarrativa((p) => ({ ...p, improvement_opportunities: e.target.value }))}
                     rows={3}
                     placeholder="Describe las áreas de mejora identificadas..."
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    className="w-full rounded-lg border bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Necesidades de capacitación</label>
+                  <label className="text-xs sm:text-sm font-medium">Necesidades de capacitación</label>
                   <textarea
                     value={narrativa.training_needs}
                     onChange={(e) => setNarrativa((p) => ({ ...p, training_needs: e.target.value }))}
                     rows={3}
                     placeholder="Temas de capacitación requeridos..."
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    className="w-full rounded-lg border bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Observaciones generales</label>
+                  <label className="text-xs sm:text-sm font-medium">Observaciones generales</label>
                   <textarea
                     value={narrativa.observations}
                     onChange={(e) => setNarrativa((p) => ({ ...p, observations: e.target.value }))}
                     rows={3}
                     placeholder="Observaciones adicionales del evaluador..."
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    className="w-full rounded-lg border bg-background px-2 sm:px-3 py-2 text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                 </div>
               </div>
@@ -473,48 +582,55 @@ export default function NuevaEvaluacionPage() {
           )}
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mt-4">
             <button
               onClick={() => setCurrentCategoryIndex((i) => i - 1)}
               disabled={currentCategoryIndex === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
-              Anterior
+              <span className="hidden sm:inline">Anterior</span>
+              <span className="sm:hidden">Ant.</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
               <button
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-accent transition-colors"
+                type="button"
+                onClick={() => toast.success("Borrador guardado")}
+                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors"
               >
-                <Save className="w-4 h-4" />
-                Guardar borrador
+                <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden sm:inline">Guardar borrador</span>
+                <span className="sm:hidden">Guardar</span>
               </button>
 
               {isLastCategory ? (
                 <button
                   onClick={handleFinalize}
                   disabled={isSubmitting || progress < 100}
-                  className="flex items-center gap-2 px-6 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md disabled:opacity-60"
+                  className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 rounded-xl gradient-brand text-white text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 flex-1 sm:flex-none justify-center"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Finalizando...
+                      <div className="w-3.5 sm:w-4 h-3.5 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span className="hidden sm:inline">Finalizando...</span>
+                      <span className="sm:hidden">Finalizar</span>
                     </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4" />
-                      Finalizar Evaluación
+                      <Send className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                      <span className="hidden sm:inline">Finalizar Evaluación</span>
+                      <span className="sm:hidden">Finalizar</span>
                     </>
                   )}
                 </button>
               ) : (
                 <button
                   onClick={() => setCurrentCategoryIndex((i) => i + 1)}
-                  className="flex items-center gap-2 px-6 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md"
+                  className="flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 rounded-xl gradient-brand text-white text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity shadow-md flex-1 sm:flex-none"
                 >
-                  Siguiente
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <span className="sm:hidden">Sig.</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               )}
@@ -524,6 +640,7 @@ export default function NuevaEvaluacionPage() {
       </div>
       </>
       )}
+      </div>
     </div>
   );
 }

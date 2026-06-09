@@ -34,6 +34,7 @@ export default function EvaluacionesPage() {
   const pageSize = 10;
 
   const [evaluations, setEvaluations] = useState<any[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   React.useEffect(() => {
@@ -41,7 +42,7 @@ export default function EvaluacionesPage() {
       const res = await getEvaluations();
       if (!res.error && res.data) {
         const mapped = res.data.map((e: any) => {
-          const resObj = e.result && e.result.length > 0 ? e.result[0] : null;
+          const resObj = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
           return {
             id: e.id,
             collaborator: e.collaborator?.full_name || "Desconocido",
@@ -51,9 +52,9 @@ export default function EvaluacionesPage() {
             date: e.created_at,
             year: e.evaluation_year,
             status: e.status,
-            result: resObj ? resObj.result_category : "pendiente",
-            score: resObj ? resObj.overall_score : 0,
-            has_pmi: resObj ? resObj.requires_pmi : false,
+            result: resObj ? resObj.result : "pendiente",
+            score: resObj ? resObj.overall_average : 0,
+            has_pmi: resObj ? resObj.pmi_required : false,
           };
         });
         setEvaluations(mapped);
@@ -254,7 +255,7 @@ export default function EvaluacionesPage() {
                   <td className="px-4 py-3 hidden lg:table-cell text-sm text-muted-foreground">
                     {formatDate(ev.date)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 relative">
                     <div className="flex items-center justify-center gap-1">
                       <Link href={`/evaluaciones/${ev.id}`}>
                         <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
@@ -268,10 +269,42 @@ export default function EvaluacionesPage() {
                           </button>
                         </Link>
                       )}
-                      <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === ev.id ? null : ev.id)}
+                        className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                      >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                     </div>
+                    {openMenuId === ev.id && (
+                      <div className="absolute right-0 top-full mt-2 w-40 rounded-xl border bg-card shadow-lg z-10">
+                        <Link
+                          href={`/evaluaciones/${ev.id}`}
+                          className="block px-3 py-2 text-sm text-left text-foreground hover:bg-muted"
+                        >
+                          Ver detalle
+                        </Link>
+                        {(ev.status === "borrador" || ev.status === "en_proceso") && (
+                          <Link
+                            href={`/evaluaciones/${ev.id}/editar`}
+                            className="block px-3 py-2 text-sm text-left text-foreground hover:bg-muted"
+                          >
+                            Editar
+                          </Link>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(ev.id);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted"
+                        >
+                          Copiar ID
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </motion.tr>
               )))}

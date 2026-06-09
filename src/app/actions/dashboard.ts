@@ -55,13 +55,13 @@ export async function getDashboardStats() {
   let validScores = 0;
 
   completed.forEach(e => {
-    const res = e.result && e.result.length > 0 ? e.result[0] : null;
+    const res = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
     if (res) {
-      if (res.result_category === 'aprobado') aprobados++;
-      else if (res.result_category === 'plan_mejoramiento') conPMI++;
-      else if (res.result_category === 'no_aprobado') reprobados++;
+      if (res.result === 'aprobado') aprobados++;
+      else if (res.result === 'plan_mejoramiento') conPMI++;
+      else if (res.result === 'no_aprobado') reprobados++;
       
-      sumScore += res.overall_score;
+      sumScore += Number(res.overall_average || 0);
       validScores++;
     }
   });
@@ -72,7 +72,7 @@ export async function getDashboardStats() {
   const { count: pmisCount } = await supabase
     .from("evaluation_results")
     .select("*", { count: "exact", head: true })
-    .eq("requires_pmi", true);
+    .eq("pmi_required", true);
 
   return {
     kpis: {
@@ -85,14 +85,14 @@ export async function getDashboardStats() {
       pmisCount: pmisCount || 0,
     },
     recentEvals: allEvals.slice(0, 5).map((e: any) => {
-      const res = e.result && e.result.length > 0 ? e.result[0] : null;
+      const res = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
       return {
         id: e.id,
         collaborator: e.collaborator?.full_name || "Desconocido",
         position: e.collaborator?.positions?.name || "N/A",
         area: e.collaborator?.areas?.name || "N/A",
-        result: res ? res.result_category : e.status,
-        score: res ? res.overall_score : 0,
+        result: res ? res.result : e.status,
+        score: Number(res?.overall_average || 0),
         date: e.created_at
       };
     })

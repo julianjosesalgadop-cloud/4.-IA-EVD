@@ -13,6 +13,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { getAreas, getPositions } from "@/app/actions/config";
+import { getProfiles } from "@/app/actions/admin";
 
 // ---- Wizard Steps ----
 const STEPS = [
@@ -292,10 +293,12 @@ function StepLaboral({
 
 function StepJerarquia({ 
   form,
-  collaborators 
+  collaborators,
+  managers
 }: { 
   form: ReturnType<typeof useForm<Step3Data>>,
-  collaborators: any[] 
+  collaborators: any[],
+  managers: any[]
 }) {
   const { register } = form;
 
@@ -342,8 +345,8 @@ function StepJerarquia({
           className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Seleccionar gerente...</option>
-          {collaborators.map((c) => (
-            <option key={c.id} value={c.id}>{c.full_name}</option>
+          {managers.map((m) => (
+            <option key={m.id} value={m.id}>{m.first_name} {m.last_name} {m.roles?.name ? `— ${m.roles.name}` : ''}</option>
           ))}
         </select>
         <p className="text-xs text-muted-foreground">Recibirá notificaciones de evaluaciones y PMI de este colaborador</p>
@@ -361,19 +364,22 @@ export default function NuevoColaboradorPage() {
   const [areas, setAreas] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
   const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
 
   React.useEffect(() => {
     async function loadData() {
       try {
         const { getCollaborators } = await import("@/app/actions/collaborators");
-        const [areasData, positionsData, collabsData] = await Promise.all([
+        const [areasData, positionsData, collabsData, profilesData] = await Promise.all([
           getAreas(),
           getPositions(),
-          getCollaborators()
+          getCollaborators(),
+          getProfiles()
         ]);
         setAreas(areasData || []);
         setPositions(positionsData || []);
         setCollaborators(collabsData?.data || []);
+        setManagers(profilesData?.data || []);
       } catch (err) {
         console.error("Error loading config data", err);
       }
@@ -507,7 +513,7 @@ export default function NuevoColaboradorPage() {
         <AnimatePresence mode="wait">
           {currentStep === 1 && <StepPersonal form={form1} />}
           {currentStep === 2 && <StepLaboral form={form2} areas={areas} positions={positions} />}
-          {currentStep === 3 && <StepJerarquia form={form3} collaborators={collaborators} />}
+          {currentStep === 3 && <StepJerarquia form={form3} collaborators={collaborators} managers={managers} />}
           {currentStep === 4 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

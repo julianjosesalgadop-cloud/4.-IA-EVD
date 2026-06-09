@@ -43,6 +43,18 @@ export async function createCollaborator(collaboratorData: any) {
   if (!profile?.company_id) throw new Error("Compañía no encontrada");
 
   // Format data
+  let responsibleManagerId = collaboratorData.responsible_manager_id || null;
+  if (responsibleManagerId) {
+    const { data: managerProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", responsibleManagerId)
+      .eq("company_id", profile.company_id)
+      .single();
+
+    responsibleManagerId = managerProfile?.id || null;
+  }
+
   const dataToInsert = {
     company_id: profile.company_id,
     document_type: collaboratorData.document_type,
@@ -65,7 +77,7 @@ export async function createCollaborator(collaboratorData: any) {
     status: collaboratorData.status || "activo",
     immediate_boss_id: collaboratorData.immediate_boss_id || null,
     area_leader_id: collaboratorData.area_leader_id || null,
-    responsible_manager_id: collaboratorData.responsible_manager_id || null,
+    responsible_manager_id: responsibleManagerId,
   };
 
   const { data, error } = await supabase
@@ -99,6 +111,51 @@ export async function getCollaborators() {
     return { data: [], error: error.message };
   }
 
+  return { data, error: null };
+}
+
+export async function getCollaboratorById(collaboratorId: string) {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("collaborators")
+    .select(`
+      *,
+      areas(id, name),
+      positions(id, name),
+      immediate_boss:collaborators!immediate_boss_id(full_name),
+      area_leader:collaborators!area_leader_id(full_name),
+      manager:profiles!responsible_manager_id(first_name, last_name)
+    `)
+    .eq("id", collaboratorId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching collaborator:", error);
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+export async function updateCollaborator(collaboratorId: string, updates: any) {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("collaborators")
+    .update(updates)
+    .eq("id", collaboratorId)
+    .select(`
+      *,
+      areas(name),
+      positions(name)
+    `)
+    .single();
+
+  if (error) {
+    console.error("Error updating collaborator:", error);
+    return { data: null, error: error.message };
+  }
+
+  revalidatePath("/colaboradores");
   return { data, error: null };
 }
 

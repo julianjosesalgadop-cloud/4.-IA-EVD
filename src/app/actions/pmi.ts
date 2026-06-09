@@ -31,7 +31,7 @@ async function getSupabase() {
 export async function getPMIs() {
   const supabase = await getSupabase();
   
-  // A PMI is basically an evaluation_result where requires_pmi = true
+  // A PMI is basically an evaluation_result where pmi_required = true
   const { data, error } = await supabase
     .from("evaluation_results")
     .select(`
@@ -42,7 +42,7 @@ export async function getPMIs() {
         collaborator:collaborators(id, full_name, positions(name), areas(name))
       )
     `)
-    .eq("requires_pmi", true)
+    .eq("pmi_required", true)
     .order("created_at", { ascending: false });
 
   if (error) {

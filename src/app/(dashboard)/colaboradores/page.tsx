@@ -69,37 +69,39 @@ export default function ColaboradoresPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="w-full min-h-screen px-3 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Colaboradores</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Colaboradores</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
             Gestión del personal de Flota Sugamuxi S.A.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
           <Link href="/administracion/importar">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-accent transition-colors">
-              <Upload className="w-4 h-4" />
-              Importar
+            <button className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors">
+              <Upload className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+              <span className="hidden sm:inline">Importar</span>
             </button>
           </Link>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-accent transition-colors">
-            <Download className="w-4 h-4" />
-            Exportar
+          <button className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors">
+            <Download className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+            <span className="hidden sm:inline">Exportar</span>
           </button>
           <Link href="/colaboradores/nuevo">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md">
-              <Plus className="w-4 h-4" />
-              Nuevo Colaborador
+            <button className="flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl gradient-brand text-white text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity shadow-md">
+              <Plus className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+              <span className="hidden sm:inline">Nuevo Colaborador</span>
+              <span className="sm:hidden">Nuevo</span>
             </button>
           </Link>
         </div>
       </div>
 
       {/* Stats mini-cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {[
           { label: "Total", value: stats.total, icon: Users, color: "brand" },
           { label: "Activos", value: stats.activos, icon: UserCheck, color: "success" },
@@ -110,10 +112,10 @@ export default function ColaboradoresPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08 }}
-            className="flex items-center gap-3 p-4 rounded-xl border bg-card"
+            className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border bg-card"
           >
             <div className={cn(
-              "p-2.5 rounded-lg",
+              "p-2 sm:p-2.5 rounded-lg flex-shrink-0",
               stat.color === "brand" ? "bg-brand-50 dark:bg-brand-950/30" :
               stat.color === "success" ? "bg-success-50 dark:bg-success-950/30" :
               "bg-warning-50 dark:bg-warning-950/30"
@@ -380,6 +382,7 @@ export default function ColaboradoresPage() {
           </div>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 }

@@ -194,7 +194,7 @@ export default function PMIPage() {
             collaborator: collab?.full_name || "Desconocido",
             area: collab?.areas?.name || "N/A",
             position: collab?.positions?.name || "N/A",
-            reason: `Promedio general: ${r.overall_score} — ${r.result_category === 'no_aprobado' ? 'No aprobado' : 'Requiere mejora'}`,
+            reason: `Promedio general: ${r.overall_average} — ${r.result === 'no_aprobado' ? 'No aprobado' : 'Requiere mejora'}`,
             actions: "1. Seguimiento con jefe inmediato\\n2. Capacitación programada",
             start_date: startDate.toISOString(),
             end_date: endDate.toISOString(),
@@ -204,7 +204,7 @@ export default function PMIPage() {
               { number: 60, date: new Date(startDate.getTime() + 60*24*60*60*1000).toISOString(), status: "pendiente", progress: 0 },
               { number: 90, date: new Date(startDate.getTime() + 90*24*60*60*1000).toISOString(), status: "pendiente", progress: 0 },
             ],
-            evaluation_score: r.overall_score || 0,
+            evaluation_score: r.overall_average || 0,
           };
         });
         setPmis(mapped);

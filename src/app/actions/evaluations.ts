@@ -52,7 +52,7 @@ export async function getEvaluationConfig() {
   const supabase = await getSupabase();
   const version = await getActiveVersion();
   
-  if (!version) return { categories: [], questions: [] };
+  if (!version) return { categories: [], questions: [], version: null };
 
   const [categoriesRes, questionsRes] = await Promise.all([
     supabase
@@ -97,13 +97,52 @@ export async function getEvaluations() {
     .select(`
       *,
       collaborator:collaborators(full_name, document_number, position_id),
-      evaluator:profiles(first_name, last_name),
+      evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name),
       version:evaluation_versions(name),
       result:evaluation_results(*)
     `)
     .order("created_at", { ascending: false });
 
   if (error) return { error: error.message, data: [] };
+  return { data };
+}
+
+export async function getEvaluationById(evaluationId: string) {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .select(`
+      *,
+      collaborator:collaborators(full_name, document_number, position_id, area_id),
+      evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name),
+      version:evaluation_versions(name),
+      result:evaluation_results(*),
+      answers:evaluation_answers(
+        question_id,
+        category_id,
+        score,
+        comment,
+        question:evaluation_questions(question, code, is_critical)
+      )
+    `)
+    .eq("id", evaluationId)
+    .single();
+
+  if (error) return { error: error.message, data: null };
+  return { data };
+}
+
+export async function updateEvaluation(evaluationId: string, payload: any) {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("evaluations")
+    .update(payload)
+    .eq("id", evaluationId)
+    .select()
+    .single();
+
+  if (error) return { error: error.message, data: null };
+  revalidatePath("/evaluaciones");
   return { data };
 }
 
