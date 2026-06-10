@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Save,
@@ -63,7 +63,7 @@ function ScoreButton({ score, selected, onSelect }: { score: typeof SCORES[0]; s
   );
 }
 
-export default function NuevaEvaluacionPage() {
+function NuevaEvaluacionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialEvaluateeId = searchParams?.get("collab");
@@ -642,5 +642,18 @@ export default function NuevaEvaluacionPage() {
       )}
       </div>
     </div>
+  );
+}
+
+export default function NuevaEvaluacionPage() {
+  return (
+    <Suspense fallback={
+      <div className="py-12 flex flex-col items-center justify-center gap-4">
+        <div className="w-8 h-8 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+        <p className="text-muted-foreground text-sm">Cargando formulario...</p>
+      </div>
+    }>
+      <NuevaEvaluacionContent />
+    </Suspense>
   );
 }
