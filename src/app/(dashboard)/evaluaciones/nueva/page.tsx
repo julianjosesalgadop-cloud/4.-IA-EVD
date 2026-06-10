@@ -304,7 +304,7 @@ function NuevaEvaluacionContent() {
               className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {showDropdown && filteredCollaborators.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg sm:rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl z-50 max-h-40 sm:max-h-56 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg sm:rounded-xl border border-border bg-popover text-popover-foreground shadow-xl z-50 max-h-40 sm:max-h-56 overflow-y-auto">
                 {filteredCollaborators.map((collab) => (
                   <button
                     key={collab.id}
@@ -314,10 +314,10 @@ function NuevaEvaluacionContent() {
                       setSearchTerm("");
                       setShowDropdown(false);
                     }}
-                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-100 dark:border-zinc-800 last:border-b-0 text-xs sm:text-sm"
+                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-accent hover:text-accent-foreground transition-colors border-b border-border/50 last:border-b-0 text-xs sm:text-sm"
                   >
-                    <p className="font-medium text-foreground truncate">{collab.full_name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{collab.document_number}</p>
+                    <p className="font-medium truncate">{collab.full_name}</p>
+                    <p className="text-xs text-muted-foreground/85 truncate">{collab.document_number}</p>
                   </button>
                 ))}
               </div>
