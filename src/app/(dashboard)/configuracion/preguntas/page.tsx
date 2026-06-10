@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   Settings, Plus, GripVertical, Edit, Trash2, Eye, EyeOff,
   AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Search,
-  Copy, Star
+  Copy, Star, Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getEvaluationConfig, saveQuestion, deleteQuestion, updateQuestionStatus } from "@/app/actions/evaluations";
 
 // ---- Types ----
 interface Question {
@@ -32,34 +33,6 @@ interface Category {
   active: boolean;
   questions: Question[];
 }
-
-const initialCategories: Category[] = [
-  {
-    id: "cat1",
-    name: "Cumplimiento de Funciones y Responsabilidades",
-    description: "Evalúa el nivel de cumplimiento de las funciones asignadas al cargo",
-    sort_order: 1,
-    weight: 25,
-    active: true,
-    questions: [
-      { id: "q1", code: "CF-01", question: "Cumple con las funciones y tareas asignadas a su cargo de manera oportuna", is_required: true, is_active: true, is_critical: false, min_score_required: 1, weight: 1 },
-      { id: "q2", code: "CF-02", question: "Demuestra conocimiento técnico suficiente para el desempeño de su cargo", is_required: true, is_active: true, is_critical: false, min_score_required: 1, weight: 1 },
-      { id: "q3", code: "CF-03", question: "Organiza y prioriza adecuadamente sus actividades para alcanzar los objetivos", is_required: true, is_active: true, is_critical: false, min_score_required: 1, weight: 1 },
-    ],
-  },
-  {
-    id: "cat2",
-    name: "Seguridad y Salud en el Trabajo",
-    description: "Compromiso con las normas de SST y autocuidado",
-    sort_order: 2,
-    weight: 20,
-    active: true,
-    questions: [
-      { id: "q4", code: "SST-01", question: "Usa adecuada y permanentemente los elementos de protección personal (EPP)", is_required: true, is_active: true, is_critical: true, min_score_required: 3, weight: 1.5 },
-      { id: "q5", code: "SST-02", question: "Cumple con los procedimientos y protocolos de seguridad definidos", is_required: true, is_active: true, is_critical: true, min_score_required: 3, weight: 1.5 },
-    ],
-  },
-];
 
 // ---- Question Row ----
 function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
@@ -109,14 +82,14 @@ function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
       <div className="flex items-center gap-1 flex-shrink-0">
         <button
           onClick={() => onDuplicate(question)}
-          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
           title="Duplicar"
         >
           <Copy className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => onEdit(question)}
-          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
           title="Editar"
         >
           <Edit className="w-3.5 h-3.5" />
@@ -124,7 +97,7 @@ function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
         <button
           onClick={() => onToggle(question.id)}
           className={cn(
-            "p-1.5 rounded-lg transition-colors",
+            "p-1.5 rounded-lg transition-colors cursor-pointer",
             question.is_active ? "hover:bg-warning-50 text-warning-500" : "hover:bg-success-50 text-success-500"
           )}
           title={question.is_active ? "Inactivar" : "Activar"}
@@ -133,7 +106,7 @@ function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
         </button>
         <button
           onClick={() => onDelete(question.id)}
-          className="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-950/30 text-muted-foreground hover:text-danger-600 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-950/30 text-muted-foreground hover:text-danger-600 transition-colors cursor-pointer"
           title="Eliminar"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -144,62 +117,177 @@ function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
 }
 
 // ---- Category Panel ----
-function CategoryPanel({ category, onUpdateQuestions }: {
+function CategoryPanel({ category, onUpdateQuestions, onReload }: {
   category: Category;
   onUpdateQuestions: (catId: string, questions: Question[]) => void;
+  onReload: () => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [questions, setQuestions] = useState(category.questions);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ question: "", code: "", is_critical: false, min_score_required: 1, weight: 1 });
 
+  // Form edit states
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [editCode, setEditCode] = useState("");
+  const [editQuestionText, setEditQuestionText] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editIsRequired, setEditIsRequired] = useState(true);
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editIsCritical, setEditIsCritical] = useState(false);
+  const [editMinScore, setEditMinScore] = useState(1);
+  const [editWeight, setEditWeight] = useState(1);
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+
+  useEffect(() => {
+    setQuestions(category.questions);
+  }, [category.questions]);
+
   const handleReorder = (newOrder: Question[]) => {
     setQuestions(newOrder);
     onUpdateQuestions(category.id, newOrder);
   };
 
-  const handleToggle = (id: string) => {
-    const updated = questions.map(q => q.id === id ? { ...q, is_active: !q.is_active } : q);
-    setQuestions(updated);
-    onUpdateQuestions(category.id, updated);
+  const handleToggle = async (id: string) => {
+    const q = questions.find(item => item.id === id);
+    if (!q) return;
+    try {
+      const res = await updateQuestionStatus(id, !q.is_active);
+      if (res.error) {
+        toast.error("Error al cambiar estado: " + res.error);
+      } else {
+        toast.success(q.is_active ? "Pregunta inactivada" : "Pregunta activada");
+        onReload();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al cambiar estado");
+    }
   };
 
-  const handleDelete = (id: string) => {
-    const updated = questions.filter(q => q.id !== id);
-    setQuestions(updated);
-    onUpdateQuestions(category.id, updated);
-    toast.success("Pregunta eliminada");
+  const handleDelete = async (id: string) => {
+    if (!confirm("¿Estás seguro de eliminar esta pregunta permanentemente?")) return;
+    try {
+      const res = await deleteQuestion(id);
+      if (res.error) {
+        toast.error("Error al eliminar: " + res.error);
+      } else {
+        toast.success("Pregunta eliminada correctamente");
+        onReload();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al eliminar la pregunta");
+    }
   };
 
-  const handleDuplicate = (q: Question) => {
-    const dup: Question = { ...q, id: Date.now().toString(), code: `${q.code}-COPIA` };
-    const updated = [...questions, dup];
-    setQuestions(updated);
-    onUpdateQuestions(category.id, updated);
-    toast.success("Pregunta duplicada");
+  const handleDuplicate = async (q: Question) => {
+    try {
+      const res = await saveQuestion({
+        category_id: category.id,
+        code: `${q.code}-COPIA`,
+        question: `${q.question} (Copia)`,
+        description: q.description,
+        is_required: q.is_required,
+        is_active: true,
+        is_critical: q.is_critical,
+        min_score_required: q.min_score_required,
+        weight: q.weight,
+      });
+
+      if (res.error) {
+        toast.error("Error al duplicar: " + res.error);
+      } else {
+        toast.success("Pregunta duplicada correctamente");
+        onReload();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al duplicar la pregunta");
+    }
   };
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = async () => {
     if (!newQuestion.question.trim()) {
       toast.error("La pregunta no puede estar vacía");
       return;
     }
-    const q: Question = {
-      id: Date.now().toString(),
-      code: newQuestion.code || `Q-${questions.length + 1}`,
-      question: newQuestion.question,
-      is_required: true,
-      is_active: true,
-      is_critical: newQuestion.is_critical,
-      min_score_required: newQuestion.min_score_required,
-      weight: newQuestion.weight,
-    };
-    const updated = [...questions, q];
-    setQuestions(updated);
-    onUpdateQuestions(category.id, updated);
-    setNewQuestion({ question: "", code: "", is_critical: false, min_score_required: 1, weight: 1 });
-    setShowAddForm(false);
-    toast.success("Pregunta agregada exitosamente");
+    
+    try {
+      const res = await saveQuestion({
+        category_id: category.id,
+        code: newQuestion.code || `Q-${questions.length + 1}`,
+        question: newQuestion.question,
+        description: "",
+        is_required: true,
+        is_active: true,
+        is_critical: newQuestion.is_critical,
+        min_score_required: newQuestion.min_score_required,
+        weight: newQuestion.weight,
+      });
+
+      if (res.error) {
+        toast.error("Error al crear pregunta: " + res.error);
+      } else {
+        toast.success("Pregunta agregada exitosamente");
+        setNewQuestion({ question: "", code: "", is_critical: false, min_score_required: 1, weight: 1 });
+        setShowAddForm(false);
+        onReload();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al guardar la pregunta");
+    }
+  };
+
+  const handleOpenEdit = (q: Question) => {
+    setEditingQuestion(q);
+    setEditCode(q.code);
+    setEditQuestionText(q.question);
+    setEditDescription(q.description || "");
+    setEditIsRequired(q.is_required);
+    setEditIsActive(q.is_active);
+    setEditIsCritical(q.is_critical);
+    setEditMinScore(q.min_score_required);
+    setEditWeight(q.weight);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingQuestion) return;
+    if (!editQuestionText.trim()) {
+      toast.error("La pregunta no puede estar vacía");
+      return;
+    }
+
+    setIsEditSubmitting(true);
+    try {
+      const res = await saveQuestion({
+        id: editingQuestion.id,
+        category_id: category.id,
+        code: editCode,
+        question: editQuestionText,
+        description: editDescription,
+        is_required: editIsRequired,
+        is_active: editIsActive,
+        is_critical: editIsCritical,
+        min_score_required: editMinScore,
+        weight: editWeight,
+      });
+
+      if (res.error) {
+        toast.error("Error al guardar: " + res.error);
+      } else {
+        toast.success("Pregunta actualizada");
+        setEditingQuestion(null);
+        onReload();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al actualizar la pregunta");
+    } finally {
+      setIsEditSubmitting(false);
+    }
   };
 
   const activeCount = questions.filter(q => q.is_active).length;
@@ -212,7 +300,7 @@ function CategoryPanel({ category, onUpdateQuestions }: {
     >
       {/* Category Header */}
       <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors select-none"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
@@ -258,7 +346,7 @@ function CategoryPanel({ category, onUpdateQuestions }: {
                   <QuestionRow
                     key={q.id}
                     question={q}
-                    onEdit={(q) => toast.info(`Editando: ${q.code}`)}
+                    onEdit={handleOpenEdit}
                     onDelete={handleDelete}
                     onToggle={handleToggle}
                     onDuplicate={handleDuplicate}
@@ -338,14 +426,14 @@ function CategoryPanel({ category, onUpdateQuestions }: {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleAddQuestion}
-                        className="flex items-center gap-2 px-4 py-1.5 rounded-lg gradient-brand text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-lg gradient-brand text-white text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Agregar pregunta
                       </button>
                       <button
                         onClick={() => setShowAddForm(false)}
-                        className="px-4 py-1.5 rounded-lg border text-xs hover:bg-accent transition-colors"
+                        className="px-4 py-1.5 rounded-lg border text-xs hover:bg-accent transition-colors cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -357,7 +445,7 @@ function CategoryPanel({ category, onUpdateQuestions }: {
               {!showAddForm && (
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-2 w-full p-3 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-accent/30 transition-all"
+                  className="flex items-center gap-2 w-full p-3 rounded-lg border border-dashed text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-accent/30 transition-all cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   Agregar pregunta a esta categoría
@@ -367,14 +455,176 @@ function CategoryPanel({ category, onUpdateQuestions }: {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit Question Modal */}
+      {editingQuestion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-foreground animate-fade-in">
+          <div className="bg-card w-full max-w-md rounded-2xl shadow-xl border overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b flex justify-between items-center select-none">
+              <h3 className="font-bold text-lg">Editar Pregunta</h3>
+              <button onClick={() => setEditingQuestion(null)} className="text-muted-foreground hover:text-foreground cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Código *</label>
+                  <input 
+                    required 
+                    value={editCode}
+                    onChange={(e) => setEditCode(e.target.value)}
+                    className="w-full h-9 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Peso (Multiplicador)</label>
+                  <input 
+                    type="number"
+                    step={0.5}
+                    min={0.5}
+                    value={editWeight}
+                    onChange={(e) => setEditWeight(Number(e.target.value))}
+                    className="w-full h-9 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Pregunta *</label>
+                <textarea 
+                  required
+                  rows={2}
+                  value={editQuestionText}
+                  onChange={(e) => setEditQuestionText(e.target.value)}
+                  className="w-full rounded-lg border bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Descripción / Guía de Calificación</label>
+                <input 
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full h-9 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Guía breve para calificar..."
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs select-none">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={editIsRequired}
+                    onChange={(e) => setEditIsRequired(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span>Obligatoria</span>
+                </label>
+                
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={editIsActive}
+                    onChange={(e) => setEditIsActive(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span>Activa</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    checked={editIsCritical}
+                    onChange={(e) => setEditIsCritical(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-danger-600 font-semibold flex items-center gap-0.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Criterio Crítico
+                  </span>
+                </label>
+              </div>
+
+              {editIsCritical && (
+                <div className="flex items-center gap-2 text-sm bg-danger-50 dark:bg-danger-950/20 p-2.5 rounded-lg border border-danger-200 animate-fade-in">
+                  <span className="text-xs text-danger-700 dark:text-danger-400">Calificación Mínima Requerida:</span>
+                  <input 
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={editMinScore}
+                    onChange={(e) => setEditMinScore(Number(e.target.value))}
+                    className="w-16 h-8 rounded border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingQuestion(null)}
+                  className="flex-1 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isEditSubmitting}
+                  className="flex-1 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-55"
+                >
+                  {isEditSubmitting ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
 
 // ---- Main Page ----
 export default function PreguntasConfigPage() {
-  const [categories, setCategories] = useState(initialCategories);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQ, setSearchQ] = useState("");
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const config = await getEvaluationConfig();
+      if (config.categories) {
+        const structured: Category[] = config.categories.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description || "",
+          sort_order: c.sort_order || 0,
+          weight: Number(c.weight || 0),
+          active: c.active !== false,
+          questions: (config.questions || []).filter((q: any) => q.category_id === c.id).map((q: any) => ({
+            id: q.id,
+            code: q.code || "",
+            question: q.question,
+            description: q.description || "",
+            is_required: q.is_required !== false,
+            is_active: q.is_active !== false,
+            is_critical: q.is_critical === true,
+            min_score_required: Number(q.min_score_required || 1.0),
+            weight: Number(q.weight || 1.0),
+          }))
+        }));
+        setCategories(structured);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al cargar configuración de preguntas");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const updateQuestions = (catId: string, questions: Question[]) => {
     setCategories(prev => prev.map(c => c.id === catId ? { ...c, questions } : c));
@@ -384,23 +634,27 @@ export default function PreguntasConfigPage() {
   const activeQuestions = categories.reduce((sum, c) => sum + c.questions.filter(q => q.is_active).length, 0);
   const criticalQuestions = categories.reduce((sum, c) => sum + c.questions.filter(q => q.is_critical).length, 0);
 
+  // Search filter
+  const filteredCategories = categories.map((cat) => {
+    const filteredQ = cat.questions.filter((q) => {
+      const text = q.question.toLowerCase();
+      const code = q.code.toLowerCase();
+      const search = searchQ.toLowerCase();
+      return text.includes(search) || code.includes(search);
+    });
+    return {
+      ...cat,
+      questions: filteredQ
+    };
+  }).filter((cat) => cat.questions.length > 0 || searchQ === "");
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Configuración de Preguntas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Versión 2026 · Motor de evaluación dinámico</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm hover:bg-accent transition-colors">
-            <Star className="w-4 h-4" />
-            Criterios críticos
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md">
-            <Plus className="w-4 h-4" />
-            Nueva categoría
-          </button>
+          <p className="text-muted-foreground text-sm mt-1">Versión Activa · Motor de evaluación dinámico</p>
         </div>
       </div>
 
@@ -410,47 +664,66 @@ export default function PreguntasConfigPage() {
         <div className="text-sm">
           <p className="font-semibold text-brand-700 dark:text-brand-400">Motor de evaluación dinámico</p>
           <p className="text-brand-600/80 dark:text-brand-400/80 text-xs mt-0.5">
-            Las preguntas configuradas aquí se cargan automáticamente al crear una evaluación.
-            Puedes agregar, reordenar o inactivar preguntas sin afectar las evaluaciones históricas.
+            Las preguntas y categorías editadas aquí son cargadas directamente en el formulario de "Nueva Evaluación".
+            Puedes activar, inactivar, crear y editar el código, peso y condiciones críticas de las preguntas de forma segura.
           </p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: "Total preguntas", value: totalQuestions },
-          { label: "Activas", value: activeQuestions },
-          { label: "Criterios críticos", value: criticalQuestions },
-        ].map((s, i) => (
-          <div key={s.label} className="p-4 rounded-xl border bg-card text-center">
-            <p className="text-2xl font-bold">{s.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+      {isLoading ? (
+        <div className="py-24 flex flex-col items-center justify-center gap-4">
+          <div className="w-8 h-8 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+          <p className="text-muted-foreground font-medium">Cargando preguntas de evaluación...</p>
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground border border-dashed rounded-xl bg-muted/10">
+          No hay preguntas de evaluación configuradas. Cree categorías primero.
+        </div>
+      ) : (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4 stagger-children">
+            {[
+              { label: "Total preguntas", value: totalQuestions },
+              { label: "Activas", value: activeQuestions },
+              { label: "Criterios críticos", value: criticalQuestions },
+            ].map((s, i) => (
+              <div key={s.label} className="p-4 rounded-xl border bg-card text-center">
+                <p className="text-2xl font-bold">{s.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
-          placeholder="Buscar pregunta..."
-          className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-        />
-      </div>
+          {/* Search */}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="Buscar pregunta..."
+              className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+            />
+          </div>
 
-      {/* Categories + Questions */}
-      <div className="space-y-4">
-        {categories.map((cat) => (
-          <CategoryPanel
-            key={cat.id}
-            category={cat}
-            onUpdateQuestions={updateQuestions}
-          />
-        ))}
-      </div>
+          {/* Categories + Questions */}
+          <div className="space-y-4">
+            {filteredCategories.map((cat) => (
+              <CategoryPanel
+                key={cat.id}
+                category={cat}
+                onUpdateQuestions={updateQuestions}
+                onReload={loadData}
+              />
+            ))}
+            {filteredCategories.length === 0 && searchQ !== "" && (
+              <div className="py-12 text-center text-muted-foreground">
+                No hay preguntas que coincidan con la búsqueda.
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

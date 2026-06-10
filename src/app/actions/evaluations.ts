@@ -74,8 +74,30 @@ export async function getEvaluationConfig() {
   };
 }
 
+async function getSupabaseAdmin() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch (error) {}
+        },
+      },
+    }
+  );
+}
+
 export async function updateQuestionStatus(questionId: string, isActive: boolean) {
-  const supabase = await getSupabase();
+  const supabase = await getSupabaseAdmin();
   const { error } = await supabase
     .from("evaluation_questions")
     .update({ is_active: isActive })
@@ -83,6 +105,143 @@ export async function updateQuestionStatus(questionId: string, isActive: boolean
 
   if (error) return { error: error.message };
   revalidatePath("/configuracion/preguntas");
+  revalidatePath("/evaluaciones/nueva");
+  return { success: true };
+}
+
+export async function saveCategory(category: { id?: string; name: string; weight: number; description?: string }) {
+  const supabase = await getSupabaseAdmin();
+  const version = await getActiveVersion();
+  if (!version) return { error: "No hay versión de evaluación activa" };
+
+  if (category.id) {
+    const { error } = await supabase
+      .from("evaluation_categories")
+      .update({
+        name: category.name,
+        weight: category.weight,
+        description: category.description,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", category.id);
+
+    if (error) return { error: error.message };
+  } else {
+    const { count } = await supabase
+      .from("evaluation_categories")
+      .select("*", { count: "exact", head: true })
+      .eq("version_id", version.id);
+
+    const { error } = await supabase
+      .from("evaluation_categories")
+      .insert({
+        version_id: version.id,
+        name: category.name,
+        weight: category.weight,
+        description: category.description,
+        sort_order: (count || 0) + 1,
+        active: true
+      });
+
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/configuracion/categorias");
+  revalidatePath("/configuracion/preguntas");
+  revalidatePath("/evaluaciones/nueva");
+  return { success: true };
+}
+
+export async function deleteCategory(id: string) {
+  const supabase = await getSupabaseAdmin();
+  const { error } = await supabase
+    .from("evaluation_categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/configuracion/categorias");
+  revalidatePath("/configuracion/preguntas");
+  revalidatePath("/evaluaciones/nueva");
+  return { success: true };
+}
+
+export async function saveQuestion(question: {
+  id?: string;
+  category_id: string;
+  code: string;
+  question: string;
+  description?: string;
+  is_required: boolean;
+  is_active: boolean;
+  is_critical: boolean;
+  min_score_required: number;
+  weight: number;
+}) {
+  const supabase = await getSupabaseAdmin();
+  const version = await getActiveVersion();
+  if (!version) return { error: "No hay versión de evaluación activa" };
+
+  if (question.id) {
+    const { error } = await supabase
+      .from("evaluation_questions")
+      .update({
+        category_id: question.category_id,
+        code: question.code,
+        question: question.question,
+        description: question.description,
+        is_required: question.is_required,
+        is_active: question.is_active,
+        is_critical: question.is_critical,
+        min_score_required: question.min_score_required,
+        weight: question.weight,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", question.id);
+
+    if (error) return { error: error.message };
+  } else {
+    const { count } = await supabase
+      .from("evaluation_questions")
+      .select("*", { count: "exact", head: true })
+      .eq("category_id", question.category_id);
+
+    const { error } = await supabase
+      .from("evaluation_questions")
+      .insert({
+        category_id: question.category_id,
+        version_id: version.id,
+        code: question.code,
+        question: question.question,
+        description: question.description,
+        is_required: question.is_required,
+        is_active: question.is_active,
+        is_critical: question.is_critical,
+        min_score_required: question.min_score_required,
+        weight: question.weight,
+        sort_order: (count || 0) + 1
+      });
+
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/configuracion/preguntas");
+  revalidatePath("/evaluaciones/nueva");
+  return { success: true };
+}
+
+export async function deleteQuestion(id: string) {
+  const supabase = await getSupabaseAdmin();
+  const { error } = await supabase
+    .from("evaluation_questions")
+    .delete()
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/configuracion/preguntas");
+  revalidatePath("/evaluaciones/nueva");
   return { success: true };
 }
 
@@ -159,7 +318,6 @@ export async function saveEvaluation(payload: any) {
 
   if (!profile?.company_id) throw new Error("Compañía no encontrada");
 
-  // 1. Insert header
   const { data: evalData, error: evalError } = await supabase
     .from("evaluations")
     .insert({
@@ -182,7 +340,6 @@ export async function saveEvaluation(payload: any) {
 
   if (evalError) return { error: evalError.message };
 
-  // 2. Insert answers
   const answers = payload.answers.map((ans: any) => ({
     evaluation_id: evalData.id,
     question_id: ans.question_id,
@@ -197,7 +354,6 @@ export async function saveEvaluation(payload: any) {
 
   if (answersError) return { error: answersError.message };
 
-  // 3. Trigger calculation function via RPC
   const { data: resultData, error: rpcError } = await supabase.rpc(
     "calculate_evaluation_result",
     { p_evaluation_id: evalData.id }
