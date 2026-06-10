@@ -166,6 +166,11 @@ function NuevaEvaluacionContent() {
     }, 2000);
     return () => clearTimeout(timer);
   }, [answers, answeredQuestions]);
+  
+  // Auto-scroll to top when category changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentCategoryIndex]);
 
   const setAnswer = (questionId: string, categoryId: string, score: number) => {
     setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], category_id: categoryId, score } }));
@@ -346,6 +351,21 @@ function NuevaEvaluacionContent() {
         )}
       </div>
 
+      {/* Método de Calificación Guía */}
+      <div className="rounded-xl border bg-card p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground flex flex-col md:flex-row md:items-center justify-between gap-3 bg-muted/10">
+        <div className="space-y-1">
+          <p className="font-semibold text-foreground">Escala de Calificación:</p>
+          <p>Evalúe las competencias del colaborador seleccionando un puntaje de 1 a 5 según el nivel de desempeño:</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <span className="px-2 py-1 rounded bg-danger-50 dark:bg-danger-950/20 text-danger-600 dark:text-danger-400 font-medium text-[10px] sm:text-xs">1: No cumple</span>
+          <span className="px-2 py-1 rounded bg-warning-50 dark:bg-warning-950/20 text-warning-600 dark:text-warning-400 font-medium text-[10px] sm:text-xs">2: Requiere mejora</span>
+          <span className="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium text-[10px] sm:text-xs">3: Cumple</span>
+          <span className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-medium text-[10px] sm:text-xs">4: Sobresaliente</span>
+          <span className="px-2 py-1 rounded bg-success-50 dark:bg-success-950/20 text-success-600 dark:text-success-400 font-medium text-[10px] sm:text-xs">5: Excelente</span>
+        </div>
+      </div>
+
       {/* Progress Bar */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
@@ -451,8 +471,8 @@ function NuevaEvaluacionContent() {
                   <div key={question.id} className="p-3 sm:p-5 space-y-3 sm:space-y-4">
                     {/* Question Header */}
                     <div className="flex items-start gap-2 sm:gap-3">
-                      <span className="flex-shrink-0 text-xs font-bold text-muted-foreground bg-muted w-6 h-4 sm:w-8 sm:h-5 rounded flex items-center justify-center">
-                        {question.code}
+                      <span className="flex-shrink-0 text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded flex items-center justify-center min-w-[2rem] h-5">
+                        {question.code || `${currentCategoryIndex + 1}.${qi + 1}`}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
@@ -500,23 +520,6 @@ function NuevaEvaluacionContent() {
                           <strong>Criterio crítico incumplido:</strong> La calificación mínima requerida es {question.min_score_required}.
                           Se generará un Plan de Mejoramiento automáticamente.
                         </p>
-                      </motion.div>
-                    )}
-
-                    {/* Comment */}
-                    {answers[question.id]?.score && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <textarea
-                          value={answers[question.id]?.comment || ""}
-                          onChange={(e) => setComment(question.id, category.id, e.target.value)}
-                          placeholder="Observación opcional sobre esta calificación..."
-                          rows={2}
-                          className="w-full rounded-lg border bg-background/50 px-2 sm:px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
-                        />
                       </motion.div>
                     )}
                   </div>
