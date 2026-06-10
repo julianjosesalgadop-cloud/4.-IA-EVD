@@ -443,7 +443,7 @@ function NuevaEvaluacionContent() {
         </div>
 
         {/* Questions Panel */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-2">
           <AnimatePresence mode="wait">
             <motion.div
               key={category.id}
@@ -632,6 +632,82 @@ function NuevaEvaluacionContent() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Collaborator & Progress Sticky Panel */}
+        <div className="lg:col-span-1 hidden lg:block">
+          <div className="sticky top-20 space-y-4">
+            {/* Collaborator Card */}
+            {selectedCollaborator && (
+              <div className="rounded-xl border bg-card p-4 space-y-3 shadow-sm">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Evaluando a</p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="w-10 h-10 rounded-full gradient-brand flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
+                      {(selectedCollaborator.full_name || "US").split(" ").filter(Boolean).map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm leading-tight text-foreground truncate">{selectedCollaborator.full_name}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{selectedCollaborator.position?.name || "Sin Cargo"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-border/60 pt-2.5 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Área:</span>
+                    <span className="font-semibold text-foreground truncate pl-2">{selectedCollaborator.areas?.name || selectedCollaborator.area?.name || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Documento:</span>
+                    <span className="font-semibold text-foreground">{selectedCollaborator.document_number || "—"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Progress Card */}
+            <div className="rounded-xl border bg-card p-4 space-y-3 shadow-sm">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Avance</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs text-muted-foreground">{answeredQuestions} de {totalQuestions} preguntas</span>
+                  <span className="text-sm font-bold text-primary">{progress}%</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden mt-1.5">
+                  <motion.div
+                    className="h-full gradient-brand rounded-full"
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-border/60 pt-2.5 space-y-2">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Categorías Completadas</p>
+                <div className="space-y-1.5">
+                  {categories.map((cat, idx) => {
+                    const isComplete = categoryComplete(cat);
+                    return (
+                      <div key={cat.id} className="flex items-center justify-between text-xs">
+                        <span className={cn(
+                          "truncate pr-2",
+                          isComplete ? "text-foreground font-medium" : "text-muted-foreground"
+                        )} title={cat.name}>
+                          {idx + 1}. {cat.name}
+                        </span>
+                        {isComplete ? (
+                          <span className="text-success-600 font-bold flex-shrink-0">✓</span>
+                        ) : (
+                          <span className="text-muted-foreground/35 flex-shrink-0 font-medium">—</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
