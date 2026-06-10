@@ -170,9 +170,12 @@ function NuevaEvaluacionContent() {
   // Auto-scroll to top when category changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      document.documentElement.scrollTo({ top: 0, behavior: "smooth" });
-      document.body.scrollTo({ top: 0, behavior: "smooth" });
+      const container = document.getElementById("evaluation-questions-container");
+      if (container) {
+        const yOffset = -80; // Align below the 64px fixed topbar with 16px margin
+        const y = container.getBoundingClientRect().top + (window.scrollY ?? window.pageYOffset) + yOffset;
+        window.scrollTo({ top: y, behavior: "smooth" });
+      }
     }, 100);
     return () => clearTimeout(timer);
   }, [currentCategoryIndex]);
@@ -386,7 +389,7 @@ function NuevaEvaluacionContent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div id="evaluation-questions-container" className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
         {/* Category Nav */}
         <div className="lg:col-span-1 space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Categorías</p>
