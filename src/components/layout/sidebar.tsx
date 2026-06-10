@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
+import { logoutAction } from "@/app/actions/auth";
 
 interface NavItem {
   title: string;
@@ -22,80 +23,95 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
+interface NavGroup {
+  groupTitle: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
+    groupTitle: "Menú Principal",
+    items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Colaboradores",
+        href: "/colaboradores",
+        icon: Users,
+        badge: 0,
+      },
+      {
+        title: "Evaluaciones",
+        icon: ClipboardList,
+        children: [
+          { title: "Todas las Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
+          { title: "Nueva Evaluación", href: "/evaluaciones/nueva", icon: ClipboardList },
+          { title: "Borradores", href: "/evaluaciones/borradores", icon: ClipboardList },
+        ],
+      },
+      {
+        title: "Plan de Mejoramiento",
+        href: "/pmi",
+        icon: Target,
+      },
+      {
+        title: "Retroalimentación",
+        href: "/retroalimentacion",
+        icon: MessageSquare,
+      },
+      {
+        title: "Capacitaciones",
+        href: "/capacitaciones",
+        icon: GraduationCap,
+      },
+      {
+        title: "Reportes",
+        href: "/reportes",
+        icon: FileBarChart2,
+      },
+    ]
   },
   {
-    title: "Colaboradores",
-    href: "/colaboradores",
-    icon: Users,
-    badge: 0,
-  },
-  {
-    title: "Evaluaciones",
-    icon: ClipboardList,
-    children: [
-      { title: "Todas las Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
-      { title: "Nueva Evaluación", href: "/evaluaciones/nueva", icon: ClipboardList },
-      { title: "Borradores", href: "/evaluaciones/borradores", icon: ClipboardList },
-    ],
-  },
-  {
-    title: "Plan de Mejoramiento",
-    href: "/pmi",
-    icon: Target,
-  },
-  {
-    title: "Retroalimentación",
-    href: "/retroalimentacion",
-    icon: MessageSquare,
-  },
-  {
-    title: "Capacitaciones",
-    href: "/capacitaciones",
-    icon: GraduationCap,
-  },
-  {
-    title: "Reportes",
-    href: "/reportes",
-    icon: FileBarChart2,
-  },
-  {
-    title: "Configuración",
-    icon: Settings,
-    children: [
-      { title: "Categorías", href: "/configuracion/categorias", icon: Settings },
-      { title: "Preguntas", href: "/configuracion/preguntas", icon: Settings },
-      { title: "Versiones", href: "/configuracion/versiones", icon: Settings },
-      { title: "Criterios Críticos", href: "/configuracion/criterios", icon: Settings },
-      { title: "Empresa", href: "/configuracion/empresa", icon: Building2 },
-    ],
-  },
-  {
-    title: "Notificaciones",
-    href: "/notificaciones",
-    icon: Bell,
-    badge: 3,
-  },
-  {
-    title: "Auditoría",
-    href: "/auditoria",
-    icon: Shield,
-  },
-  {
-    title: "Administración",
-    icon: Building2,
-    children: [
-      { title: "Usuarios", href: "/administracion/usuarios", icon: Users },
-      { title: "Roles", href: "/administracion/roles", icon: Shield },
-      { title: "Áreas", href: "/administracion/areas", icon: Building2 },
-      { title: "Cargos", href: "/administracion/cargos", icon: BookOpen },
-      { title: "Importar Datos", href: "/administracion/importar", icon: FileBarChart2 },
-    ],
-  },
+    groupTitle: "Administración & Configuración",
+    items: [
+      {
+        title: "Configuración",
+        icon: Settings,
+        children: [
+          { title: "Categorías", href: "/configuracion/categorias", icon: Settings },
+          { title: "Preguntas", href: "/configuracion/preguntas", icon: Settings },
+          { title: "Versiones", href: "/configuracion/versiones", icon: Settings },
+          { title: "Criterios Críticos", href: "/configuracion/criterios", icon: Settings },
+          { title: "Empresa", href: "/configuracion/empresa", icon: Building2 },
+        ],
+      },
+      {
+        title: "Administración",
+        icon: Building2,
+        children: [
+          { title: "Usuarios", href: "/administracion/usuarios", icon: Users },
+          { title: "Roles", href: "/administracion/roles", icon: Shield },
+          { title: "Áreas", href: "/administracion/areas", icon: Building2 },
+          { title: "Cargos", href: "/administracion/cargos", icon: BookOpen },
+          { title: "Importar Datos", href: "/administracion/importar", icon: FileBarChart2 },
+        ],
+      },
+      {
+        title: "Notificaciones",
+        href: "/notificaciones",
+        icon: Bell,
+        badge: 3,
+      },
+      {
+        title: "Auditoría",
+        href: "/auditoria",
+        icon: Shield,
+      },
+    ]
+  }
 ];
 
 interface SidebarProps {
@@ -175,115 +191,130 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {navItems.map((item) => {
-          if (item.children) {
-            const isOpen = openGroups[item.title] ?? isGroupActive(item);
-            const active = isGroupActive(item);
-
-            return (
-              <div key={item.title}>
-                <button
-                  onClick={() => toggleGroup(item.title)}
-                  className={cn(
-                    "sidebar-link w-full",
-                    active && !collapsed && "active"
-                  )}
-                  title={collapsed ? item.title : undefined}
-                >
-                  <item.icon className={cn("w-5 h-5 flex-shrink-0", active ? "text-primary" : "text-muted-foreground")} />
-                  <AnimatePresence>
-                    {!collapsed && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="flex items-center justify-between flex-1 overflow-hidden"
-                      >
-                        <span className="truncate">{item.title}</span>
-                        {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
-
-                <AnimatePresence>
-                  {isOpen && !collapsed && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pl-4 py-0.5 space-y-0.5">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.href}
-                            href={child.href!}
-                            className={cn(
-                              "sidebar-link text-xs",
-                              isActive(child.href) && "active"
-                            )}
-                          >
-                            <div className={cn(
-                              "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                              isActive(child.href) ? "bg-primary" : "bg-muted-foreground/40"
-                            )} />
-                            <span className="truncate">{child.title}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+        {navGroups.map((group, groupIdx) => (
+          <div key={group.groupTitle} className="space-y-1">
+            {/* Divider / Group Title */}
+            {collapsed ? (
+              groupIdx > 0 && <div className="my-2 border-t border-sidebar-border/40" />
+            ) : (
+              <div className="px-3 py-1 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider select-none">
+                {group.groupTitle}
               </div>
-            );
-          }
+            )}
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href!}
-              className={cn("sidebar-link relative", isActive(item.href) && "active")}
-              title={collapsed ? item.title : undefined}
-            >
-              <item.icon className={cn(
-                "w-5 h-5 flex-shrink-0",
-                isActive(item.href) ? "text-primary" : "text-muted-foreground"
-              )} />
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                if (item.children) {
+                  const isOpen = openGroups[item.title] ?? isGroupActive(item);
+                  const active = isGroupActive(item);
 
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="truncate flex-1"
+                  return (
+                    <div key={item.title}>
+                      <button
+                        onClick={() => toggleGroup(item.title)}
+                        className={cn(
+                          "sidebar-link w-full",
+                          active && !collapsed && "active"
+                        )}
+                        title={collapsed ? item.title : undefined}
+                      >
+                        <item.icon className={cn("w-5 h-5 flex-shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                        <AnimatePresence>
+                          {!collapsed && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="flex items-center justify-between flex-1 overflow-hidden"
+                            >
+                              <span className="truncate">{item.title}</span>
+                              {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </button>
+
+                      <AnimatePresence>
+                        {isOpen && !collapsed && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pl-4 py-0.5 space-y-0.5">
+                              {item.children.map((child) => (
+                                <Link
+                                  key={child.href}
+                                  href={child.href!}
+                                  className={cn(
+                                    "sidebar-link text-xs",
+                                    isActive(child.href) && "active"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                    isActive(child.href) ? "bg-primary" : "bg-muted-foreground/40"
+                                  )} />
+                                  <span className="truncate">{child.title}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href!}
+                    className={cn("sidebar-link relative", isActive(item.href) && "active")}
+                    title={collapsed ? item.title : undefined}
                   >
-                    {item.title}
-                  </motion.span>
-                )}
-              </AnimatePresence>
+                    <item.icon className={cn(
+                      "w-5 h-5 flex-shrink-0",
+                      isActive(item.href) ? "text-primary" : "text-muted-foreground"
+                    )} />
 
-              {item.badge !== undefined && item.badge > 0 && (
-                <motion.span
-                  className={cn(
-                    "rounded-full text-[10px] font-bold",
-                    collapsed
-                      ? "absolute top-1 right-1 w-4 h-4 flex items-center justify-center bg-primary text-primary-foreground"
-                      : "ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-primary text-primary-foreground text-xs"
-                  )}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 400 }}
-                >
-                  {item.badge}
-                </motion.span>
-              )}
-            </Link>
-          );
-        })}
+                    <AnimatePresence>
+                      {!collapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="truncate flex-1"
+                        >
+                          {item.title}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <motion.span
+                        className={cn(
+                          "rounded-full text-[10px] font-bold",
+                          collapsed
+                            ? "absolute top-1 right-1 w-4 h-4 flex items-center justify-center bg-primary text-primary-foreground"
+                            : "ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-primary text-primary-foreground text-xs"
+                        )}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400 }}
+                      >
+                        {item.badge}
+                      </motion.span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
@@ -314,7 +345,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </button>
 
         {/* Logout */}
-        <button className="sidebar-link w-full text-danger-600 hover:bg-danger-50 hover:text-danger-700 dark:hover:bg-danger-950">
+        <button
+          onClick={async () => {
+            await logoutAction();
+          }}
+          className="sidebar-link w-full text-danger-600 hover:bg-danger-50 hover:text-danger-700 dark:hover:bg-danger-950 transition-colors"
+        >
           <LogOut className="w-5 h-5 flex-shrink-0" />
           <AnimatePresence>
             {!collapsed && (

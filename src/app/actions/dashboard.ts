@@ -84,7 +84,7 @@ export async function getDashboardStats() {
       avgScore,
       pmisCount: pmisCount || 0,
     },
-    recentEvals: allEvals.slice(0, 5).map((e: any) => {
+    allEvaluations: allEvals.map((e: any) => {
       const res = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
       return {
         id: e.id,
@@ -93,7 +93,8 @@ export async function getDashboardStats() {
         area: e.collaborator?.areas?.name || "N/A",
         result: res ? res.result : e.status,
         score: Number(res?.overall_average || 0),
-        date: e.created_at
+        date: e.created_at,
+        year: e.evaluation_year
       };
     })
   };

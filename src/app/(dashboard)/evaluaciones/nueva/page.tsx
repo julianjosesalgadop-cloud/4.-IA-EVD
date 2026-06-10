@@ -169,7 +169,12 @@ function NuevaEvaluacionContent() {
   
   // Auto-scroll to top when category changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.documentElement.scrollTo({ top: 0, behavior: "smooth" });
+      document.body.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [currentCategoryIndex]);
 
   const setAnswer = (questionId: string, categoryId: string, score: number) => {
@@ -508,20 +513,7 @@ function NuevaEvaluacionContent() {
                       ))}
                     </div>
 
-                    {/* Critical warning */}
-                    {question.is_critical && answers[question.id]?.score && answers[question.id].score < question.min_score_required && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-danger-50 dark:bg-danger-950/20 border border-danger-200 text-danger-600 text-xs"
-                      >
-                        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <p>
-                          <strong>Criterio crítico incumplido:</strong> La calificación mínima requerida es {question.min_score_required}.
-                          Se generará un Plan de Mejoramiento automáticamente.
-                        </p>
-                      </motion.div>
-                    )}
+
                   </div>
                 ))}
               </div>

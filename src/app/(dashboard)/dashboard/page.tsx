@@ -10,7 +10,7 @@ import {
 import {
   BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, LabelList
 } from "recharts";
 import { cn, formatNumber, formatScore, getResultLabel, formatDate } from "@/lib/utils";
 import Link from "next/link";
@@ -254,6 +254,10 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 // ---- MAIN PAGE ----
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedArea, setSelectedArea] = useState("");
+  const [selectedResult, setSelectedResult] = useState("");
 
   useEffect(() => {
     async function loadStats() {
@@ -263,29 +267,77 @@ export default function DashboardPage() {
     loadStats();
   }, []);
 
-  const kpiData = buildKpiData(stats?.kpis);
+  // Filter evaluations based on user selections
+  const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
+    if (startDate && new Date(ev.date) < new Date(startDate)) return false;
+    if (endDate) {
+      const limitDate = new Date(endDate);
+      limitDate.setHours(23, 59, 59, 999);
+      if (new Date(ev.date) > limitDate) return false;
+    }
+    if (selectedArea && ev.area !== selectedArea) return false;
+    if (selectedResult && ev.result !== selectedResult) return false;
+    return true;
+  }) : [];
 
-  const resultDistribution = stats ? [
-    { name: "Aprobados", value: stats.kpis.aprobados, color: "#10b981" },
-    { name: "Plan Mejora", value: stats.kpis.conPMI, color: "#f59e0b" },
-    { name: "No Aprobados", value: stats.kpis.reprobados, color: "#ef4444" },
-  ] : [];
+  // Recalculate KPI data dynamically from filtered evaluations
+  const totalCollabs = stats?.kpis?.totalCollabs || 0;
+  const completedEvals = filteredEvals.filter((e: any) => e.result !== "borrador" && e.result !== "en_proceso").length;
+  const aprobados = filteredEvals.filter((e: any) => e.result === "aprobado").length;
+  const conPMI = filteredEvals.filter((e: any) => e.result === "plan_mejoramiento").length;
+  const reprobados = filteredEvals.filter((e: any) => e.result === "no_aprobado").length;
+  const pmisCount = filteredEvals.filter((e: any) => e.result === "plan_mejoramiento").length;
+  const scoredEvals = filteredEvals.filter((e: any) => e.score > 0);
+  const avgScore = scoredEvals.length > 0 ? scoredEvals.reduce((sum: number, e: any) => sum + e.score, 0) / scoredEvals.length : 0;
 
-  // Mocks that could be implemented dynamically later via DB grouping
-  const areaAverageData = [
-    { area: "Operaciones", promedio: 3.92, evaluados: 68 },
-    { area: "Mantenimiento", promedio: 3.78, evaluados: 42 },
-    { area: "G. Humana", promedio: 4.15, evaluados: 12 },
-    { area: "Comercial", promedio: 3.65, evaluados: 28 },
-    { area: "Financiera", promedio: 4.02, evaluados: 18 },
+  const kpiData = [
+    { title: "Total Colaboradores", value: totalCollabs, icon: Users, color: "brand", suffix: "" },
+    { title: "Evaluaciones Finalizadas", value: completedEvals, icon: ClipboardList, color: "violet", suffix: "" },
+    { title: "Evaluaciones Aprobadas", value: aprobados, icon: CheckCircle2, color: "success", suffix: "" },
+    { title: "Con Plan de Mejora", value: conPMI, icon: Target, color: "warning", suffix: "" },
+    { title: "No Aprobados", value: reprobados, icon: AlertCircle, color: "danger", suffix: "" },
+    { title: "PMI Activos", value: pmisCount, icon: Activity, color: "warning", suffix: "" },
+    { title: "Promedio General", value: avgScore, icon: Star, color: "brand", suffix: "/5.0" },
   ];
+
+  const resultDistribution = [
+    { name: "Aprobados", value: aprobados, color: "#10b981" },
+    { name: "Plan Mejora", value: conPMI, color: "#f59e0b" },
+    { name: "No Aprobados", value: reprobados, color: "#ef4444" },
+  ];
+
+  // Recalculate dynamic area average data
+  const areasList = ["Operaciones", "Mantenimiento", "G. Humana", "Comercial", "Financiera"];
+  const areaAverageData = areasList.map(area => {
+    const evs = filteredEvals.filter((e: any) => e.area === area && e.score > 0);
+    const avg = evs.length > 0 ? evs.reduce((sum: number, e: any) => sum + e.score, 0) / evs.length : 0;
+    return {
+      area,
+      promedio: Number(avg.toFixed(2)),
+      evaluados: evs.length
+    };
+  });
   
-  const trendData = [
-    { mes: "Ene", evaluaciones: 28, promedio: 3.72 },
-    { mes: "Feb", evaluaciones: 35, promedio: 3.81 },
-    { mes: "Mar", evaluaciones: 42, promedio: 3.85 },
-    { mes: "Abr", evaluaciones: 38, promedio: 3.79 },
-    { mes: "May", evaluaciones: stats?.kpis?.completedEvals || 5, promedio: stats?.kpis?.avgScore || 0 },
+  // Recalculate dynamic monthly trend
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const currentYear = new Date().getFullYear();
+  const trendData = months.map((mes, idx) => {
+    const evs = filteredEvals.filter((e: any) => {
+      const d = new Date(e.date);
+      return d.getMonth() === idx && d.getFullYear() === currentYear;
+    });
+    const avg = evs.length > 0 ? evs.reduce((sum: number, e: any) => sum + e.score, 0) / evs.length : 0;
+    return {
+      mes,
+      evaluaciones: evs.length,
+      promedio: Number(avg.toFixed(2))
+    };
+  }).filter(t => t.evaluaciones > 0);
+
+  const displayTrendData = trendData.length > 0 ? trendData : [
+    { mes: "Ene", evaluaciones: 0, promedio: 0 },
+    { mes: "Feb", evaluaciones: 0, promedio: 0 },
+    { mes: "Mar", evaluaciones: 0, promedio: 0 }
   ];
   
   const radarData = [
@@ -295,6 +347,9 @@ export default function DashboardPage() {
     { category: "Servicio", actual: 3.91, anterior: 3.80 },
     { category: "Equipo", actual: 3.85, anterior: 3.70 },
   ];
+
+  // Filtered recent 5 evaluations
+  const recentEvals = filteredEvals.slice(0, 5);
 
   if (!stats) {
     return (
@@ -308,23 +363,73 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard Ejecutivo</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Año 2026 · Actualizado hace 2 min
-          </p>
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard Ejecutivo</h1>
+        <p className="text-muted-foreground text-sm">
+          Monitoreo y métricas de desempeño de colaboradores
+        </p>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 shadow-sm">
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase">Fecha Inicio</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          />
         </div>
-        <div className="flex items-center gap-2">
-          <select className="text-sm border rounded-lg px-3 py-2 bg-background focus:ring-2 focus:ring-primary/30 focus:outline-none">
-            <option>Año 2026</option>
-            <option>Año 2025</option>
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase">Fecha Fin</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase">Área</label>
+          <select
+            value={selectedArea}
+            onChange={(e) => setSelectedArea(e.target.value)}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          >
+            <option value="">Todas las áreas</option>
+            <option value="Operaciones">Operaciones</option>
+            <option value="Mantenimiento">Mantenimiento</option>
+            <option value="G. Humana">G. Humana</option>
+            <option value="Comercial">Comercial</option>
+            <option value="Financiera">Financiera</option>
           </select>
-          <Link href="/evaluaciones/nueva">
-            <button className="px-4 py-2 rounded-lg gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md">
-              + Nueva Evaluación
-            </button>
-          </Link>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase">Resultado</label>
+          <select
+            value={selectedResult}
+            onChange={(e) => setSelectedResult(e.target.value)}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          >
+            <option value="">Todos los resultados</option>
+            <option value="aprobado">Aprobados</option>
+            <option value="plan_mejoramiento">Con Plan de Mejora</option>
+            <option value="no_aprobado">No Aprobados</option>
+          </select>
+        </div>
+        <div className="flex items-end">
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+              setSelectedArea("");
+              setSelectedResult("");
+            }}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-muted hover:bg-accent transition-colors font-medium text-muted-foreground hover:text-foreground h-9"
+          >
+            Limpiar filtros
+          </button>
         </div>
       </div>
 
@@ -347,7 +452,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-semibold">Promedio por Área</h3>
-              <p className="text-xs text-muted-foreground">Evaluaciones finalizadas 2026</p>
+              <p className="text-xs text-muted-foreground">Evaluaciones finalizadas</p>
             </div>
             <BarChart3 className="w-5 h-5 text-muted-foreground" />
           </div>
@@ -358,6 +463,7 @@ export default function DashboardPage() {
               <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
                 {areaAverageData.map((entry, index) => (
                   <Cell
                     key={index}
@@ -386,7 +492,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-semibold">Distribución</h3>
-              <p className="text-xs text-muted-foreground">198 evaluaciones</p>
+              <p className="text-xs text-muted-foreground">{completedEvals} evaluaciones finalizadas</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={160}>
@@ -395,10 +501,11 @@ export default function DashboardPage() {
                 data={resultDistribution}
                 cx="50%"
                 cy="50%"
-                innerRadius={45}
-                outerRadius={70}
+                innerRadius={40}
+                outerRadius={65}
                 paddingAngle={3}
                 dataKey="value"
+                label={({ name, value }) => value > 0 ? `${name}: ${value}` : ""}
               >
                 {resultDistribution.map((entry, index) => (
                   <Cell key={index} fill={entry.color} stroke="transparent" />
@@ -417,7 +524,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-xs">{item.value}</span>
                   <span className="text-muted-foreground text-xs">
-                    ({stats.kpis.completedEvals > 0 ? ((item.value / stats.kpis.completedEvals) * 100).toFixed(0) : 0}%)
+                    ({completedEvals > 0 ? ((item.value / completedEvals) * 100).toFixed(0) : 0}%)
                   </span>
                 </div>
               </div>
@@ -437,20 +544,24 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold">Tendencia 2026</h3>
+              <h3 className="font-semibold">Tendencia</h3>
               <p className="text-xs text-muted-foreground">Evolución de evaluaciones y promedio mensual</p>
             </div>
             <TrendingUp className="w-5 h-5 text-brand-500" />
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trendData}>
+            <LineChart data={displayTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4, fill: "#3b82f6" }} name="Evaluaciones" activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4, fill: "#8b5cf6" }} name="Promedio" activeDot={{ r: 6 }} />
+              <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4, fill: "#3b82f6" }} name="Evaluaciones" activeDot={{ r: 6 }}>
+                <LabelList dataKey="evaluaciones" position="top" style={{ fontSize: 9, fill: "#3b82f6", fontWeight: "bold" }} />
+              </Line>
+              <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4, fill: "#8b5cf6" }} name="Promedio" activeDot={{ r: 6 }}>
+                <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "#8b5cf6", fontWeight: "bold" }} />
+              </Line>
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
@@ -465,7 +576,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-semibold">Competencias</h3>
-              <p className="text-xs text-muted-foreground">2026 vs 2025</p>
+              <p className="text-xs text-muted-foreground">Actual vs Anterior</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
@@ -473,8 +584,10 @@ export default function DashboardPage() {
               <PolarGrid stroke="hsl(var(--border))" />
               <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
               <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-              <Radar name="2026" dataKey="actual" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2} />
-              <Radar name="2025" dataKey="anterior" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} strokeDasharray="4 4" />
+              <Radar name="Actual" dataKey="actual" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2}>
+                <LabelList dataKey="actual" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+              </Radar>
+              <Radar name="Anterior" dataKey="anterior" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} strokeDasharray="4 4" />
               <Legend wrapperStyle={{ fontSize: "11px" }} />
             </RadarChart>
           </ResponsiveContainer>
@@ -484,7 +597,7 @@ export default function DashboardPage() {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RecentEvaluations evaluations={stats.recentEvals || []} />
+          <RecentEvaluations evaluations={recentEvals} />
         </div>
         <AlertsPanel />
       </div>
