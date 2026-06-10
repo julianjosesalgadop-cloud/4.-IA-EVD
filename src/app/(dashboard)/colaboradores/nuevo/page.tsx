@@ -47,7 +47,7 @@ const step2Schema = z.object({
   workplace: z.string().optional(),
   contract_type: z.enum(["indefinido", "fijo", "obra_labor", "aprendizaje", "prestacion_servicios", "temporal"]).optional(),
   hire_date: z.string().min(1, "Fecha de ingreso requerida"),
-  status: z.enum(["activo", "inactivo", "retirado", "vacaciones", "incapacidad"]).default("activo"),
+  status: z.enum(["activo", "inactivo", "retirado", "vacaciones", "incapacidad"]),
 });
 
 const step3Schema = z.object({
@@ -388,7 +388,10 @@ export default function NuevoColaboradorPage() {
   }, []);
 
   const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema) });
-  const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema) });
+  const form2 = useForm<Step2Data>({ 
+    resolver: zodResolver(step2Schema),
+    defaultValues: { status: "activo" }
+  });
   const form3 = useForm<Step3Data>({ resolver: zodResolver(step3Schema) });
 
   const handleNext = async () => {

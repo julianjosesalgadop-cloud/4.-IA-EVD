@@ -148,8 +148,11 @@ export interface Collaborator extends BaseEntity {
   active: boolean;
   // Joined
   area?: Area;
+  areas?: Area;
   position?: Position;
+  positions?: Position;
   process?: Process;
+  processes?: Process;
   cost_center?: CostCenter;
   immediate_boss?: Pick<Collaborator, "id" | "full_name" | "position_id">;
 }
