@@ -3,6 +3,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { Resend } from "resend";
 
 async function getSupabase() {
   const cookieStore = await cookies();
@@ -272,8 +273,23 @@ export async function getEvaluationById(evaluationId: string) {
     .from("evaluations")
     .select(`
       *,
-      collaborator:collaborators(full_name, document_number, position_id, area_id),
-      evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name),
+      collaborator:collaborators(
+        id,
+        full_name,
+        document_type,
+        document_number,
+        position_id,
+        area_id,
+        email,
+        workplace_city,
+        workplace,
+        contract_type,
+        hire_date,
+        status,
+        position:positions(name),
+        areas:areas(name)
+      ),
+      evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name, email, role:roles(display_name)),
       version:evaluation_versions(name),
       result:evaluation_results(*),
       answers:evaluation_answers(
@@ -364,4 +380,85 @@ export async function saveEvaluation(payload: any) {
   revalidatePath("/evaluaciones");
   revalidatePath("/dashboard");
   return { success: true, evaluation_id: evalData.id, result: resultData };
+}
+
+export async function sendEvaluationEmail({
+  evaluationId,
+  pdfBase64,
+  fileName,
+  recipientEmail,
+  recipientName,
+  evaluationYear,
+  score,
+  result
+}: {
+  evaluationId: string;
+  pdfBase64: string;
+  fileName: string;
+  recipientEmail: string;
+  recipientName: string;
+  evaluationYear: number;
+  score: number;
+  result: string;
+}) {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      return { error: "RESEND_API_KEY no configurado en el servidor." };
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b;">
+        <h2 style="color: #012169; border-bottom: 2px solid #0084D5; padding-bottom: 10px; margin-bottom: 20px;">FLOTA SUGAMUXI S.A.</h2>
+        <p>Estimado(a) <strong>${recipientName}</strong>,</p>
+        <p>Se ha finalizado y registrado con éxito su <strong>Evaluación de Desempeño (EVD)</strong> correspondiente al año <strong>${evaluationYear}</strong>.</p>
+        
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #0084D5;">Resumen de Resultados</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; width: 40%;">Calificación Promedio:</td>
+              <td style="padding: 6px 0;">${score.toFixed(2)} / 5.00</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold;">Resultado General:</td>
+              <td style="padding: 6px 0; font-weight: bold; color: ${
+                result.toLowerCase() === "aprobado" ? "#10b981" : result.toLowerCase() === "plan_mejoramiento" ? "#f59e0b" : "#ef4444"
+              };">${result.replace(/_/g, " ").toUpperCase()}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p>Adjunto a este correo encontrará el reporte en formato PDF Corporativo con el desglose detallado de sus competencias evaluadas, calificaciones y observaciones del proceso.</p>
+        
+        <p style="margin-top: 30px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center;">
+          Este es un correo automático del Sistema de Gestión de Desempeño Flota Sugamuxi S.A. Por favor no responder a este mensaje.
+        </p>
+      </div>
+    `;
+
+    const response = await resend.emails.send({
+      from: "Evaluaciones Flota Sugamuxi <onboarding@resend.dev>",
+      to: recipientEmail,
+      subject: `Reporte de Evaluación de Desempeño ${evaluationYear} - ${recipientName}`,
+      html: emailHtml,
+      attachments: [
+        {
+          filename: fileName,
+          content: pdfBase64,
+        },
+      ],
+    });
+
+    if (response.error) {
+      console.error("Resend error detail:", response.error);
+      return { error: response.error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error sending email:", error);
+    return { error: error?.message || "Ocurrió un error inesperado al enviar el correo." };
+  }
 }

@@ -4,13 +4,13 @@ import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Save,
-  CheckCircle2, AlertCircle, Star, Info, Send
+  CheckCircle2, AlertCircle, Star, Info, Send, FileText
 } from "lucide-react";
-import { cn, getScoreLabel, formatScore } from "@/lib/utils";
+import { cn, getScoreLabel, formatScore, getResultLabel } from "@/lib/utils";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getEvaluationConfig, saveEvaluation } from "@/app/actions/evaluations";
+import { getEvaluationConfig, saveEvaluation, getEvaluationById, sendEvaluationEmail } from "@/app/actions/evaluations";
 import { getCollaborators } from "@/app/actions/collaborators";
 import type { Collaborator } from "@/types";
 
@@ -88,6 +88,12 @@ function NuevaEvaluacionContent() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+
+  const [savedEvaluationId, setSavedEvaluationId] = useState<string | null>(null);
+  const [savedEvaluation, setSavedEvaluation] = useState<any | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   useEffect(() => {
     async function loadConfig() {
@@ -256,7 +262,318 @@ function NuevaEvaluacionContent() {
     }
 
     toast.success("Evaluación finalizada exitosamente.");
-    router.push("/evaluaciones");
+    
+    try {
+      const evalDetails = await getEvaluationById(res.evaluation_id);
+      if (evalDetails.data) {
+        setSavedEvaluation(evalDetails.data);
+        setSavedEvaluationId(res.evaluation_id);
+        setEmailInput(evalDetails.data.collaborator?.email || "");
+        setShowSuccessModal(true);
+      } else {
+        router.push("/evaluaciones");
+      }
+    } catch (err) {
+      console.error(err);
+      router.push("/evaluaciones");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const generatePDF = async (download: boolean = true) => {
+    if (!savedEvaluation) return null;
+    
+    const toastId = download ? toast.loading("Generando PDF corporativo...") : undefined;
+    
+    try {
+      const { jsPDF } = await import("jspdf");
+      await import("jspdf-autotable");
+      
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const brandColorBlue = [1, 33, 105]; // #012169
+      const brandColorLightBlue = [0, 132, 213]; // #0084D5
+      const textColorDark = [30, 41, 59]; // #1e293b
+      const textColorMuted = [100, 116, 139]; // #64748b
+      
+      const marginX = 15;
+      let posY = 20;
+      
+      const drawHeader = () => {
+        doc.setFillColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+        doc.rect(0, 0, 210, 4, "F");
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+        doc.text("FLOTA SUGAMUXI S.A.", marginX, 15);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+        doc.text("Sistema de Evaluación de Desempeño (EVD)", marginX, 19);
+        
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.5);
+        doc.line(marginX, 22, 210 - marginX, 22);
+      };
+      
+      const drawFooter = (pageNumber: number, totalPages: number) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+        
+        const currentDate = new Date().toLocaleDateString("es-ES");
+        doc.text(`Generado el: ${currentDate}`, marginX, 285);
+        doc.text(`Página ${pageNumber} de ${totalPages}`, 210 - marginX, 285, { align: "right" });
+        
+        doc.setDrawColor(226, 232, 240);
+        doc.line(marginX, 280, 210 - marginX, 280);
+      };
+
+      // PAGE 1: COVER / INFO BLOCK
+      drawHeader();
+      posY = 32;
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+      doc.text("REPORTE DE EVALUACIÓN DE DESEMPEÑO", marginX, posY);
+      posY += 8;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+      const dateText = savedEvaluation.finalized_at 
+        ? `Fecha de Finalización: ${new Date(savedEvaluation.finalized_at).toLocaleDateString("es-ES")}`
+        : `Fecha de Registro: ${new Date(savedEvaluation.created_at).toLocaleDateString("es-ES")}`;
+      doc.text(dateText, marginX, posY);
+      posY += 10;
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("1. DATOS DEL COLABORADOR (EVALUADO)", marginX, posY);
+      posY += 4;
+      
+      const collabInfo = [
+        ["Nombre Completo:", savedEvaluation.collaborator?.full_name || "N/A", "Documento:", `${savedEvaluation.collaborator?.document_type || "CC"} ${savedEvaluation.collaborator?.document_number || "N/A"}`],
+        ["Cargo Actual:", savedEvaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", savedEvaluation.collaborator?.areas?.name || savedEvaluation.collaborator?.area?.name || "N/A"],
+        ["Sede / Ciudad:", savedEvaluation.collaborator?.workplace_city || savedEvaluation.collaborator?.workplace || "N/A", "Tipo de Contrato:", savedEvaluation.collaborator?.contract_type || "N/A"],
+        ["Fecha de Ingreso:", savedEvaluation.collaborator?.hire_date ? new Date(savedEvaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A", "Estado:", savedEvaluation.collaborator?.status || "N/A"]
+      ];
+      
+      (doc as any).autoTable({
+        startY: posY,
+        head: [],
+        body: collabInfo,
+        theme: "plain",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark },
+        columnStyles: {
+          0: { fontStyle: "bold", width: 35 },
+          1: { width: 55 },
+          2: { fontStyle: "bold", width: 35 },
+          3: { width: 55 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      // SECTION: EVALUATOR INFO
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("2. DATOS DEL EVALUADOR", marginX, posY);
+      posY += 4;
+      
+      const evaluatorInfo = [
+        ["Nombre del Evaluador:", savedEvaluation.evaluator ? `${savedEvaluation.evaluator.first_name} ${savedEvaluation.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", savedEvaluation.evaluator?.role?.display_name || "N/A"],
+        ["Correo Electrónico:", savedEvaluation.evaluator?.email || "N/A", "Versión del Proceso EVD:", savedEvaluation.version?.name || "N/A"]
+      ];
+      
+      (doc as any).autoTable({
+        startY: posY,
+        head: [],
+        body: evaluatorInfo,
+        theme: "plain",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark },
+        columnStyles: {
+          0: { fontStyle: "bold", width: 45 },
+          1: { width: 45 },
+          2: { fontStyle: "bold", width: 45 },
+          3: { width: 45 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      // SECTION: SUMMARY OF RESULTS
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("3. RESUMEN DE RESULTADOS", marginX, posY);
+      posY += 4;
+      
+      const evalResult = savedEvaluation.result && !Array.isArray(savedEvaluation.result) ? savedEvaluation.result : savedEvaluation.result?.[0] || null;
+      const overallScore = evalResult ? evalResult.overall_average : 0;
+      const statusLabel = evalResult ? getResultLabel(evalResult.result) : "Pendiente";
+      const scoreExplanation = overallScore >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
+                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple y a veces supera las expectativas."
+                           : overallScore >= 3.0 ? "Desempeño Competente: Cumple satisfactoriamente con los estándares."
+                           : overallScore >= 2.0 ? "Desempeño en Desarrollo: Requiere plan de mejora y formación."
+                           : "Desempeño No Aceptable.";
+      
+      const summaryInfo = [
+        ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScore)} / 5.0`],
+        ["RESULTADO GENERAL:", statusLabel.toUpperCase()],
+        ["DESCRIPCIÓN:", scoreExplanation]
+      ];
+      
+      (doc as any).autoTable({
+        startY: posY,
+        head: [],
+        body: summaryInfo,
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark },
+        columnStyles: {
+          0: { fontStyle: "bold", width: 60, fillColor: [248, 250, 252] },
+          1: { width: 120 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      // PAGE 2: DETAILED ANSWERS TABLE
+      doc.addPage();
+      drawHeader();
+      posY = 32;
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("4. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+      posY += 6;
+      
+      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación", "Comentario"]];
+      const answersRows = (savedEvaluation.answers || []).map((ans: any, idx: number) => [
+        ans.question?.code || `PREG-${idx + 1}`,
+        ans.question?.question || "Pregunta sin descripción",
+        `${ans.score} / 5.0`,
+        ans.comment || "Sin comentario"
+      ]);
+      
+      (doc as any).autoTable({
+        startY: posY,
+        head: answersHeaders,
+        body: answersRows,
+        theme: "striped",
+        headStyles: { fillColor: brandColorBlue, textColor: [255, 255, 255], fontStyle: "bold" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark },
+        columnStyles: {
+          0: { fontStyle: "bold", width: 35 },
+          1: { width: 85 },
+          2: { width: 25, halign: "center" },
+          3: { width: 35 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      if (posY > 200) {
+        doc.addPage();
+        drawHeader();
+        posY = 32;
+      }
+      
+      // SECTION: NARRATIVE
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("5. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+      posY += 6;
+      
+      const narratives = [
+        ["Observaciones Generales del Evaluador:", savedEvaluation.observations || "Sin observaciones registradas."],
+        ["Fortalezas Clave Demostradas:", savedEvaluation.strengths || "Sin fortalezas registradas."],
+        ["Oportunidades de Mejora Identificadas:", savedEvaluation.improvement_opportunities || "Sin oportunidades registradas."],
+        ["Necesidades de Formación / Capacitación:", savedEvaluation.training_needs || "Sin necesidades registradas."]
+      ];
+      
+      (doc as any).autoTable({
+        startY: posY,
+        head: [],
+        body: narratives,
+        theme: "grid",
+        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark },
+        columnStyles: {
+          0: { fontStyle: "bold", width: 60, fillColor: [248, 250, 252] },
+          1: { width: 120 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 12;
+      
+      if (posY > 230) {
+        doc.addPage();
+        drawHeader();
+        posY = 32;
+      }
+      
+      // SECTION: SIGNATURES
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("6. CONFORMIDAD Y FIRMAS", marginX, posY);
+      posY += 20;
+      
+      doc.setDrawColor(100, 116, 139);
+      doc.setLineWidth(0.5);
+      
+      doc.line(marginX, posY, marginX + 70, posY);
+      doc.line(210 - marginX - 70, posY, 210 - marginX, posY);
+      
+      posY += 4;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+      doc.text("Firma del Evaluador", marginX, posY);
+      doc.text("Firma del Colaborador Evaluado", 210 - marginX, posY, { align: "right" });
+      
+      posY += 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+      doc.text(savedEvaluation.evaluator ? `${savedEvaluation.evaluator.first_name} ${savedEvaluation.evaluator.last_name}` : "Nombre del Evaluador", marginX, posY);
+      doc.text(savedEvaluation.collaborator?.full_name || "Nombre del Colaborador", 210 - marginX, posY, { align: "right" });
+      
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        drawFooter(i, totalPages);
+      }
+      
+      if (download) {
+        const fileName = `EVD_${savedEvaluation.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${savedEvaluation.evaluation_year || new Date().getFullYear()}.pdf`;
+        doc.save(fileName);
+        if (toastId) toast.success("PDF generado exitosamente", { id: toastId });
+      }
+      
+      return doc;
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      if (toastId) toast.error("Error al generar el PDF corporativo", { id: toastId });
+      return null;
+    }
   };
 
   const overall = getOverallAverage();
@@ -265,7 +582,7 @@ function NuevaEvaluacionContent() {
 
   return (
     <div className="w-full min-h-screen space-y-4 sm:space-y-6 animate-fade-in px-3 sm:px-4 py-4 sm:py-6">
-      <div className="max-w-4xl mx-auto w-full space-y-4 sm:space-y-6">
+      <div className="max-w-7xl mx-auto w-full space-y-4 sm:space-y-6">
       {/* Back */}
       <Link href="/evaluaciones" className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -389,9 +706,9 @@ function NuevaEvaluacionContent() {
         </div>
       </div>
 
-      <div id="evaluation-questions-container" className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div id="evaluation-questions-container" className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* Category Nav */}
-        <div className="lg:col-span-1 space-y-2">
+        <div className="lg:col-span-2 space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Categorías</p>
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-3">
             {categories.map((cat, i) => {
@@ -434,7 +751,7 @@ function NuevaEvaluacionContent() {
 
           {/* Live result */}
           {overall > 0 && (
-            <div className="mt-4 p-3 rounded-xl border bg-card col-span-2 lg:col-span-1">
+            <div className="mt-4 p-3 rounded-xl border bg-card col-span-2 lg:col-span-2">
               <p className="text-xs text-muted-foreground mb-1">Promedio actual</p>
               <p className={cn("text-2xl font-bold", resultColor)}>{formatScore(overall)}</p>
               <p className={cn("text-xs font-semibold mt-0.5", resultColor)}>{resultLabel}</p>
@@ -443,7 +760,7 @@ function NuevaEvaluacionContent() {
         </div>
 
         {/* Questions Panel */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
             <motion.div
               key={category.id}
@@ -591,17 +908,7 @@ function NuevaEvaluacionContent() {
               <span className="sm:hidden">Ant.</span>
             </button>
 
-            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
-              <button
-                type="button"
-                onClick={() => toast.success("Borrador guardado")}
-                className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors"
-              >
-                <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                <span className="hidden sm:inline">Guardar borrador</span>
-                <span className="sm:hidden">Guardar</span>
-              </button>
-
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end w-full sm:w-auto">
               {isLastCategory ? (
                 <button
                   onClick={handleFinalize}
@@ -637,7 +944,7 @@ function NuevaEvaluacionContent() {
         </div>
 
         {/* Collaborator & Progress Sticky Panel */}
-        <div className="lg:col-span-1 hidden lg:block">
+        <div className="lg:col-span-3 hidden lg:block">
           <div className="sticky top-20 space-y-4">
             {/* Collaborator Card */}
             {selectedCollaborator && (
@@ -715,6 +1022,136 @@ function NuevaEvaluacionContent() {
       </>
       )}
       </div>
+
+      {/* Success Modal */}
+      <AnimatePresence>
+        {showSuccessModal && savedEvaluation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl space-y-6 text-foreground"
+            >
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 rounded-full bg-success-100 dark:bg-success-950/30 flex items-center justify-center text-success-600 dark:text-success-400">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold">¡Evaluación Finalizada!</h3>
+                <p className="text-sm text-muted-foreground">
+                  La evaluación de <strong>{savedEvaluation.collaborator?.full_name}</strong> se ha guardado correctamente.
+                </p>
+              </div>
+
+              {/* Results Summary */}
+              <div className="rounded-xl bg-muted/30 border p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Promedio obtenido:</span>
+                  <span className="font-bold text-foreground">
+                    {formatScore(savedEvaluation.result?.[0]?.overall_average || 0)} / 5.0
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Resultado general:</span>
+                  <span className={cn(
+                    "font-bold uppercase text-xs px-2 py-0.5 rounded border",
+                    (savedEvaluation.result?.[0]?.result === "aprobado") ? "text-success-600 bg-success-50 border-success-200" :
+                    (savedEvaluation.result?.[0]?.result === "plan_mejoramiento") ? "text-warning-600 bg-warning-50 border-warning-200" : "text-danger-600 bg-danger-50 border-danger-200"
+                  )}>
+                    {getResultLabel(savedEvaluation.result?.[0]?.result || "pendiente")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Email Form */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase">
+                  Enviar reporte por correo
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="correo@ejemplo.com"
+                    className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (!emailInput) {
+                        toast.error("Por favor ingresa un correo electrónico.");
+                        return;
+                      }
+                      setIsSendingEmail(true);
+                      const toastId = toast.loading("Generando PDF y preparando envío...");
+                      try {
+                        const docObj = await generatePDF(false);
+                        if (!docObj) {
+                          toast.error("Error al generar PDF.", { id: toastId });
+                          setIsSendingEmail(false);
+                          return;
+                        }
+                        const pdfBase64 = docObj.output("datauristring").split(",")[1];
+                        const fileName = `EVD_${savedEvaluation.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${savedEvaluation.evaluation_year || new Date().getFullYear()}.pdf`;
+
+                        const emailResult = await sendEvaluationEmail({
+                          evaluationId: savedEvaluation.id,
+                          pdfBase64,
+                          fileName,
+                          recipientEmail: emailInput,
+                          recipientName: savedEvaluation.collaborator?.full_name || "Colaborador",
+                          evaluationYear: savedEvaluation.evaluation_year || new Date().getFullYear(),
+                          score: savedEvaluation.result?.[0]?.overall_average || 0,
+                          result: savedEvaluation.result?.[0]?.result || "pendiente"
+                        });
+
+                        if (emailResult.error) {
+                          toast.error("Error al enviar: " + emailResult.error, { id: toastId });
+                        } else {
+                          toast.success("Correo enviado exitosamente.", { id: toastId });
+                        }
+                      } catch (err: any) {
+                        console.error(err);
+                        toast.error("Ocurrió un error inesperado al enviar el correo.", { id: toastId });
+                      } finally {
+                        setIsSendingEmail(false);
+                      }
+                    }}
+                    disabled={isSendingEmail}
+                    className="px-4 py-2 rounded-lg gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center min-w-[100px]"
+                  >
+                    {isSendingEmail ? (
+                      <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      "Enviar"
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2 border-t pt-4">
+                <button
+                  onClick={() => generatePDF(true)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold hover:bg-accent transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  Ver PDF Corporativo
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    router.push("/evaluaciones");
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity text-center"
+                >
+                  Volver a Evaluaciones
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

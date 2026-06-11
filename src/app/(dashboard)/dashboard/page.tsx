@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Users, ClipboardList, CheckCircle2, AlertCircle, TrendingUp,
   Clock, Target, BarChart3, Activity, AlertTriangle, ArrowUpRight,
-  ArrowDownRight, Minus, Star, Eye
+  ArrowDownRight, Minus, Star, Eye, Maximize2, Minimize2
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid,
@@ -258,6 +258,7 @@ export default function DashboardPage() {
   const [endDate, setEndDate] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedResult, setSelectedResult] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
@@ -266,6 +267,16 @@ export default function DashboardPage() {
     }
     loadStats();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isExpanded) {
+        setIsExpanded(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isExpanded]);
 
   // Filter evaluations based on user selections
   const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
@@ -361,13 +372,34 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className={cn(
+      "space-y-6 animate-fade-in bg-background",
+      isExpanded && "fixed inset-0 z-[100] overflow-y-auto p-6 md:p-8 w-screen h-screen"
+    )}>
       {/* Header */}
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard Ejecutivo</h1>
-        <p className="text-muted-foreground text-sm">
-          Monitoreo y métricas de desempeño de colaboradores
-        </p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard Ejecutivo</h1>
+          <p className="text-muted-foreground text-sm">
+            Monitoreo y métricas de desempeño de colaboradores
+          </p>
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-xl border bg-card hover:bg-accent text-xs sm:text-sm font-semibold transition-all shadow-sm"
+        >
+          {isExpanded ? (
+            <>
+              <Minimize2 className="w-4 h-4" />
+              <span>Salir Pantalla Completa</span>
+            </>
+          ) : (
+            <>
+              <Maximize2 className="w-4 h-4" />
+              <span>Pantalla Completa</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Filters Bar */}
@@ -456,7 +488,7 @@ export default function DashboardPage() {
             </div>
             <BarChart3 className="w-5 h-5 text-muted-foreground" />
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <BarChart data={areaAverageData} barSize={32}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="area" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
@@ -495,7 +527,7 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">{completedEvals} evaluaciones finalizadas</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height={isExpanded ? 220 : 160}>
             <PieChart>
               <Pie
                 data={resultDistribution}
@@ -549,7 +581,7 @@ export default function DashboardPage() {
             </div>
             <TrendingUp className="w-5 h-5 text-brand-500" />
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <LineChart data={displayTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
@@ -579,7 +611,7 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">Actual vs Anterior</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <RadarChart data={radarData}>
               <PolarGrid stroke="hsl(var(--border))" />
               <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
