@@ -708,55 +708,57 @@ function NuevaEvaluacionContent() {
 
       <div id="evaluation-questions-container" className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* Category Nav */}
-        <div className="lg:col-span-2 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Categorías</p>
-          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-3">
-            {categories.map((cat, i) => {
-              const catAvg = getCategoryAverage(cat);
-              const catComplete = categoryComplete(cat);
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setCurrentCategoryIndex(i)}
-                  className={cn(
-                    "text-left p-2 lg:p-3 rounded-xl border transition-all",
-                    i === currentCategoryIndex
-                      ? "border-primary bg-primary/8 shadow-sm"
-                      : "hover:bg-accent border-transparent"
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0",
-                      catComplete ? "bg-success-500 text-white" : i === currentCategoryIndex ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                    )}>
-                      {catComplete ? "✓" : i + 1}
+        <div className="lg:col-span-2">
+          <div className="lg:sticky lg:top-20 space-y-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Categorías</p>
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-3">
+              {categories.map((cat, i) => {
+                const catAvg = getCategoryAverage(cat);
+                const catComplete = categoryComplete(cat);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCurrentCategoryIndex(i)}
+                    className={cn(
+                      "text-left p-2 lg:p-3 rounded-xl border transition-all",
+                      i === currentCategoryIndex
+                        ? "border-primary bg-primary/8 shadow-sm"
+                        : "hover:bg-accent border-transparent"
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={cn(
+                        "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5 flex-shrink-0",
+                        catComplete ? "bg-success-500 text-white" : i === currentCategoryIndex ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                      )}>
+                        {catComplete ? "✓" : i + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs lg:text-xs font-medium leading-tight line-clamp-2">{cat.name}</p>
+                        {catAvg !== null && (
+                          <p className={cn(
+                            "text-xs font-bold mt-0.5",
+                            catAvg >= 4.0 ? "text-success-600" : catAvg >= 3.1 ? "text-warning-600" : "text-danger-600"
+                          )}>
+                            Prom: {formatScore(catAvg)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs lg:text-xs font-medium leading-tight line-clamp-2">{cat.name}</p>
-                      {catAvg !== null && (
-                        <p className={cn(
-                          "text-xs font-bold mt-0.5",
-                          catAvg >= 4.0 ? "text-success-600" : catAvg >= 3.1 ? "text-warning-600" : "text-danger-600"
-                        )}>
-                          Prom: {formatScore(catAvg)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Live result */}
-          {overall > 0 && (
-            <div className="mt-4 p-3 rounded-xl border bg-card col-span-2 lg:col-span-2">
-              <p className="text-xs text-muted-foreground mb-1">Promedio actual</p>
-              <p className={cn("text-2xl font-bold", resultColor)}>{formatScore(overall)}</p>
-              <p className={cn("text-xs font-semibold mt-0.5", resultColor)}>{resultLabel}</p>
+                  </button>
+                );
+              })}
             </div>
-          )}
+
+            {/* Live result */}
+            {overall > 0 && (
+              <div className="p-3 rounded-xl border bg-card">
+                <p className="text-xs text-muted-foreground mb-1">Promedio actual</p>
+                <p className={cn("text-2xl font-bold", resultColor)}>{formatScore(overall)}</p>
+                <p className={cn("text-xs font-semibold mt-0.5", resultColor)}>{resultLabel}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Questions Panel */}
