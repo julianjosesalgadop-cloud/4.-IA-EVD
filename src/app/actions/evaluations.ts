@@ -295,7 +295,7 @@ export async function getEvaluationById(evaluationId: string) {
         position:positions(name),
         areas:areas(name)
       ),
-      evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name, email, role:roles(display_name)),
+      evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name, email, avatar_url, role:roles(display_name)),
       version:evaluation_versions(name),
       result:evaluation_results(*),
       answers:evaluation_answers(
@@ -356,6 +356,10 @@ export async function saveEvaluation(payload: any) {
       training_needs: payload.training_needs,
       finalized_at: new Date().toISOString(),
       finalized_by: userData.user.id,
+      draft_data: payload.signature ? { collaborator_signature: payload.signature } : null,
+      evaluatee_signed_at: payload.signature ? new Date().toISOString() : null,
+      evaluator_signed_at: new Date().toISOString(),
+      evaluatee_accepted: payload.signature ? true : false,
     })
     .select()
     .single();

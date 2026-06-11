@@ -9,6 +9,7 @@ import {
 import { getProfiles, updateProfile, inviteUser, getRoles } from "@/app/actions/admin";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SignatureInput } from "@/components/ui/signature-input";
 
 interface UserProfile {
   id: string;
@@ -20,6 +21,7 @@ interface UserProfile {
   role_id?: string;
   roles?: { id: string; name: string; display_name: string };
   created_at: string;
+  avatar_url?: string;
 }
 
 interface Role {
@@ -55,6 +57,7 @@ function UserModal({
     phone: user?.phone || "",
     role_id: user?.role_id || user?.roles?.id || "",
     active: user?.active ?? true,
+    avatar_url: user?.avatar_url || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,6 +77,7 @@ function UserModal({
           phone: formData.phone.trim() || undefined,
           role_id: formData.role_id || undefined,
           active: formData.active,
+          avatar_url: formData.avatar_url || null,
         });
         if (result.error) throw new Error(result.error);
         toast.success("Usuario actualizado correctamente");
@@ -89,6 +93,7 @@ function UserModal({
           last_name: formData.last_name.trim(),
           phone: formData.phone.trim() || undefined,
           role_id: formData.role_id || undefined,
+          avatar_url: formData.avatar_url || null,
         });
         if (result.error) throw new Error(result.error);
         toast.success("Usuario creado correctamente");
@@ -128,7 +133,7 @@ function UserModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Name row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -207,6 +212,16 @@ function UserModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Signature */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Firma del Evaluador</label>
+            <SignatureInput
+              value={formData.avatar_url || null}
+              onChange={(val) => setFormData({ ...formData, avatar_url: val || "" })}
+              placeholder="Firme con su mouse/pantalla táctil o cargue una imagen"
+            />
           </div>
 
           {/* Active toggle */}

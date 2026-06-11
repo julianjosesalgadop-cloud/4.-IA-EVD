@@ -73,12 +73,14 @@ export async function updateProfile(userId: string, updates: {
   phone?: string;
   role_id?: string;
   active?: boolean;
+  avatar_url?: string | null;
 }) {
-  const supabase = await getSupabase();
-  const { data: userData } = await supabase.auth.getUser();
+  const supabaseUser = await getSupabase();
+  const { data: userData } = await supabaseUser.auth.getUser();
   if (!userData.user) return { error: "No autenticado" };
 
-  const { error } = await supabase
+  const adminClient = getSupabaseAdmin();
+  const { error } = await adminClient
     .from("profiles")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", userId);
@@ -98,12 +100,14 @@ export async function inviteUser(data: {
   last_name: string;
   phone?: string;
   role_id?: string;
+  avatar_url?: string | null;
 }) {
-  const supabase = await getSupabase();
-  const { data: userData } = await supabase.auth.getUser();
+  const supabaseUser = await getSupabase();
+  const { data: userData } = await supabaseUser.auth.getUser();
   if (!userData.user) return { error: "No autenticado" };
 
-  const { data: currentProfile } = await supabase
+  const adminClient = getSupabaseAdmin();
+  const { data: currentProfile } = await adminClient
     .from("profiles")
     .select("company_id")
     .eq("id", userData.user.id)
@@ -112,7 +116,7 @@ export async function inviteUser(data: {
   if (!currentProfile?.company_id) return { error: "Empresa no encontrada" };
 
   // Check if user already exists in this company
-  const { data: existing } = await supabase
+  const { data: existing } = await adminClient
     .from("profiles")
     .select("id")
     .eq("email", data.email)
@@ -121,10 +125,9 @@ export async function inviteUser(data: {
 
   if (existing) return { error: "Ya existe un usuario con ese correo en la empresa" };
 
-  // Use admin auth to invite user — we use service role via the action
-  // For now, create a temporary profile with the invitation data
+  // Use admin client to insert user profile
   const tempId = crypto.randomUUID();
-  const { error: profileError } = await supabase
+  const { error: profileError } = await adminClient
     .from("profiles")
     .insert({
       id: tempId,
@@ -134,6 +137,7 @@ export async function inviteUser(data: {
       last_name: data.last_name,
       phone: data.phone || null,
       role_id: data.role_id || null,
+      avatar_url: data.avatar_url || null,
       active: true,
     });
 

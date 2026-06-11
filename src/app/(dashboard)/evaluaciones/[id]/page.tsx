@@ -355,6 +355,29 @@ export default function EvaluationDetailPage() {
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
       doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
+      
+      const evaluatorSig = evaluation.evaluator?.avatar_url;
+      const collaboratorSig = (evaluation.draft_data as any)?.collaborator_signature;
+      
+      let sigHeight = 14;
+      let sigWidth = 38;
+      
+      if (evaluatorSig) {
+        try {
+          doc.addImage(evaluatorSig, "PNG", marginX + 16, posY + 4, sigWidth, sigHeight);
+        } catch (err) {
+          console.error("Error adding evaluator signature to PDF:", err);
+        }
+      }
+      
+      if (collaboratorSig) {
+        try {
+          doc.addImage(collaboratorSig, "PNG", 210 - marginX - 54, posY + 4, sigWidth, sigHeight);
+        } catch (err) {
+          console.error("Error adding collaborator signature to PDF:", err);
+        }
+      }
+
       posY += 20;
       
       // Signature lines

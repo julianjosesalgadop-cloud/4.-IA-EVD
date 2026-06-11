@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Save,
-  CheckCircle2, AlertCircle, Star, Info, Send, FileText
+  CheckCircle2, AlertCircle, Star, Info, Send, FileText, X
 } from "lucide-react";
 import { cn, getScoreLabel, formatScore, getResultLabel } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { getEvaluationConfig, saveEvaluation, getEvaluationById, sendEvaluationE
 import { getCollaborators } from "@/app/actions/collaborators";
 import type { Collaborator } from "@/types";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
+import { SignatureInput } from "@/components/ui/signature-input";
 
 // ---- Types ----
 interface Question {
@@ -93,6 +94,8 @@ function NuevaEvaluacionContent() {
   const [savedEvaluationId, setSavedEvaluationId] = useState<string | null>(null);
   const [savedEvaluation, setSavedEvaluation] = useState<any | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [collaboratorSignature, setCollaboratorSignature] = useState<string | null>(null);
   
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
@@ -248,6 +251,18 @@ function NuevaEvaluacionContent() {
       return;
     }
 
+    // Open signature modal first
+    setCollaboratorSignature(null);
+    setShowSignatureModal(true);
+  };
+
+  const handleFinalizeConfirm = async (signature: string | null) => {
+    if (!signature) {
+      toast.error("La firma del colaborador es obligatoria para finalizar");
+      return;
+    }
+
+    setShowSignatureModal(false);
     setIsSubmitting(true);
     
     const formattedAnswers = Object.entries(answers).map(([question_id, data]) => ({
@@ -261,6 +276,7 @@ function NuevaEvaluacionContent() {
       version_id: versionId,
       evaluatee_id: selectedCollaboratorId,
       answers: formattedAnswers,
+      signature: signature, // Pass the base64 signature
       ...narrativa
     };
 
@@ -602,6 +618,29 @@ function NuevaEvaluacionContent() {
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
       doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
+      
+      const evaluatorSig = savedEvaluation.evaluator?.avatar_url;
+      const collaboratorSig = (savedEvaluation.draft_data as any)?.collaborator_signature;
+      
+      let sigHeight = 14;
+      let sigWidth = 38;
+      
+      if (evaluatorSig) {
+        try {
+          doc.addImage(evaluatorSig, "PNG", marginX + 16, posY + 4, sigWidth, sigHeight);
+        } catch (err) {
+          console.error("Error adding evaluator signature to PDF:", err);
+        }
+      }
+      
+      if (collaboratorSig) {
+        try {
+          doc.addImage(collaboratorSig, "PNG", 210 - marginX - 54, posY + 4, sigWidth, sigHeight);
+        } catch (err) {
+          console.error("Error adding collaborator signature to PDF:", err);
+        }
+      }
+
       posY += 20;
       
       doc.setDrawColor(100, 116, 139);
@@ -1258,6 +1297,61 @@ function NuevaEvaluacionContent() {
                   className="flex-1 px-4 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity text-center"
                 >
                   Volver a Evaluaciones
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Signature Modal */}
+      <AnimatePresence>
+        {showSignatureModal && selectedCollaborator && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl space-y-4 text-foreground"
+            >
+              <div className="flex justify-between items-center border-b pb-3 bg-muted/20 -mx-6 -mt-6 px-6 py-4 rounded-t-2xl">
+                <h3 className="text-lg font-bold">Firma de Conformidad</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowSignatureModal(false)}
+                  className="p-1 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Para finalizar el registro de la evaluación, el colaborador <strong>{selectedCollaborator.full_name}</strong> debe registrar su firma de conformidad.
+                </p>
+                
+                <SignatureInput
+                  value={collaboratorSignature}
+                  onChange={(val) => setCollaboratorSignature(val)}
+                  placeholder="Dibuje su firma aquí o suba una imagen de su firma"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowSignatureModal(false)}
+                  className="flex-1 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFinalizeConfirm(collaboratorSignature)}
+                  disabled={!collaboratorSignature}
+                  className="flex-1 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  Confirmar y Guardar
                 </button>
               </div>
             </motion.div>
