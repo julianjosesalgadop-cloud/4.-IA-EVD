@@ -47,25 +47,14 @@ const navGroups: NavGroup[] = [
         title: "Evaluaciones",
         icon: ClipboardList,
         children: [
-          { title: "Todas las Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
           { title: "Nueva Evaluación", href: "/evaluaciones/nueva", icon: ClipboardList },
-          { title: "Borradores", href: "/evaluaciones/borradores", icon: ClipboardList },
+          { title: "Resultados Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
         ],
       },
       {
         title: "Plan de Mejoramiento",
         href: "/pmi",
         icon: Target,
-      },
-      {
-        title: "Retroalimentación",
-        href: "/retroalimentacion",
-        icon: MessageSquare,
-      },
-      {
-        title: "Capacitaciones",
-        href: "/capacitaciones",
-        icon: GraduationCap,
       },
       {
         title: "Reportes",
@@ -84,7 +73,6 @@ const navGroups: NavGroup[] = [
           { title: "Categorías", href: "/configuracion/categorias", icon: Settings },
           { title: "Preguntas", href: "/configuracion/preguntas", icon: Settings },
           { title: "Versiones", href: "/configuracion/versiones", icon: Settings },
-          { title: "Criterios Críticos", href: "/configuracion/criterios", icon: Settings },
           { title: "Empresa", href: "/configuracion/empresa", icon: Building2 },
         ],
       },
@@ -98,12 +86,6 @@ const navGroups: NavGroup[] = [
           { title: "Cargos", href: "/administracion/cargos", icon: BookOpen },
           { title: "Importar Datos", href: "/administracion/importar", icon: FileBarChart2 },
         ],
-      },
-      {
-        title: "Notificaciones",
-        href: "/notificaciones",
-        icon: Bell,
-        badge: 3,
       },
       {
         title: "Auditoría",
@@ -122,7 +104,9 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    Evaluaciones: true,
+  });
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -131,6 +115,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const isActive = (href?: string) => {
     if (!href) return false;
     if (href === "/dashboard") return pathname === "/dashboard";
+    if (href === "/evaluaciones") {
+      return pathname === "/evaluaciones" || (pathname.startsWith("/evaluaciones/") && pathname !== "/evaluaciones/nueva");
+    }
     return pathname.startsWith(href);
   };
 
@@ -161,8 +148,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border min-h-[72px]">
         {/* Logo Icon */}
         <div className="relative flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl gradient-brand flex items-center justify-center shadow-lg shadow-brand-500/30">
-            <TrendingUp className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-lg shadow-brand-500/10">
+            <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-0.5" />
           </div>
           <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success-500 border-2 border-sidebar-background" />
         </div>

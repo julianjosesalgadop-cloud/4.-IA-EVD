@@ -256,7 +256,13 @@ export async function getEvaluations() {
     .from("evaluations")
     .select(`
       *,
-      collaborator:collaborators(full_name, document_number, position_id),
+      collaborator:collaborators(
+        full_name, 
+        document_number, 
+        position_id,
+        position:positions(name),
+        areas:areas(name)
+      ),
       evaluator:profiles!evaluations_evaluator_id_fkey(first_name, last_name),
       version:evaluation_versions(name),
       result:evaluation_results(*)
@@ -461,4 +467,182 @@ export async function sendEvaluationEmail({
     console.error("Error sending email:", error);
     return { error: error?.message || "Ocurrió un error inesperado al enviar el correo." };
   }
+}
+
+// ==========================================
+// VERSIONES DE EVALUACIÓN
+// ==========================================
+
+export async function getEvaluationVersions() {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("evaluation_versions")
+    .select(`
+      *,
+      questions:evaluation_questions(count)
+    `)
+    .order("year", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) return { error: error.message, data: [] };
+  
+  const formatted = (data || []).map((v: any) => ({
+    ...v,
+    questions_count: v.questions?.[0]?.count || 0
+  }));
+  
+  return { data: formatted };
+}
+
+export async function saveEvaluationVersion(version: {
+  id?: string;
+  year: number;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+  is_published?: boolean;
+  approved_threshold?: number;
+  pmi_threshold?: number;
+}) {
+  const supabase = await getSupabaseAdmin();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (!profile?.company_id) return { error: "Compañía no encontrada" };
+
+  if (version.is_active) {
+    await supabase
+      .from("evaluation_versions")
+      .update({ is_active: false })
+      .eq("company_id", profile.company_id);
+  }
+
+  if (version.id) {
+    const { error } = await supabase
+      .from("evaluation_versions")
+      .update({
+        year: version.year,
+        name: version.name,
+        description: version.description,
+        is_active: version.is_active ?? false,
+        is_published: version.is_published ?? false,
+        approved_threshold: version.approved_threshold ?? 4.0,
+        pmi_threshold: version.pmi_threshold ?? 3.1,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", version.id);
+
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("evaluation_versions")
+      .insert({
+        company_id: profile.company_id,
+        year: version.year,
+        name: version.name,
+        description: version.description,
+        is_active: version.is_active ?? false,
+        is_published: version.is_published ?? false,
+        approved_threshold: version.approved_threshold ?? 4.0,
+        pmi_threshold: version.pmi_threshold ?? 3.1,
+        created_by: userData.user.id
+      });
+
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/configuracion/versiones");
+  return { success: true };
+}
+
+export async function cloneEvaluationVersion(versionId: string) {
+  const supabase = await getSupabaseAdmin();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  const { data: original, error: origError } = await supabase
+    .from("evaluation_versions")
+    .select("*")
+    .eq("id", versionId)
+    .single();
+
+  if (origError || !original) return { error: "Versión original no encontrada: " + origError?.message };
+
+  const newName = `${original.name} (Copia)`;
+  const { data: newVersion, error: createError } = await supabase
+    .from("evaluation_versions")
+    .insert({
+      company_id: original.company_id,
+      year: original.year,
+      name: newName,
+      description: original.description,
+      is_active: false,
+      is_published: false,
+      approved_threshold: original.approved_threshold,
+      pmi_threshold: original.pmi_threshold,
+      created_by: userData.user.id
+    })
+    .select()
+    .single();
+
+  if (createError || !newVersion) return { error: "Error al crear la versión clonada: " + createError?.message };
+
+  const { data: categories } = await supabase
+    .from("evaluation_categories")
+    .select("*")
+    .eq("version_id", original.id);
+
+  if (categories && categories.length > 0) {
+    for (const cat of categories) {
+      const { data: newCat, error: catError } = await supabase
+        .from("evaluation_categories")
+        .insert({
+          version_id: newVersion.id,
+          name: cat.name,
+          description: cat.description,
+          sort_order: cat.sort_order,
+          weight: cat.weight,
+          active: cat.active
+        })
+        .select()
+        .single();
+
+      if (catError || !newCat) continue;
+
+      const { data: questions } = await supabase
+        .from("evaluation_questions")
+        .select("*")
+        .eq("category_id", cat.id)
+        .eq("version_id", original.id);
+
+      if (questions && questions.length > 0) {
+        const questionsToInsert = questions.map((q) => ({
+          category_id: newCat.id,
+          version_id: newVersion.id,
+          code: q.code,
+          question: q.question,
+          description: q.description,
+          sort_order: q.sort_order,
+          is_required: q.is_required,
+          is_active: q.is_active,
+          is_critical: q.is_critical,
+          min_score_required: q.min_score_required,
+          weight: q.weight
+        }));
+
+        await supabase
+          .from("evaluation_questions")
+          .insert(questionsToInsert);
+      }
+    }
+  }
+
+  revalidatePath("/configuracion/versiones");
+  return { success: true };
 }

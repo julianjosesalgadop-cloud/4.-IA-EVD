@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ClipboardList, CheckCircle2, AlertCircle, TrendingUp,
   Clock, Target, BarChart3, Activity, AlertTriangle, ArrowUpRight,
@@ -259,6 +259,7 @@ export default function DashboardPage() {
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedResult, setSelectedResult] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadStats() {
@@ -270,13 +271,19 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isExpanded) {
-        setIsExpanded(false);
+      if (e.key === "Escape") {
+        if (expandedChart) setExpandedChart(null);
+        else if (isExpanded) setIsExpanded(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isExpanded]);
+  }, [isExpanded, expandedChart]);
+
+  // Extract unique areas dynamically from database evaluations
+  const dynamicAreas = stats?.allEvaluations
+    ? (Array.from(new Set(stats.allEvaluations.map((e: any) => e.area).filter((a: any) => a && a !== "N/A"))) as string[]).sort()
+    : [];
 
   // Filter evaluations based on user selections
   const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
@@ -318,8 +325,8 @@ export default function DashboardPage() {
   ];
 
   // Recalculate dynamic area average data
-  const areasList = ["Operaciones", "Mantenimiento", "G. Humana", "Comercial", "Financiera"];
-  const areaAverageData = areasList.map(area => {
+  const displayAreasList = dynamicAreas.length > 0 ? dynamicAreas : ["Operaciones", "Mantenimiento", "Gestión Humana", "Comercial", "Financiera", "Tecnología"];
+  const areaAverageData = displayAreasList.map(area => {
     const evs = filteredEvals.filter((e: any) => e.area === area && e.score > 0);
     const avg = evs.length > 0 ? evs.reduce((sum: number, e: any) => sum + e.score, 0) / evs.length : 0;
     return {
@@ -359,8 +366,52 @@ export default function DashboardPage() {
     { category: "Equipo", actual: 3.85, anterior: 3.70 },
   ];
 
+  // 1. Niveles de Desempeño
+  const tierExcelente = filteredEvals.filter((e: any) => e.score >= 4.5 && e.score <= 5.0).length;
+  const tierSobresaliente = filteredEvals.filter((e: any) => e.score >= 4.0 && e.score < 4.5).length;
+  const tierCompetente = filteredEvals.filter((e: any) => e.score >= 3.0 && e.score < 4.0).length;
+  const tierRequiereMejora = filteredEvals.filter((e: any) => e.score >= 2.0 && e.score < 3.0).length;
+  const tierInsatisfactorio = filteredEvals.filter((e: any) => e.score > 0 && e.score < 2.0).length;
+
+  const performanceTiersData = [
+    { name: "Excelente (4.5 - 5.0)", value: tierExcelente, color: "#10b981" },
+    { name: "Sobresaliente (4.0 - 4.49)", value: tierSobresaliente, color: "#3b82f6" },
+    { name: "Competente (3.0 - 3.99)", value: tierCompetente, color: "#71717a" },
+    { name: "Requiere Mejora (2.0 - 2.99)", value: tierRequiereMejora, color: "#f59e0b" },
+    { name: "Insatisfactorio (< 2.0)", value: tierInsatisfactorio, color: "#ef4444" },
+  ];
+
+  // 2. Rendimiento Promedio por Sede (Ciudad)
+  const citiesList = Array.from(new Set(filteredEvals.map((e: any) => e.workplace_city).filter(Boolean))) as string[];
+  const displayCitiesList = citiesList.length > 0 ? citiesList : ["Sogamoso", "Duitama", "Tunja", "Bogotá", "Yopal"];
+
+  const performanceByCityData = displayCitiesList.map(city => {
+    const evs = filteredEvals.filter((e: any) => e.workplace_city === city && e.score > 0);
+    const avg = evs.length > 0 ? evs.reduce((sum: number, e: any) => sum + e.score, 0) / evs.length : 0;
+    return {
+      city,
+      promedio: Number(avg.toFixed(2)),
+      evaluaciones: evs.length
+    };
+  }).sort((a, b) => b.promedio - a.promedio);
+
+  // 3. Distribución del Estado de PMI
+  const pmiRequiredEvals = filteredEvals.filter((e: any) => e.pmi_required || e.pmi_status);
+  const pmiActivos = pmiRequiredEvals.filter((e: any) => e.pmi_status === "activo" || e.pmi_status === "en_seguimiento").length;
+  const pmiCerrados = pmiRequiredEvals.filter((e: any) => e.pmi_status === "cerrado").length;
+  const pmiVencidos = pmiRequiredEvals.filter((e: any) => e.pmi_status === "vencido").length;
+  const pmiPendientes = pmiRequiredEvals.filter((e: any) => !e.pmi_status || e.pmi_status === "pendiente").length;
+
+  const pmiStatusDistribution = [
+    { name: "En Seguimiento", value: pmiActivos, color: "#f59e0b" },
+    { name: "Cerrados", value: pmiCerrados, color: "#10b981" },
+    { name: "Vencidos", value: pmiVencidos, color: "#ef4444" },
+    { name: "Pendientes", value: pmiPendientes, color: "#71717a" },
+  ];
+
   // Filtered recent 5 evaluations
   const recentEvals = filteredEvals.slice(0, 5);
+
 
   if (!stats) {
     return (
@@ -430,11 +481,9 @@ export default function DashboardPage() {
             className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
           >
             <option value="">Todas las áreas</option>
-            <option value="Operaciones">Operaciones</option>
-            <option value="Mantenimiento">Mantenimiento</option>
-            <option value="G. Humana">G. Humana</option>
-            <option value="Comercial">Comercial</option>
-            <option value="Financiera">Financiera</option>
+            {displayAreasList.map((area) => (
+              <option key={area} value={area}>{area}</option>
+            ))}
           </select>
         </div>
         <div className="space-y-1">
@@ -486,7 +535,16 @@ export default function DashboardPage() {
               <h3 className="font-semibold">Promedio por Área</h3>
               <p className="text-xs text-muted-foreground">Evaluaciones finalizadas</p>
             </div>
-            <BarChart3 className="w-5 h-5 text-muted-foreground" />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("area")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <BarChart3 className="w-5 h-5 text-muted-foreground" />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <BarChart data={areaAverageData} barSize={32}>
@@ -526,6 +584,13 @@ export default function DashboardPage() {
               <h3 className="font-semibold">Distribución</h3>
               <p className="text-xs text-muted-foreground">{completedEvals} evaluaciones finalizadas</p>
             </div>
+            <button
+              onClick={() => setExpandedChart("dist")}
+              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Expandir gráfico"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 220 : 160}>
             <PieChart>
@@ -579,7 +644,16 @@ export default function DashboardPage() {
               <h3 className="font-semibold">Tendencia</h3>
               <p className="text-xs text-muted-foreground">Evolución de evaluaciones y promedio mensual</p>
             </div>
-            <TrendingUp className="w-5 h-5 text-brand-500" />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("trend")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <TrendingUp className="w-5 h-5 text-brand-500" />
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <LineChart data={displayTrendData}>
@@ -610,6 +684,13 @@ export default function DashboardPage() {
               <h3 className="font-semibold">Competencias</h3>
               <p className="text-xs text-muted-foreground">Actual vs Anterior</p>
             </div>
+            <button
+              onClick={() => setExpandedChart("radar")}
+              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Expandir gráfico"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <RadarChart data={radarData}>
@@ -626,13 +707,389 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Bottom Row */}
+      {/* Charts Row 3 — Nuevos Gráficos Gerenciales */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentEvaluations evaluations={recentEvals} />
-        </div>
-        <AlertsPanel />
+        {/* Gráfico 1: Niveles de Desempeño */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="rounded-xl border bg-card p-5"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold">Niveles de Desempeño</h3>
+              <p className="text-xs text-muted-foreground">Distribución por rangos EVD</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("desempeno")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <Users className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
+            <BarChart
+              data={performanceTiersData}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+              barSize={16}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                width={140}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
+              <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="value" position="right" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                {performanceTiersData.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        {/* Gráfico 2: Desempeño por Ciudad / Sede */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.75 }}
+          className="rounded-xl border bg-card p-5"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold">Promedio por Sede</h3>
+              <p className="text-xs text-muted-foreground">Rendimiento por ciudad</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("sede")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <Activity className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
+            <BarChart data={performanceByCityData} barSize={24}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="city" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 5]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                {performanceByCityData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={entry.promedio >= 4.5 ? "#10b981" : entry.promedio >= 4.0 ? "#3b82f6" : entry.promedio >= 3.0 ? "#71717a" : "#ef4444"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        {/* Gráfico 3: Estado de Planes de Mejoramiento (PMI) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="rounded-xl border bg-card p-5"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold">Estado de PMI</h3>
+              <p className="text-xs text-muted-foreground">Planes de mejoramiento requeridos</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("pmi")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <Target className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={isExpanded ? 220 : 160}>
+            <PieChart>
+              <Pie
+                data={pmiStatusDistribution}
+                cx="50%"
+                cy="50%"
+                innerRadius={40}
+                outerRadius={65}
+                paddingAngle={3}
+                dataKey="value"
+                label={({ name, value }) => value > 0 ? `${String(name || "").split(" ")[0]}: ${value}` : ""}
+              >
+                {pmiStatusDistribution.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} stroke="transparent" />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => [`${value} planes`, ""]} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="space-y-2 mt-2">
+            {pmiStatusDistribution.map((item) => (
+              <div key={item.name} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                  <span className="text-muted-foreground text-xs">{item.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-xs">{item.value}</span>
+                  <span className="text-muted-foreground text-xs">
+                    ({pmiRequiredEvals.length > 0 ? ((item.value / pmiRequiredEvals.length) * 100).toFixed(0) : 0}%)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
+
+      {/* Modal de Gráfico Expandido */}
+      <AnimatePresence>
+        {expandedChart && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border rounded-2xl p-5 md:p-6 w-full max-w-4xl shadow-2xl relative space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setExpandedChart(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Cerrar"
+              >
+                <Minimize2 className="w-5 h-5" />
+              </button>
+
+              <div>
+                <h3 className="text-lg font-bold text-foreground">
+                  {expandedChart === "area" && "Promedio por Área"}
+                  {expandedChart === "dist" && "Distribución de Resultados"}
+                  {expandedChart === "trend" && "Tendencia Temporal"}
+                  {expandedChart === "radar" && "Desempeño de Competencias"}
+                  {expandedChart === "desempeno" && "Niveles de Desempeño"}
+                  {expandedChart === "sede" && "Promedio por Sede / Ciudad"}
+                  {expandedChart === "pmi" && "Estado de Planes de Mejoramiento (PMI)"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {expandedChart === "area" && "Puntaje promedio obtenido agrupado por área organizativa"}
+                  {expandedChart === "dist" && `Distribución porcentual de las ${completedEvals} evaluaciones finalizadas`}
+                  {expandedChart === "trend" && "Histórico mensual del volumen de evaluaciones y promedio general"}
+                  {expandedChart === "radar" && "Comparativa del promedio de competencias actual frente al periodo anterior"}
+                  {expandedChart === "desempeno" && "Distribución de colaboradores por rango y escala oficial de calificación EVD"}
+                  {expandedChart === "sede" && "Puntaje promedio obtenido agrupado por ciudad de operación"}
+                  {expandedChart === "pmi" && "Porcentaje y estado de ejecución de los planes de mejoramiento requeridos"}
+                </p>
+              </div>
+
+              <div className="w-full flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+                {expandedChart === "area" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={areaAverageData} barSize={36}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="area" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                        {areaAverageData.map((entry, index) => (
+                          <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {expandedChart === "dist" && (
+                  <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
+                    <div className="w-full md:w-2/3 h-[280px] md:h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={resultDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={95}
+                            paddingAngle={3}
+                            dataKey="value"
+                            label={({ name, value }) => value > 0 ? `${name}: ${value}` : ""}
+                          >
+                            {resultDistribution.map((entry, index) => (
+                              <Cell key={index} fill={entry.color} stroke="transparent" />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`${value} evaluaciones`, ""]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="w-full md:w-1/3 space-y-2">
+                      {resultDistribution.map((item) => (
+                        <div key={item.name} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
+                            <span className="text-muted-foreground">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span>{item.value}</span>
+                            <span className="text-muted-foreground text-xs">
+                              ({completedEvals > 0 ? ((item.value / completedEvals) * 100).toFixed(0) : 0}%)
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {expandedChart === "trend" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={displayTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, fill: "#3b82f6" }} name="Evaluaciones">
+                        <LabelList dataKey="evaluaciones" position="top" style={{ fontSize: 10, fill: "#3b82f6", fontWeight: "bold" }} />
+                      </Line>
+                      <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 5, fill: "#8b5cf6" }} name="Promedio">
+                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "#8b5cf6", fontWeight: "bold" }} />
+                      </Line>
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+
+                {expandedChart === "radar" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarAngleAxis dataKey="category" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                      <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
+                      <Radar name="Actual" dataKey="actual" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} strokeWidth={2.5}>
+                        <LabelList dataKey="actual" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                      </Radar>
+                      <Radar name="Anterior" dataKey="anterior" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} strokeDasharray="4 4" />
+                      <Legend wrapperStyle={{ fontSize: "12px" }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {expandedChart === "desempeno" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart
+                      data={performanceTiersData}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                      barSize={20}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+                      <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                        width={160}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
+                      <Bar dataKey="value" name="Colaboradores" radius={[0, 6, 6, 0]}>
+                        <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                        {performanceTiersData.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {expandedChart === "sede" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={performanceByCityData} barSize={32}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="city" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                        {performanceByCityData.map((entry, index) => (
+                          <Cell
+                            key={index}
+                            fill={entry.promedio >= 4.5 ? "#10b981" : entry.promedio >= 4.0 ? "#3b82f6" : entry.promedio >= 3.0 ? "#71717a" : "#ef4444"}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {expandedChart === "pmi" && (
+                  <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
+                    <div className="w-full md:w-2/3 h-[280px] md:h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pmiStatusDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={95}
+                            paddingAngle={3}
+                            dataKey="value"
+                            label={({ name, value }) => value > 0 ? `${String(name || "").split(" ")[0]}: ${value}` : ""}
+                          >
+                            {pmiStatusDistribution.map((entry, index) => (
+                              <Cell key={index} fill={entry.color} stroke="transparent" />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`${value} planes`, ""]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="w-full md:w-1/3 space-y-2">
+                      {pmiStatusDistribution.map((item) => (
+                        <div key={item.name} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
+                            <span className="text-muted-foreground">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span>{item.value}</span>
+                            <span className="text-muted-foreground text-xs">
+                              ({pmiRequiredEvals.length > 0 ? ((item.value / pmiRequiredEvals.length) * 100).toFixed(0) : 0}%)
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

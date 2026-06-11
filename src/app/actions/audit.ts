@@ -17,7 +17,11 @@ async function getSupabase() {
   );
 }
 
-export async function getAuditLogs(limit = 100) {
+export async function getAuditLogs(limit = 200, filters?: {
+  action?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
   const supabase = await getSupabase();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return { data: [], error: "No autenticado" };
@@ -30,22 +34,39 @@ export async function getAuditLogs(limit = 100) {
 
   if (!profile?.company_id) return { data: [], error: "Empresa no encontrada" };
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("audit_logs")
     .select(`
       id,
       action,
-      entity_type,
-      entity_id,
-      details,
+      table_name,
+      record_id,
+      description,
+      old_values,
+      new_values,
       ip_address,
       user_agent,
       created_at,
-      profile:profiles(first_name, last_name, email)
+      profile:profiles!user_id(first_name, last_name, email)
     `)
     .eq("company_id", profile.company_id)
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (filters?.action) {
+    query = query.eq("action", filters.action);
+  }
+  if (filters?.dateFrom) {
+    query = query.gte("created_at", filters.dateFrom);
+  }
+  if (filters?.dateTo) {
+    // Add 1 day to include the full day
+    const dateTo = new Date(filters.dateTo);
+    dateTo.setDate(dateTo.getDate() + 1);
+    query = query.lt("created_at", dateTo.toISOString().split("T")[0]);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching audit logs:", error);
@@ -56,7 +77,14 @@ export async function getAuditLogs(limit = 100) {
 }
 
 // Function to log an audit event
-export async function logAudit(action: string, entity_type: string, entity_id: string, details: any = null) {
+export async function logAudit(
+  action: string,
+  table_name: string,
+  record_id: string,
+  description: string = "",
+  old_values: any = null,
+  new_values: any = null
+) {
   const supabase = await getSupabase();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return;
@@ -73,10 +101,12 @@ export async function logAudit(action: string, entity_type: string, entity_id: s
     company_id: profile.company_id,
     user_id: userData.user.id,
     action,
-    entity_type,
-    entity_id,
-    details,
-    ip_address: "127.0.0.1", // Requires server headers to get real IP
+    table_name,
+    record_id,
+    description,
+    old_values,
+    new_values,
+    ip_address: "127.0.0.1",
     user_agent: "Next.js App"
   });
 }

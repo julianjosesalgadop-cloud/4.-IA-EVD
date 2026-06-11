@@ -185,8 +185,8 @@ export async function importCollaborators(rows: any[]) {
   const recordsToInsert = [];
 
   for (const row of rows) {
-    const areaName = row["Area"] || row["Área"];
-    const posName = row["Cargo"];
+    const areaName = row["area"] || row["Area"] || row["Área"] || row["área"];
+    const posName = row["cargo"] || row["Cargo"];
     
     let areaId = null;
     if (areaName) {
@@ -224,17 +224,42 @@ export async function importCollaborators(rows: any[]) {
       }
     }
 
+    // Extract names
+    let firstName = "";
+    let lastName = "";
+    if (row["nombres"]) {
+      firstName = String(row["nombres"]).trim();
+      lastName = String(row["apellidos"] || "").trim();
+    } else if (row["first_name"]) {
+      firstName = String(row["first_name"]).trim();
+      lastName = String(row["last_name"] || "").trim();
+    } else if (row["Nombres Completos"]) {
+      const parts = String(row["Nombres Completos"]).trim().split(" ");
+      firstName = parts[0] || "";
+      lastName = parts.slice(1).join(" ") || "";
+    }
+
+    const docType = String(row["tipo_documento"] || row["document_type"] || row["Tipo Documento"] || "CC").toUpperCase();
+    const docNum = String(row["numero_documento"] || row["document_number"] || row["Numero Documento"] || row["Número Documento"] || "");
+    const email = row["correo"] || row["email"] || row["Email"] ? String(row["correo"] || row["email"] || row["Email"]).trim() : null;
+    const phone = row["celular"] || row["phone"] || row["Celular"] ? String(row["celular"] || row["phone"] || row["Celular"]).trim() : null;
+    const hireDate = row["fecha_ingreso"] || row["hire_date"] || row["Fecha Ingreso"] ? String(row["fecha_ingreso"] || row["hire_date"] || row["Fecha Ingreso"]).trim() : null;
+    const contractType = row["tipo_contrato"] || row["contract_type"] || row["Tipo Contrato"] ? String(row["tipo_contrato"] || row["contract_type"] || row["Tipo Contrato"]).trim().toLowerCase() : null;
+    const statusVal = row["estado"] || row["status"] || row["Estado"] ? String(row["estado"] || row["status"] || row["Estado"]).trim().toLowerCase() : "activo";
+
     recordsToInsert.push({
       company_id: companyId,
-      document_type: String(row["Tipo Documento"] || "CC"),
-      document_number: String(row["Numero Documento"] || ""),
-      first_name: String(row["Nombres Completos"]?.split(" ")[0] || ""),
-      last_name: String(row["Nombres Completos"]?.split(" ").slice(1).join(" ") || ""),
-      email: row["Email"] ? String(row["Email"]) : null,
+      document_type: docType,
+      document_number: docNum,
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      phone: phone,
       area_id: areaId,
       position_id: posId,
-      full_name: String(row["Nombres Completos"] || ""),
-      status: "activo"
+      hire_date: hireDate,
+      contract_type: contractType,
+      status: statusVal
     });
   }
 

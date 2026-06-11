@@ -41,7 +41,7 @@ export async function getDashboardStats() {
     .select(`
       id, created_at, evaluation_year, status,
       result:evaluation_results(*),
-      collaborator:collaborators(full_name, positions(name), areas(name))
+      collaborator:collaborators(full_name, workplace_city, positions(name), areas(name))
     `)
     .order("created_at", { ascending: false });
     
@@ -89,9 +89,12 @@ export async function getDashboardStats() {
       return {
         id: e.id,
         collaborator: e.collaborator?.full_name || "Desconocido",
+        workplace_city: e.collaborator?.workplace_city || "Sogamoso",
         position: e.collaborator?.positions?.name || "N/A",
         area: e.collaborator?.areas?.name || "N/A",
         result: res ? res.result : e.status,
+        pmi_status: res ? res.pmi_status : null,
+        pmi_required: res ? res.pmi_required : false,
         score: Number(res?.overall_average || 0),
         date: e.created_at,
         year: e.evaluation_year

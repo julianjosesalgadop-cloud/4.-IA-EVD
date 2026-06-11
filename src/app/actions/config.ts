@@ -61,7 +61,51 @@ export async function createArea(areaData: any) {
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/configuracion");
+  revalidatePath("/administracion/areas");
+  return { success: true };
+}
+
+export async function updateArea(areaId: string, areaData: {
+  name?: string;
+  code?: string;
+  description?: string;
+}) {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("areas")
+    .update({ ...areaData, updated_at: new Date().toISOString() })
+    .eq("id", areaId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/administracion/areas");
+  return { success: true };
+}
+
+export async function deleteArea(areaId: string) {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  // Check if area is in use
+  const { count } = await supabase
+    .from("collaborators")
+    .select("id", { count: "exact", head: true })
+    .eq("area_id", areaId);
+
+  if (count && count > 0) {
+    return { error: `No se puede eliminar: el área tiene ${count} colaborador(es) asignado(s)` };
+  }
+
+  const { error } = await supabase
+    .from("areas")
+    .delete()
+    .eq("id", areaId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/administracion/areas");
   return { success: true };
 }
 
@@ -100,6 +144,52 @@ export async function createPosition(positionData: any) {
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/configuracion");
+  revalidatePath("/administracion/cargos");
+  return { success: true };
+}
+
+export async function updatePosition(positionId: string, positionData: {
+  name?: string;
+  code?: string;
+  description?: string;
+  area_id?: string;
+  level?: number;
+}) {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  const { error } = await supabase
+    .from("positions")
+    .update({ ...positionData, updated_at: new Date().toISOString() })
+    .eq("id", positionId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/administracion/cargos");
+  return { success: true };
+}
+
+export async function deletePosition(positionId: string) {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  // Check if position is in use
+  const { count } = await supabase
+    .from("collaborators")
+    .select("id", { count: "exact", head: true })
+    .eq("position_id", positionId);
+
+  if (count && count > 0) {
+    return { error: `No se puede eliminar: el cargo tiene ${count} colaborador(es) asignado(s)` };
+  }
+
+  const { error } = await supabase
+    .from("positions")
+    .delete()
+    .eq("id", positionId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/administracion/cargos");
   return { success: true };
 }

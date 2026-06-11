@@ -76,8 +76,8 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-              <TrendingUp className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-white border border-white/20 flex items-center justify-center overflow-hidden shadow">
+              <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-1" />
             </div>
             <div>
               <p className="text-white font-bold text-xl leading-tight">Flota Sugamuxi</p>
@@ -151,8 +151,8 @@ export default function LoginPage() {
         >
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl gradient-brand flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow">
+              <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-0.5" />
             </div>
             <div>
               <p className="font-bold text-lg">Flota Sugamuxi</p>

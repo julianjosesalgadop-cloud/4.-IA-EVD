@@ -1,25 +1,290 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Users, Plus, Search, Edit2, Shield, Mail } from "lucide-react";
-import { getProfiles } from "@/app/actions/admin";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Users, Plus, Search, Edit2, Shield, Mail, Phone,
+  X, Save, Loader2, UserCheck, UserX, Eye, EyeOff
+} from "lucide-react";
+import { getProfiles, updateProfile, inviteUser, getRoles } from "@/app/actions/admin";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+
+interface UserProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  active: boolean;
+  role_id?: string;
+  roles?: { id: string; name: string; display_name: string };
+  created_at: string;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  display_name: string;
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  admin: "bg-purple-100 text-purple-700 border-purple-200",
+  rrhh: "bg-blue-100 text-blue-700 border-blue-200",
+  gerencia: "bg-amber-100 text-amber-700 border-amber-200",
+  lider: "bg-teal-100 text-teal-700 border-teal-200",
+  colaborador: "bg-slate-100 text-slate-700 border-slate-200",
+};
+
+function UserModal({
+  user,
+  roles,
+  onClose,
+  onSave,
+}: {
+  user: UserProfile | null;
+  roles: Role[];
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const isEdit = !!user;
+  const [formData, setFormData] = useState({
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    role_id: user?.role_id || user?.roles?.id || "",
+    active: user?.active ?? true,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formData.first_name.trim() || !formData.last_name.trim()) {
+      toast.error("El nombre y apellido son obligatorios");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (isEdit && user) {
+        const result = await updateProfile(user.id, {
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          phone: formData.phone.trim() || undefined,
+          role_id: formData.role_id || undefined,
+          active: formData.active,
+        });
+        if (result.error) throw new Error(result.error);
+        toast.success("Usuario actualizado correctamente");
+      } else {
+        if (!formData.email.trim()) {
+          toast.error("El correo electrónico es obligatorio para crear un usuario");
+          setIsSubmitting(false);
+          return;
+        }
+        const result = await inviteUser({
+          email: formData.email.trim(),
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          phone: formData.phone.trim() || undefined,
+          role_id: formData.role_id || undefined,
+        });
+        if (result.error) throw new Error(result.error);
+        toast.success("Usuario creado correctamente");
+      }
+      onSave();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "Error al guardar el usuario");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-card w-full max-w-lg rounded-2xl shadow-2xl border overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b flex items-center justify-between bg-muted/30">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center">
+              <Users className="w-4 h-4 text-white" />
+            </div>
+            <h3 className="font-bold text-lg">
+              {isEdit ? "Editar Usuario" : "Nuevo Usuario"}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Name row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Nombres *</label>
+              <input
+                required
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Carlos Alberto"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Apellidos *</label>
+              <input
+                required
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Martínez Rojas"
+              />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Correo Electrónico {!isEdit && "*"}
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                disabled={isEdit}
+                className={cn(
+                  "w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  isEdit && "opacity-60 cursor-not-allowed"
+                )}
+                placeholder="usuario@empresa.com"
+              />
+            </div>
+            {isEdit && (
+              <p className="text-xs text-muted-foreground">El correo no puede modificarse</p>
+            )}
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Teléfono</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="3001234567"
+              />
+            </div>
+          </div>
+
+          {/* Role */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Rol del Sistema</label>
+            <select
+              value={formData.role_id}
+              onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
+              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Sin rol asignado</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Active toggle */}
+          {isEdit && (
+            <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/20">
+              <div>
+                <p className="font-medium text-sm">Estado del usuario</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Los usuarios inactivos no pueden acceder al sistema
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, active: !formData.active })}
+                className={cn(
+                  "relative w-12 h-6 rounded-full transition-colors",
+                  formData.active ? "bg-success-500" : "bg-muted-foreground/40"
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+                    formData.active && "translate-x-6"
+                  )}
+                />
+              </button>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSubmitting ? "Guardando..." : isEdit ? "Guardar Cambios" : "Crear Usuario"}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function UsuariosPage() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [modalUser, setModalUser] = useState<UserProfile | null | "new">(undefined as any);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    loadUsers();
+    loadAll();
   }, []);
 
-  async function loadUsers() {
+  async function loadAll() {
     setIsLoading(true);
     try {
-      const { data } = await getProfiles();
-      setUsers(data || []);
+      const [{ data: usersData }, { data: rolesData }] = await Promise.all([
+        getProfiles(),
+        getRoles(),
+      ]);
+      setUsers((usersData as UserProfile[]) || []);
+      setRoles((rolesData as Role[]) || []);
     } catch (err) {
       toast.error("Error al cargar usuarios");
     } finally {
@@ -27,14 +292,44 @@ export default function UsuariosPage() {
     }
   }
 
-  const filtered = users.filter(u => {
+  function openNew() {
+    setModalUser(null);
+    setShowModal(true);
+  }
+
+  function openEdit(user: UserProfile) {
+    setModalUser(user);
+    setShowModal(true);
+  }
+
+  function closeModal() {
+    setShowModal(false);
+    setModalUser(undefined as any);
+  }
+
+  async function handleToggleActive(user: UserProfile) {
+    const result = await updateProfile(user.id, { active: !user.active });
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(user.active ? "Usuario desactivado" : "Usuario activado");
+      loadAll();
+    }
+  }
+
+  const filtered = users.filter((u) => {
     const term = search.toLowerCase();
     const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
-    return fullName.includes(term) || u.email.toLowerCase().includes(term);
+    return (
+      fullName.includes(term) ||
+      u.email.toLowerCase().includes(term) ||
+      (u.roles?.display_name || "").toLowerCase().includes(term)
+    );
   });
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -56,66 +351,155 @@ export default function UsuariosPage() {
               className="w-full h-10 pl-9 pr-4 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md">
+          <button
+            onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md whitespace-nowrap"
+          >
             <Plus className="w-4 h-4" />
-            Nuevo
+            Nuevo Usuario
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Total usuarios", value: users.length, color: "text-brand-600" },
+          { label: "Activos", value: users.filter((u) => u.active).length, color: "text-success-600" },
+          { label: "Inactivos", value: users.filter((u) => !u.active).length, color: "text-danger-600" },
+          { label: "Roles distintos", value: new Set(users.map((u) => u.roles?.name).filter(Boolean)).size, color: "text-amber-600" },
+        ].map((stat) => (
+          <div key={stat.label} className="p-4 rounded-xl border bg-card text-center">
+            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* User grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {isLoading ? (
-          <div className="col-span-full py-12 flex flex-col items-center justify-center">
+          <div className="col-span-full py-16 flex flex-col items-center justify-center">
             <div className="w-8 h-8 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin mb-4" />
             <p className="text-muted-foreground">Cargando usuarios...</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="col-span-full py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl">
+          <div className="col-span-full py-16 flex flex-col items-center justify-center border-2 border-dashed rounded-xl">
             <Users className="w-12 h-12 text-muted-foreground/30 mb-4" />
             <p className="text-muted-foreground font-medium">No se encontraron usuarios</p>
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="mt-2 text-sm text-brand-500 hover:underline"
+              >
+                Limpiar búsqueda
+              </button>
+            )}
           </div>
         ) : (
-          filtered.map((user) => (
-            <div key={user.id} className="p-5 rounded-xl border bg-card hover:shadow-md transition-all relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 rounded-bl-full -z-10" />
-              
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-lg">
-                    {user.first_name?.charAt(0)}{user.last_name?.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{user.first_name} {user.last_name}</h3>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                      <Shield className="w-3.5 h-3.5" />
-                      <span className="capitalize">{user.roles?.display_name || "Sin Rol"}</span>
+          filtered.map((user) => {
+            const roleName = user.roles?.name || "";
+            const roleColor = ROLE_COLORS[roleName] || "bg-muted text-muted-foreground border-border";
+            const initials = `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`;
+
+            return (
+              <motion.div
+                key={user.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-5 rounded-xl border bg-card hover:shadow-md transition-all relative overflow-hidden group"
+              >
+                {/* Background accent */}
+                <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 rounded-bl-full -z-10" />
+
+                {/* Top section */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full gradient-brand flex items-center justify-center text-white font-bold text-lg shadow-md shadow-brand-500/20">
+                      {initials || "?"}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold leading-tight">
+                        {user.first_name} {user.last_name}
+                      </h3>
+                      {user.roles && (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border mt-0.5",
+                          roleColor
+                        )}>
+                          <Shield className="w-2.5 h-2.5" />
+                          {user.roles.display_name}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  <button
+                    onClick={() => openEdit(user)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Editar usuario"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                 </div>
-              </div>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Mail className="w-4 h-4" />
-                  <span className="truncate">{user.email}</span>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-4 border-t">
-                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                  user.active ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-700'
-                }`}>
-                  {user.active ? 'ACTIVO' : 'INACTIVO'}
-                </span>
-                
-                <button className="p-1.5 text-muted-foreground hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))
+                {/* Info */}
+                <div className="space-y-1.5 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{user.email}</span>
+                  </div>
+                  {user.phone && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{user.phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <button
+                    onClick={() => handleToggleActive(user)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all hover:scale-105",
+                      user.active
+                        ? "bg-success-100 text-success-700 hover:bg-success-200"
+                        : "bg-danger-100 text-danger-700 hover:bg-danger-200"
+                    )}
+                    title={user.active ? "Desactivar usuario" : "Activar usuario"}
+                  >
+                    {user.active ? (
+                      <UserCheck className="w-3 h-3" />
+                    ) : (
+                      <UserX className="w-3 h-3" />
+                    )}
+                    {user.active ? "ACTIVO" : "INACTIVO"}
+                  </button>
+
+                  <button
+                    onClick={() => openEdit(user)}
+                    className="text-xs text-brand-500 hover:underline font-medium"
+                  >
+                    Editar →
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })
         )}
       </div>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <UserModal
+            user={modalUser as UserProfile | null}
+            roles={roles}
+            onClose={closeModal}
+            onSave={loadAll}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

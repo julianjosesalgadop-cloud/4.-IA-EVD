@@ -4,12 +4,14 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Plus, Search, Filter, Eye,
-  Edit, FileDown, MoreHorizontal, ChevronLeft, ChevronRight
+  Edit, FileDown, MoreHorizontal, ChevronLeft, ChevronRight, FileText
 } from "lucide-react";
 import Link from "next/link";
 import { cn, getResultLabel, getStatusLabel, formatDate, formatScore, getInitials } from "@/lib/utils";
+import { toast } from "sonner";
 
-import { getEvaluations } from "@/app/actions/evaluations";
+import { getEvaluations, getEvaluationById } from "@/app/actions/evaluations";
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
 const STATUS_STYLE: Record<string, string> = {
   borrador: "text-muted-foreground bg-muted border-border",
@@ -37,6 +39,377 @@ export default function EvaluacionesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
+  const [previewPdfFileName, setPreviewPdfFileName] = useState("");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handlePreviewClick = async (id: string) => {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    const toastId = toast.loading("Obteniendo detalles de la evaluación...");
+    
+    try {
+      const res = await getEvaluationById(id);
+      if (res.error || !res.data) {
+        toast.error("Error al obtener los detalles de la evaluación: " + (res.error || "No se encontraron datos"), { id: toastId });
+        setIsGeneratingPdf(false);
+        return;
+      }
+      
+      const evalData = res.data;
+      toast.loading("Generando previsualización de PDF...", { id: toastId });
+      
+      const { jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+
+      // Load logo image first
+      let logoImg: HTMLImageElement | null = null;
+      try {
+        logoImg = await new Promise<HTMLImageElement | null>((resolve, reject) => {
+          const img = new Image();
+          img.src = "/logo.png";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        console.error("Error loading logo image:", e);
+      }
+      
+      const brandColorBlue = [1, 33, 105]; // #012169
+      const brandColorLightBlue = [0, 132, 213]; // #0084D5
+      const textColorDark = [30, 41, 59]; // #1e293b
+      const textColorMuted = [100, 116, 139]; // #64748b
+      
+      // Page Margins
+      const marginX = 15;
+      let posY = 20;
+      
+      const formatPDFDate = (dateStr: any) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString("es-ES");
+        } catch {
+          return "N/A";
+        }
+      };
+
+      const drawHeader = () => {
+        doc.setFillColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+        doc.rect(0, 0, 210, 4, "F");
+        
+        // Draw Logo if loaded (on the left side)
+        let textStartX = marginX;
+        if (logoImg) {
+          try {
+            doc.addImage(logoImg, "PNG", marginX, 6, 13, 13);
+            textStartX = marginX + 16;
+          } catch (err) {
+            console.error("Error drawing logo to PDF:", err);
+          }
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+        doc.text("FLOTA SUGAMUXI S.A.", textStartX, 14);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+        doc.text("Sistema de Evaluación de Desempeño (EVD)", textStartX, 19);
+        
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.5);
+        doc.line(marginX, 22, 210 - marginX, 22);
+      };
+      
+      const drawFooter = (pageNumber: number, totalPages: number) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+        
+        const currentDate = new Date().toLocaleDateString("es-ES");
+        doc.text(`Generado el: ${currentDate}`, marginX, 285);
+        doc.text(`Página ${pageNumber} de ${totalPages}`, 210 - marginX, 285, { align: "right" });
+        
+        doc.setDrawColor(226, 232, 240);
+        doc.line(marginX, 280, 210 - marginX, 280);
+      };
+      
+      // PAGE 1: COVER
+      posY = 32;
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+      doc.text("REPORTE DE EVALUACIÓN DE DESEMPEÑO", marginX, posY);
+      posY += 8;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+      const dateText = evalData.finalized_at 
+        ? `Fecha de Finalización: ${formatPDFDate(evalData.finalized_at)}`
+        : `Fecha de Registro: ${formatPDFDate(evalData.created_at)}`;
+      doc.text(dateText, marginX, posY);
+      posY += 10;
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("1. DATOS DEL COLABORADOR (EVALUADO)", marginX, posY);
+      posY += 4;
+      
+      const collabInfo = [
+        ["Nombre Completo:", evalData.collaborator?.full_name || "N/A", "Documento:", `${evalData.collaborator?.document_type || "CC"} ${evalData.collaborator?.document_number || "N/A"}`],
+        ["Cargo Actual:", evalData.collaborator?.position?.name || "N/A", "Área / Departamento:", evalData.collaborator?.areas?.name || evalData.collaborator?.area?.name || "N/A"],
+        ["Sede / Ciudad:", evalData.collaborator?.workplace_city || evalData.collaborator?.workplace || "N/A", "Tipo de Contrato:", evalData.collaborator?.contract_type || "N/A"],
+        ["Fecha de Ingreso:", formatPDFDate(evalData.collaborator?.hire_date), "Estado:", evalData.collaborator?.status || "N/A"]
+      ];
+      
+      autoTable(doc, {
+        startY: posY,
+        head: [],
+        body: collabInfo,
+        theme: "plain",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 55 },
+          2: { fontStyle: "bold", cellWidth: 35 },
+          3: { cellWidth: 55 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      // SECTION: EVALUATOR INFO
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("2. DATOS DEL EVALUADOR", marginX, posY);
+      posY += 4;
+      
+      const evaluatorInfo = [
+        ["Nombre del Evaluador:", evalData.evaluator ? `${evalData.evaluator.first_name} ${evalData.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", evalData.evaluator?.role?.display_name || "N/A"],
+        ["Correo Electrónico:", evalData.evaluator?.email || "N/A", "Versión del Proceso EVD:", evalData.version?.name || "N/A"]
+      ];
+      
+      autoTable(doc, {
+        startY: posY,
+        head: [],
+        body: evaluatorInfo,
+        theme: "plain",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: 45 },
+          2: { fontStyle: "bold", cellWidth: 45 },
+          3: { cellWidth: 45 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      // SECTION: SUMMARY OF RESULTS
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("3. RESUMEN DE RESULTADOS", marginX, posY);
+      posY += 4;
+      
+      const resultObj = evalData.result && !Array.isArray(evalData.result) ? evalData.result : evalData.result?.[0] || null;
+      const overallScore = resultObj ? resultObj.overall_average : 0;
+      const statusLabelText = resultObj ? getResultLabel(resultObj.result) : "Pendiente de finalizar";
+      const scoreExplanation = overallScore >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
+                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple y a veces supera las expectativas."
+                           : overallScore >= 3.0 ? "Desempeño Competente: Cumple satisfactoriamente con los estándares."
+                           : overallScore >= 2.0 ? "Desempeño en Desarrollo: Requiere plan de mejora y formación."
+                           : "Desempeño No Aceptable.";
+      
+      const summaryInfo = [
+        ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScore)} / 5.0`],
+        ["RESULTADO GENERAL:", statusLabelText.toUpperCase()],
+        ["DESCRIPCIÓN:", scoreExplanation]
+      ];
+      
+      autoTable(doc, {
+        startY: posY,
+        head: [],
+        body: summaryInfo,
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark as any },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+          1: { cellWidth: 120 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+
+      // SECTION: CATEGORY SCORES
+      const categoryScores = resultObj?.category_scores || {};
+      if (categoryScores && Object.keys(categoryScores).length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+        doc.text("4. CALIFICACIÓN POR CATEGORÍA", marginX, posY);
+        posY += 6;
+        
+        const catHeaders = [["Categoría (Preguntas)", "Promedio"]];
+        const catRows = Object.entries(categoryScores).map(([_, cat]: [string, any]) => [
+          `${cat.name || "Categoría"} (${cat.count || 0} preguntas)`,
+          `${formatScore(cat.average || 0)} / 5.0`
+        ]);
+        
+        autoTable(doc, {
+          startY: posY,
+          head: catHeaders,
+          body: catRows,
+          theme: "striped",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 155 },
+            1: { cellWidth: 25, halign: "center" }
+          },
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
+        });
+        
+        posY = (doc as any).lastAutoTable.finalY + 8;
+      }
+      
+      // PAGE 1 (continued): DETAILED ANSWERS TABLE
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("5. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+      posY += 6;
+      
+      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
+      const answersRows = (evalData.answers || []).map((ans: any, idx: number) => [
+        ans.question?.code || `PREG-${idx + 1}`,
+        ans.question?.question || "Pregunta sin descripción",
+        `${ans.score} / 5.0`
+      ]);
+      
+      autoTable(doc, {
+        startY: posY,
+        head: answersHeaders,
+        body: answersRows,
+        theme: "striped",
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 120 },
+          2: { cellWidth: 25, halign: "center" }
+        },
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 8;
+      
+      if (posY > 200) {
+        doc.addPage();
+        posY = 28;
+      }
+      
+      // SECTION: NARRATIVE
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("6. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+      posY += 6;
+      
+      const narratives = [
+        ["Observaciones Generales del Evaluador:", evalData.observations || "Sin observaciones registradas."],
+        ["Fortalezas Clave Demostradas:", evalData.strengths || "Sin fortalezas registradas."],
+        ["Oportunidades de Mejora Identificadas:", evalData.improvement_opportunities || "Sin oportunidades registradas."],
+        ["Necesidades de Formación / Capacitación:", evalData.training_needs || "Sin necesidades registradas."]
+      ];
+      
+      autoTable(doc, {
+        startY: posY,
+        head: [],
+        body: narratives,
+        theme: "grid",
+        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark as any },
+        columnStyles: {
+          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+          1: { cellWidth: 120 }
+        },
+        margin: { left: marginX, right: marginX }
+      });
+      
+      posY = (doc as any).lastAutoTable.finalY + 12;
+      
+      if (posY > 230) {
+        doc.addPage();
+        posY = 28;
+      }
+      
+      // SECTION: SIGNATURES
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
+      posY += 20;
+      
+      doc.setDrawColor(100, 116, 139);
+      doc.setLineWidth(0.5);
+      
+      doc.line(marginX, posY, marginX + 70, posY);
+      doc.line(210 - marginX - 70, posY, 210 - marginX, posY);
+      
+      posY += 4;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+      doc.text("Firma del Evaluador", marginX, posY);
+      doc.text("Firma del Colaborador Evaluado", 210 - marginX, posY, { align: "right" });
+      
+      posY += 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
+      doc.text(evalData.evaluator ? `${evalData.evaluator.first_name} ${evalData.evaluator.last_name}` : "Nombre del Evaluador", marginX, posY);
+      doc.text(evalData.collaborator?.full_name || "Nombre del Colaborador", 210 - marginX, posY, { align: "right" });
+      
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        drawHeader();
+        drawFooter(i, totalPages);
+      }
+      
+      const blob = doc.output("blob");
+      setPreviewPdfBlob(blob);
+      const fileName = `EVD_${evalData.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${evalData.evaluation_year || new Date().getFullYear()}.pdf`;
+      setPreviewPdfFileName(fileName);
+      
+      toast.success("PDF generado con éxito", { id: toastId });
+      setShowPdfPreview(true);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Error al generar el PDF: " + (err?.message || err), { id: toastId });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   React.useEffect(() => {
     async function loadEvaluations() {
       const res = await getEvaluations();
@@ -46,8 +419,8 @@ export default function EvaluacionesPage() {
           return {
             id: e.id,
             collaborator: e.collaborator?.full_name || "Desconocido",
-            area: "—", // Mapped via position_id if needed
-            position: "—",
+            area: e.collaborator?.areas?.name || "—",
+            position: e.collaborator?.position?.name || "—",
             evaluator: e.evaluator ? `${e.evaluator.first_name} ${e.evaluator.last_name}` : "—",
             date: e.created_at,
             year: e.evaluation_year,
@@ -89,7 +462,7 @@ export default function EvaluacionesPage() {
           <p className="text-muted-foreground text-sm mt-1">Año 2026 · Flota Sugamuxi S.A.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm hover:bg-accent transition-colors">
+          <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-accent transition-colors">
             <FileDown className="w-4 h-4" />
             Exportar
           </button>
@@ -258,13 +631,22 @@ export default function EvaluacionesPage() {
                   <td className="px-4 py-3 relative">
                     <div className="flex items-center justify-center gap-1">
                       <Link href={`/evaluaciones/${ev.id}`}>
-                        <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                        <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground" title="Ver detalle">
                           <Eye className="w-4 h-4" />
                         </button>
                       </Link>
+                      {ev.status === "finalizada" && (
+                        <button
+                          onClick={() => handlePreviewClick(ev.id)}
+                          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                          title="Ver PDF Corporativo"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
                       {(ev.status === "borrador" || ev.status === "en_proceso") && (
                         <Link href={`/evaluaciones/${ev.id}/editar`}>
-                          <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                          <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground" title="Editar">
                             <Edit className="w-4 h-4" />
                           </button>
                         </Link>
@@ -285,6 +667,18 @@ export default function EvaluacionesPage() {
                         >
                           Ver detalle
                         </Link>
+                        {ev.status === "finalizada" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              handlePreviewClick(ev.id);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted"
+                          >
+                            Ver PDF
+                          </button>
+                        )}
                         {(ev.status === "borrador" || ev.status === "en_proceso") && (
                           <Link
                             href={`/evaluaciones/${ev.id}/editar`}
@@ -327,6 +721,13 @@ export default function EvaluacionesPage() {
           </div>
         </div>
       </motion.div>
+
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        onClose={() => setShowPdfPreview(false)}
+        pdfBlob={previewPdfBlob}
+        fileName={previewPdfFileName}
+      />
     </div>
   );
 }

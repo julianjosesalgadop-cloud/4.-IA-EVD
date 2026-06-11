@@ -7,6 +7,7 @@ import { ArrowLeft, Edit, CalendarCheck, CheckCircle2, FileText } from "lucide-r
 import { toast } from "sonner";
 import { getEvaluationById } from "@/app/actions/evaluations";
 import { formatDate, formatScore, getResultLabel, getStatusLabel, getInitials } from "@/lib/utils";
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
 export default function EvaluationDetailPage() {
   const params = useParams();
@@ -14,6 +15,10 @@ export default function EvaluationDetailPage() {
   const [evaluation, setEvaluation] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState<string | null>(null);
+  
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
+  const [previewPdfFileName, setPreviewPdfFileName] = useState("");
 
   useEffect(() => {
     if (!evaluationId) return;
@@ -35,20 +40,33 @@ export default function EvaluationDetailPage() {
 
   const result = evaluation?.result && !Array.isArray(evaluation.result) ? evaluation.result : evaluation?.result?.[0] || null;
 
-  const generatePDF = async () => {
-    if (!evaluation) return;
+  const generatePDF = async (download: boolean = true) => {
+    if (!evaluation) return null;
     
-    const toastId = toast.loading("Generando PDF corporativo...");
+    const toastId = download ? toast.loading("Generando PDF corporativo...") : undefined;
     
     try {
       const { jsPDF } = await import("jspdf");
-      await import("jspdf-autotable");
+      const { default: autoTable } = await import("jspdf-autotable");
       
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4"
       });
+
+      // Load logo image first
+      let logoImg: HTMLImageElement | null = null;
+      try {
+        logoImg = await new Promise<HTMLImageElement | null>((resolve, reject) => {
+          const img = new Image();
+          img.src = "/logo.png";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        console.error("Error loading logo image:", e);
+      }
       
       const brandColorBlue = [1, 33, 105]; // #012169
       const brandColorLightBlue = [0, 132, 213]; // #0084D5
@@ -64,18 +82,29 @@ export default function EvaluationDetailPage() {
         // Decorative top bar
         doc.setFillColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
         doc.rect(0, 0, 210, 4, "F");
+
+        // Draw Logo if loaded (on the left side)
+        let textStartX = marginX;
+        if (logoImg) {
+          try {
+            doc.addImage(logoImg, "PNG", marginX, 6, 13, 13);
+            textStartX = marginX + 16;
+          } catch (err) {
+            console.error("Error drawing logo to PDF:", err);
+          }
+        }
         
         // Brand Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
         doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
-        doc.text("FLOTA SUGAMUXI S.A.", marginX, 15);
+        doc.text("FLOTA SUGAMUXI S.A.", textStartX, 14);
         
         // Document Subtitle
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
-        doc.text("Sistema de Evaluación de Desempeño (EVD)", marginX, 19);
+        doc.text("Sistema de Evaluación de Desempeño (EVD)", textStartX, 19);
         
         // Horizontal separator line
         doc.setDrawColor(226, 232, 240); // border color
@@ -100,7 +129,6 @@ export default function EvaluationDetailPage() {
       };
 
       // PAGE 1: COVER / INFO BLOCK
-      drawHeader();
       posY = 32;
       
       // Document Main Title
@@ -135,17 +163,17 @@ export default function EvaluationDetailPage() {
         ["Fecha de Ingreso:", evaluation.collaborator?.hire_date ? new Date(evaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A", "Estado:", evaluation.collaborator?.status || "N/A"]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: collabInfo,
         theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark },
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 35 },
-          1: { width: 55 },
-          2: { fontStyle: "bold", width: 35 },
-          3: { width: 55 }
+          0: { fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 55 },
+          2: { fontStyle: "bold", cellWidth: 35 },
+          3: { cellWidth: 55 }
         },
         margin: { left: marginX, right: marginX }
       });
@@ -164,17 +192,17 @@ export default function EvaluationDetailPage() {
         ["Correo Electrónico:", evaluation.evaluator?.email || "N/A", "Versión del Proceso EVD:", evaluation.version?.name || "N/A"]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: evaluatorInfo,
         theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark },
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 45 },
-          1: { width: 45 },
-          2: { fontStyle: "bold", width: 45 },
-          3: { width: 45 }
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: 45 },
+          2: { fontStyle: "bold", cellWidth: 45 },
+          3: { cellWidth: 45 }
         },
         margin: { left: marginX, right: marginX }
       });
@@ -202,54 +230,81 @@ export default function EvaluationDetailPage() {
         ["DESCRIPCIÓN:", scoreExplanation]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: summaryInfo,
         theme: "grid",
-        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark },
+        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 60, fillColor: [248, 250, 252] },
-          1: { width: 120 }
+          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+          1: { cellWidth: 120 }
         },
         margin: { left: marginX, right: marginX }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 8;
+
+      // SECTION: CATEGORY SCORES
+      const categoryScores = result?.category_scores || {};
+      if (categoryScores && Object.keys(categoryScores).length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+        doc.text("4. CALIFICACIÓN POR CATEGORÍA", marginX, posY);
+        posY += 6;
+        
+        const catHeaders = [["Categoría (Preguntas)", "Promedio"]];
+        const catRows = Object.entries(categoryScores).map(([_, cat]: [string, any]) => [
+          `${cat.name || "Categoría"} (${cat.count || 0} preguntas)`,
+          `${formatScore(cat.average || 0)} / 5.0`
+        ]);
+        
+        autoTable(doc, {
+          startY: posY,
+          head: catHeaders,
+          body: catRows,
+          theme: "striped",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 155 },
+            1: { cellWidth: 25, halign: "center" }
+          },
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
+        });
+        
+        posY = (doc as any).lastAutoTable.finalY + 8;
+      }
       
-      // PAGE 2: DETAILED ANSWERS TABLE
-      doc.addPage();
-      drawHeader();
-      posY = 32;
+      // PAGE 1 (continued): DETAILED ANSWERS TABLE
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("4. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+      doc.text("5. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
       posY += 6;
       
-      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación", "Comentario"]];
+      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
       const answersRows = (evaluation.answers || []).map((ans: any, idx: number) => [
         ans.question?.code || `PREG-${idx + 1}`,
         ans.question?.question || "Pregunta sin descripción",
-        `${ans.score} / 5.0`,
-        ans.comment || "Sin comentario"
+        `${ans.score} / 5.0`
       ]);
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: answersHeaders,
         body: answersRows,
         theme: "striped",
-        headStyles: { fillColor: brandColorBlue, textColor: [255, 255, 255], fontStyle: "bold" },
-        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark },
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 35 },
-          1: { width: 85 },
-          2: { width: 25, halign: "center" },
-          3: { width: 35 }
+          0: { fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 120 },
+          2: { cellWidth: 25, halign: "center" }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 8;
@@ -257,15 +312,14 @@ export default function EvaluationDetailPage() {
       // Check if we need to add a page for Narratives or if it fits
       if (posY > 200) {
         doc.addPage();
-        drawHeader();
-        posY = 32;
+        posY = 28;
       }
       
       // SECTION: NARRATIVE
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("5. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+      doc.text("6. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
       posY += 6;
       
       const narratives = [
@@ -275,15 +329,15 @@ export default function EvaluationDetailPage() {
         ["Necesidades de Formación / Capacitación:", evaluation.training_needs || "Sin necesidades registradas."]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: narratives,
         theme: "grid",
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark },
+        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 60, fillColor: [248, 250, 252] },
-          1: { width: 120 }
+          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+          1: { cellWidth: 120 }
         },
         margin: { left: marginX, right: marginX }
       });
@@ -293,15 +347,14 @@ export default function EvaluationDetailPage() {
       // Check if signature section fits, if not, add a page
       if (posY > 230) {
         doc.addPage();
-        drawHeader();
-        posY = 32;
+        posY = 28;
       }
       
       // SECTION: SIGNATURES
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("6. CONFORMIDAD Y FIRMAS", marginX, posY);
+      doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
       posY += 20;
       
       // Signature lines
@@ -331,17 +384,33 @@ export default function EvaluationDetailPage() {
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
+        drawHeader();
         drawFooter(i, totalPages);
       }
       
       // Save PDF
-      const fileName = `EVD_${evaluation.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${evaluation.evaluation_year || new Date().getFullYear()}.pdf`;
-      doc.save(fileName);
+      if (download) {
+        const fileName = `EVD_${evaluation.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${evaluation.evaluation_year || new Date().getFullYear()}.pdf`;
+        doc.save(fileName);
+        if (toastId) toast.success("PDF generado exitosamente", { id: toastId });
+      }
       
-      toast.success("PDF generado exitosamente", { id: toastId });
-    } catch (error) {
+      return doc;
+    } catch (error: any) {
       console.error("Error generating PDF:", error);
-      toast.error("Error al generar el PDF corporativo", { id: toastId });
+      if (toastId) toast.error("Error al generar el PDF corporativo", { id: toastId });
+      return null;
+    }
+  };
+
+  const handlePreviewPDF = async () => {
+    const docObj = await generatePDF(false);
+    if (docObj) {
+      const blob = docObj.output("blob");
+      setPreviewPdfBlob(blob);
+      const fileName = `EVD_${evaluation?.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${evaluation?.evaluation_year || new Date().getFullYear()}.pdf`;
+      setPreviewPdfFileName(fileName);
+      setShowPdfPreview(true);
     }
   };
 
@@ -360,15 +429,15 @@ export default function EvaluationDetailPage() {
         <div className="flex items-center gap-2">
           {evaluation && (
             <button
-              onClick={generatePDF}
+              onClick={handlePreviewPDF}
               className="inline-flex items-center justify-center gap-2 rounded-lg sm:rounded-xl bg-brand-500 hover:bg-brand-600 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors flex-shrink-0 shadow-md"
             >
               <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 
-              <span>Descargar PDF</span>
+              <span>Ver PDF Corporativo</span>
             </button>
           )}
           {evaluation && (evaluation.status === "borrador" || evaluation.status === "en_proceso") && (
-            <Link href={`/evaluaciones/${evaluation.id}/editar`} className="inline-flex items-center justify-center gap-2 rounded-lg sm:rounded-xl border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold hover:bg-accent transition-colors flex-shrink-0">
+            <Link href={`/evaluaciones/${evaluation.id}/editar`} className="inline-flex items-center justify-center gap-2 rounded-lg sm:rounded-xl border border-border text-foreground px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold hover:bg-accent transition-colors flex-shrink-0">
               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> 
               <span className="hidden sm:inline">Editar</span>
               <span className="sm:hidden">Editar</span>
@@ -394,6 +463,7 @@ export default function EvaluationDetailPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-sm truncate">{evaluation.collaborator?.full_name || "Desconocido"}</p>
+                  <p className="text-xs text-muted-foreground truncate">Cargo: {evaluation.collaborator?.position?.name || "—"}</p>
                   <p className="text-xs text-muted-foreground truncate">Documento: {evaluation.collaborator?.document_number || "—"}</p>
                 </div>
               </div>
@@ -401,6 +471,7 @@ export default function EvaluationDetailPage() {
             <div className="rounded-lg sm:rounded-xl border bg-card p-4 sm:p-6 space-y-2 sm:space-y-3">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Evaluador</p>
               <p className="font-semibold text-sm">{evaluation.evaluator ? `${evaluation.evaluator.first_name} ${evaluation.evaluator.last_name}` : "—"}</p>
+              <p className="text-xs text-muted-foreground">Cargo/Rol: {evaluation.evaluator?.role?.display_name || "—"}</p>
               <p className="text-xs text-muted-foreground">Versión: {evaluation.version?.name || "—"}</p>
             </div>
           </div>
@@ -421,6 +492,39 @@ export default function EvaluationDetailPage() {
               </p>
             </div>
           </div>
+
+          {/* Category Scores */}
+          {result?.category_scores && Object.keys(result.category_scores).length > 0 && (
+            <div className="rounded-lg sm:rounded-xl border bg-card p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-semibold mb-4">Calificación por Categoría</h2>
+              <div className="space-y-3">
+                {Object.entries(result.category_scores).map(([catId, cat]: [string, any]) => {
+                  const avg = typeof cat.average === "number" ? cat.average : 0;
+                  const pct = Math.round((avg / 5) * 100);
+                  const color = avg >= 4.0 ? "bg-success-500" : avg >= 3.1 ? "bg-warning-500" : "bg-danger-500";
+                  const textColor = avg >= 4.0 ? "text-success-600" : avg >= 3.1 ? "text-warning-600" : "text-danger-600";
+                  return (
+                    <div key={catId} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs sm:text-sm">
+                        <span className="font-medium text-foreground truncate pr-3">{cat.name}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`font-bold ${textColor}`}>{formatScore(avg)}</span>
+                          <span className="text-muted-foreground text-xs">/ 5.0</span>
+                          <span className="text-muted-foreground text-xs">({cat.count} preg.)</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${color}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
             <div className="rounded-lg sm:rounded-xl border bg-card p-4 sm:p-6 space-y-3 sm:space-y-4">
@@ -473,7 +577,6 @@ export default function EvaluationDetailPage() {
                   <div key={answer.question_id} className="rounded-lg border border-muted/30 p-3 sm:p-4 bg-muted/10">
                     <p className="font-semibold text-sm">{answer.question?.question || answer.question_id}</p>
                     <p className="text-xs text-muted-foreground mt-1">Puntaje: {answer.score}</p>
-                    <p className="text-xs sm:text-sm mt-2">{answer.comment || "Sin comentario"}</p>
                   </div>
                 ))}
               </div>
@@ -484,6 +587,13 @@ export default function EvaluationDetailPage() {
         </div>
       )}
       </div>
+      
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        onClose={() => setShowPdfPreview(false)}
+        pdfBlob={previewPdfBlob}
+        fileName={previewPdfFileName}
+      />
     </div>
   );
 }

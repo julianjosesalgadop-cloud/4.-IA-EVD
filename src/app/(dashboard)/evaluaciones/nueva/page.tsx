@@ -13,6 +13,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { getEvaluationConfig, saveEvaluation, getEvaluationById, sendEvaluationEmail } from "@/app/actions/evaluations";
 import { getCollaborators } from "@/app/actions/collaborators";
 import type { Collaborator } from "@/types";
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
 // ---- Types ----
 interface Question {
@@ -92,6 +93,16 @@ function NuevaEvaluacionContent() {
   const [savedEvaluationId, setSavedEvaluationId] = useState<string | null>(null);
   const [savedEvaluation, setSavedEvaluation] = useState<any | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
+  const [previewPdfFileName, setPreviewPdfFileName] = useState("");
+
+  const evalResult = savedEvaluation?.result && !Array.isArray(savedEvaluation.result) 
+    ? savedEvaluation.result 
+    : savedEvaluation?.result?.[0] || null;
+  const overallScore = evalResult && typeof evalResult.overall_average === "number" ? evalResult.overall_average : 0;
+  const statusLabel = evalResult?.result ? getResultLabel(evalResult.result) : "Pendiente";
   const [emailInput, setEmailInput] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
@@ -288,13 +299,26 @@ function NuevaEvaluacionContent() {
     
     try {
       const { jsPDF } = await import("jspdf");
-      await import("jspdf-autotable");
+      const { default: autoTable } = await import("jspdf-autotable");
       
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4"
       });
+
+      // Load logo image first
+      let logoImg: HTMLImageElement | null = null;
+      try {
+        logoImg = await new Promise<HTMLImageElement | null>((resolve, reject) => {
+          const img = new Image();
+          img.src = "/logo.png";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        console.error("Error loading logo image:", e);
+      }
       
       const brandColorBlue = [1, 33, 105]; // #012169
       const brandColorLightBlue = [0, 132, 213]; // #0084D5
@@ -303,20 +327,40 @@ function NuevaEvaluacionContent() {
       
       const marginX = 15;
       let posY = 20;
-      
+
+      const formatPDFDate = (dateStr: any) => {
+        if (!dateStr) return "N/A";
+        try {
+          const d = new Date(dateStr);
+          return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString("es-ES");
+        } catch {
+          return "N/A";
+        }
+      };
       const drawHeader = () => {
         doc.setFillColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
         doc.rect(0, 0, 210, 4, "F");
         
+        // Draw Logo if loaded (on the left side)
+        let textStartX = marginX;
+        if (logoImg) {
+          try {
+            doc.addImage(logoImg, "PNG", marginX, 6, 13, 13);
+            textStartX = marginX + 16;
+          } catch (err) {
+            console.error("Error drawing logo to PDF:", err);
+          }
+        }
+
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
         doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
-        doc.text("FLOTA SUGAMUXI S.A.", marginX, 15);
+        doc.text("FLOTA SUGAMUXI S.A.", textStartX, 14);
         
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(textColorMuted[0], textColorMuted[1], textColorMuted[2]);
-        doc.text("Sistema de Evaluación de Desempeño (EVD)", marginX, 19);
+        doc.text("Sistema de Evaluación de Desempeño (EVD)", textStartX, 19);
         
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.5);
@@ -337,7 +381,6 @@ function NuevaEvaluacionContent() {
       };
 
       // PAGE 1: COVER / INFO BLOCK
-      drawHeader();
       posY = 32;
       
       doc.setFont("helvetica", "bold");
@@ -350,8 +393,8 @@ function NuevaEvaluacionContent() {
       doc.setFontSize(10);
       doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
       const dateText = savedEvaluation.finalized_at 
-        ? `Fecha de Finalización: ${new Date(savedEvaluation.finalized_at).toLocaleDateString("es-ES")}`
-        : `Fecha de Registro: ${new Date(savedEvaluation.created_at).toLocaleDateString("es-ES")}`;
+        ? `Fecha de Finalización: ${formatPDFDate(savedEvaluation.finalized_at)}`
+        : `Fecha de Registro: ${formatPDFDate(savedEvaluation.created_at)}`;
       doc.text(dateText, marginX, posY);
       posY += 10;
       
@@ -365,20 +408,20 @@ function NuevaEvaluacionContent() {
         ["Nombre Completo:", savedEvaluation.collaborator?.full_name || "N/A", "Documento:", `${savedEvaluation.collaborator?.document_type || "CC"} ${savedEvaluation.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", savedEvaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", savedEvaluation.collaborator?.areas?.name || savedEvaluation.collaborator?.area?.name || "N/A"],
         ["Sede / Ciudad:", savedEvaluation.collaborator?.workplace_city || savedEvaluation.collaborator?.workplace || "N/A", "Tipo de Contrato:", savedEvaluation.collaborator?.contract_type || "N/A"],
-        ["Fecha de Ingreso:", savedEvaluation.collaborator?.hire_date ? new Date(savedEvaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A", "Estado:", savedEvaluation.collaborator?.status || "N/A"]
+        ["Fecha de Ingreso:", formatPDFDate(savedEvaluation.collaborator?.hire_date), "Estado:", savedEvaluation.collaborator?.status || "N/A"]
       ];
       
-      (doc as any).autoTable({
+      const collabTable = autoTable(doc, {
         startY: posY,
         head: [],
         body: collabInfo,
         theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark },
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 35 },
-          1: { width: 55 },
-          2: { fontStyle: "bold", width: 35 },
-          3: { width: 55 }
+          0: { fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 55 },
+          2: { fontStyle: "bold", cellWidth: 35 },
+          3: { cellWidth: 55 }
         },
         margin: { left: marginX, right: marginX }
       });
@@ -397,17 +440,17 @@ function NuevaEvaluacionContent() {
         ["Correo Electrónico:", savedEvaluation.evaluator?.email || "N/A", "Versión del Proceso EVD:", savedEvaluation.version?.name || "N/A"]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: evaluatorInfo,
         theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark },
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 45 },
-          1: { width: 45 },
-          2: { fontStyle: "bold", width: 45 },
-          3: { width: 45 }
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: 45 },
+          2: { fontStyle: "bold", cellWidth: 45 },
+          3: { cellWidth: 45 }
         },
         margin: { left: marginX, right: marginX }
       });
@@ -421,84 +464,110 @@ function NuevaEvaluacionContent() {
       doc.text("3. RESUMEN DE RESULTADOS", marginX, posY);
       posY += 4;
       
-      const evalResult = savedEvaluation.result && !Array.isArray(savedEvaluation.result) ? savedEvaluation.result : savedEvaluation.result?.[0] || null;
-      const overallScore = evalResult ? evalResult.overall_average : 0;
-      const statusLabel = evalResult ? getResultLabel(evalResult.result) : "Pendiente";
-      const scoreExplanation = overallScore >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
-                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple y a veces supera las expectativas."
-                           : overallScore >= 3.0 ? "Desempeño Competente: Cumple satisfactoriamente con los estándares."
-                           : overallScore >= 2.0 ? "Desempeño en Desarrollo: Requiere plan de mejora y formación."
+      const evalResultLocal = savedEvaluation.result && !Array.isArray(savedEvaluation.result) ? savedEvaluation.result : savedEvaluation.result?.[0] || null;
+      const overallScoreLocal = evalResultLocal && typeof evalResultLocal.overall_average === "number" ? evalResultLocal.overall_average : 0;
+      const statusLabelLocal = evalResultLocal?.result ? getResultLabel(evalResultLocal.result) : "Pendiente";
+      const scoreExplanation = overallScoreLocal >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
+                           : overallScoreLocal >= 4.0 ? "Desempeño Sobresaliente: Cumple y a veces supera las expectativas."
+                           : overallScoreLocal >= 3.0 ? "Desempeño Competente: Cumple satisfactoriamente con los estándares."
+                           : overallScoreLocal >= 2.0 ? "Desempeño en Desarrollo: Requiere plan de mejora y formación."
                            : "Desempeño No Aceptable.";
       
       const summaryInfo = [
-        ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScore)} / 5.0`],
-        ["RESULTADO GENERAL:", statusLabel.toUpperCase()],
+        ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScoreLocal)} / 5.0`],
+        ["RESULTADO GENERAL:", (statusLabelLocal || "Pendiente").toUpperCase()],
         ["DESCRIPCIÓN:", scoreExplanation]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: summaryInfo,
         theme: "grid",
-        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark },
+        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 60, fillColor: [248, 250, 252] },
-          1: { width: 120 }
+          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+          1: { cellWidth: 120 }
         },
         margin: { left: marginX, right: marginX }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 8;
+
+      // SECTION: CATEGORY SCORES
+      const categoryScores = evalResultLocal?.category_scores || {};
+      if (categoryScores && Object.keys(categoryScores).length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+        doc.text("4. CALIFICACIÓN POR CATEGORÍA", marginX, posY);
+        posY += 6;
+        
+        const catHeaders = [["Categoría (Preguntas)", "Promedio"]];
+        const catRows = Object.entries(categoryScores).map(([_, cat]: [string, any]) => [
+          `${cat.name || "Categoría"} (${cat.count || 0} preguntas)`,
+          `${formatScore(cat.average || 0)} / 5.0`
+        ]);
+        
+        autoTable(doc, {
+          startY: posY,
+          head: catHeaders,
+          body: catRows,
+          theme: "striped",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 155 },
+            1: { cellWidth: 25, halign: "center" }
+          },
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
+        });
+        
+        posY = (doc as any).lastAutoTable.finalY + 8;
+      }
       
-      // PAGE 2: DETAILED ANSWERS TABLE
-      doc.addPage();
-      drawHeader();
-      posY = 32;
+      // PAGE 1 (continued): DETAILED ANSWERS TABLE
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("4. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+      doc.text("5. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
       posY += 6;
       
-      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación", "Comentario"]];
+      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
       const answersRows = (savedEvaluation.answers || []).map((ans: any, idx: number) => [
         ans.question?.code || `PREG-${idx + 1}`,
         ans.question?.question || "Pregunta sin descripción",
-        `${ans.score} / 5.0`,
-        ans.comment || "Sin comentario"
+        `${ans.score} / 5.0`
       ]);
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: answersHeaders,
         body: answersRows,
         theme: "striped",
-        headStyles: { fillColor: brandColorBlue, textColor: [255, 255, 255], fontStyle: "bold" },
-        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark },
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 35 },
-          1: { width: 85 },
-          2: { width: 25, halign: "center" },
-          3: { width: 35 }
+          0: { fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 120 },
+          2: { cellWidth: 25, halign: "center" }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 8;
       
       if (posY > 200) {
         doc.addPage();
-        drawHeader();
-        posY = 32;
+        posY = 28;
       }
       
       // SECTION: NARRATIVE
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("5. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+      doc.text("6. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
       posY += 6;
       
       const narratives = [
@@ -508,15 +577,15 @@ function NuevaEvaluacionContent() {
         ["Necesidades de Formación / Capacitación:", savedEvaluation.training_needs || "Sin necesidades registradas."]
       ];
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: posY,
         head: [],
         body: narratives,
         theme: "grid",
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark },
+        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", width: 60, fillColor: [248, 250, 252] },
-          1: { width: 120 }
+          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+          1: { cellWidth: 120 }
         },
         margin: { left: marginX, right: marginX }
       });
@@ -525,15 +594,14 @@ function NuevaEvaluacionContent() {
       
       if (posY > 230) {
         doc.addPage();
-        drawHeader();
-        posY = 32;
+        posY = 28;
       }
       
       // SECTION: SIGNATURES
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("6. CONFORMIDAD Y FIRMAS", marginX, posY);
+      doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
       posY += 20;
       
       doc.setDrawColor(100, 116, 139);
@@ -559,6 +627,7 @@ function NuevaEvaluacionContent() {
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
+        drawHeader();
         drawFooter(i, totalPages);
       }
       
@@ -569,10 +638,21 @@ function NuevaEvaluacionContent() {
       }
       
       return doc;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating PDF:", error);
-      if (toastId) toast.error("Error al generar el PDF corporativo", { id: toastId });
+      if (toastId) toast.error(`Error al generar el PDF corporativo: ${error?.message || error}`, { id: toastId });
       return null;
+    }
+  };
+
+  const handlePreviewPDF = async () => {
+    const docObj = await generatePDF(false);
+    if (docObj) {
+      const blob = docObj.output("blob");
+      setPreviewPdfBlob(blob);
+      const fileName = `EVD_${savedEvaluation?.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${savedEvaluation?.evaluation_year || new Date().getFullYear()}.pdf`;
+      setPreviewPdfFileName(fileName);
+      setShowPdfPreview(true);
     }
   };
 
@@ -618,88 +698,118 @@ function NuevaEvaluacionContent() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-        <div className="space-y-1.5 sm:space-y-2 relative">
-          <label className="block text-xs sm:text-sm font-medium">Colaborador a evaluar</label>
-          <div className="relative">
+      {/* Filtros y Selección de Colaborador */}
+      <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm border-border/70">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_180px_140px] lg:items-end">
+          <div className="space-y-1.5 relative">
+            <label className="block text-xs sm:text-sm font-semibold text-foreground">Colaborador a evaluar</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={selectedCollaborator ? `${selectedCollaborator.full_name} (${selectedCollaborator.document_number})` : searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Buscar por nombre o documento..."
+                className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              {showDropdown && filteredCollaborators.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 rounded-lg sm:rounded-xl border border-border bg-popover text-popover-foreground shadow-xl z-50 max-h-40 sm:max-h-56 overflow-y-auto">
+                  {filteredCollaborators.map((collab) => (
+                    <button
+                      key={collab.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCollaboratorId(collab.id);
+                        setSearchTerm("");
+                        setShowDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-accent hover:text-accent-foreground transition-colors border-b border-border/50 last:border-b-0 text-xs sm:text-sm"
+                    >
+                      <p className="font-medium truncate">{collab.full_name}</p>
+                      <p className="text-xs text-muted-foreground/85 truncate">{collab.document_number}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs sm:text-sm font-semibold text-foreground">Año de evaluación</label>
             <input
-              type="text"
-              value={selectedCollaborator ? `${selectedCollaborator.full_name} (${selectedCollaborator.document_number})` : searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setShowDropdown(true);
-              }}
-              onFocus={() => setShowDropdown(true)}
-              placeholder="Buscar por nombre o documento..."
+              type="number"
+              value={evaluationYear}
+              onChange={(e) => setEvaluationYear(e.target.value)}
+              min={2020}
+              max={new Date().getFullYear()}
               className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
-            {showDropdown && filteredCollaborators.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg sm:rounded-xl border border-border bg-popover text-popover-foreground shadow-xl z-50 max-h-40 sm:max-h-56 overflow-y-auto">
-                {filteredCollaborators.map((collab) => (
-                  <button
-                    key={collab.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCollaboratorId(collab.id);
-                      setSearchTerm("");
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-accent hover:text-accent-foreground transition-colors border-b border-border/50 last:border-b-0 text-xs sm:text-sm"
-                  >
-                    <p className="font-medium truncate">{collab.full_name}</p>
-                    <p className="text-xs text-muted-foreground/85 truncate">{collab.document_number}</p>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
+          {selectedCollaborator ? (
+            <div className="flex items-center justify-center gap-1.5 h-10 rounded-lg sm:rounded-xl border border-success-200 bg-success-50 dark:bg-success-950/20 text-xs sm:text-sm text-success-700 dark:text-success-400 font-bold px-4 shadow-sm">
+              <CheckCircle2 className="w-4 h-4 text-success-500" />
+              <span>Listo</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-1.5 h-10 rounded-lg sm:rounded-xl border border-warning-200 bg-warning-50 dark:bg-warning-950/20 text-xs sm:text-sm text-warning-700 dark:text-warning-400 font-bold px-4 shadow-sm animate-pulse">
+              <Info className="w-4 h-4 text-warning-500" />
+              <span>Seleccionar</span>
+            </div>
+          )}
         </div>
-        <div className="space-y-1.5 sm:space-y-2">
-          <label className="block text-xs sm:text-sm font-medium">Año de evaluación</label>
-          <input
-            type="number"
-            value={evaluationYear}
-            onChange={(e) => setEvaluationYear(e.target.value)}
-            min={2020}
-            max={new Date().getFullYear()}
-            className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-        {selectedCollaborator ? (
-          <div className="rounded-lg sm:rounded-xl border border-success-200 bg-success-50 dark:bg-success-950/30 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-success-700 dark:text-success-400 font-semibold whitespace-nowrap justify-center">
-            ✓ Listo
-          </div>
-        ) : (
-          <div className="rounded-lg sm:rounded-xl border border-warning-200 bg-warning-50 dark:bg-warning-950/30 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-warning-700 dark:text-warning-400 font-semibold whitespace-nowrap justify-center">
-            Seleccionar
-          </div>
-        )}
       </div>
 
       {/* Método de Calificación Guía */}
-      <div className="rounded-xl border bg-card p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground flex flex-col md:flex-row md:items-center justify-between gap-3 bg-muted/10">
-        <div className="space-y-1">
-          <p className="font-semibold text-foreground">Escala de Calificación:</p>
-          <p>Evalúe las competencias del colaborador seleccionando un puntaje de 1 a 5 según el nivel de desempeño:</p>
+      <div className="rounded-xl border border-brand-100 dark:border-brand-900/50 bg-brand-50/30 dark:bg-brand-950/10 p-4 shadow-sm text-xs sm:text-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1.5 max-w-xl">
+          <div className="flex items-center gap-2 font-bold text-foreground">
+            <Info className="w-4 h-4 text-brand-500" />
+            <span>Escala de Calificación</span>
+          </div>
+          <p className="text-muted-foreground leading-relaxed">
+            Evalúe las competencias del colaborador seleccionando un puntaje de **1 a 5** según el nivel de desempeño demostrado:
+          </p>
         </div>
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          <span className="px-2 py-1 rounded bg-danger-50 dark:bg-danger-950/20 text-danger-600 dark:text-danger-400 font-medium text-[10px] sm:text-xs">1: No cumple</span>
-          <span className="px-2 py-1 rounded bg-warning-50 dark:bg-warning-950/20 text-warning-600 dark:text-warning-400 font-medium text-[10px] sm:text-xs">2: Requiere mejora</span>
-          <span className="px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium text-[10px] sm:text-xs">3: Cumple</span>
-          <span className="px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-medium text-[10px] sm:text-xs">4: Sobresaliente</span>
-          <span className="px-2 py-1 rounded bg-success-50 dark:bg-success-950/20 text-success-600 dark:text-success-400 font-medium text-[10px] sm:text-xs">5: Excelente</span>
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-danger-200 bg-danger-50 dark:border-danger-900/50 dark:bg-danger-950/20 text-danger-700 dark:text-danger-400 font-bold text-xs shadow-sm">
+            1: No cumple
+          </span>
+          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-warning-200 bg-warning-50 dark:border-warning-900/50 dark:bg-warning-950/20 text-warning-700 dark:text-warning-400 font-bold text-xs shadow-sm">
+            2: Requiere mejora
+          </span>
+          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs shadow-sm">
+            3: Cumple
+          </span>
+          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 font-bold text-xs shadow-sm">
+            4: Sobresaliente
+          </span>
+          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-success-200 bg-success-50 dark:border-success-900/50 dark:bg-success-950/20 text-success-700 dark:text-success-400 font-bold text-xs shadow-sm">
+            5: Excelente
+          </span>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
-          <span className="text-muted-foreground truncate">{answeredQuestions}/{totalQuestions} preguntas respondidas</span>
-          <span className="font-semibold flex-shrink-0">{progress}%</span>
+      {/* Progress Bar Widget */}
+      <div className="rounded-xl border bg-card p-4 shadow-sm space-y-3">
+        <div className="flex items-center justify-between text-xs sm:text-sm">
+          <span className="font-bold text-foreground flex items-center gap-1.5">
+            <Star className="w-4 h-4 text-brand-500" />
+            <span>Progreso de la Evaluación</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground font-semibold bg-muted px-2.5 py-0.5 rounded-full">
+              {answeredQuestions} de {totalQuestions} preguntas respondidas
+            </span>
+            <span className="font-extrabold text-brand-600 dark:text-brand-400 text-base">
+              {progress}%
+            </span>
+          </div>
         </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted/60 dark:bg-muted/30 rounded-full overflow-hidden p-0.5 border border-border/30">
           <motion.div
-            className="h-full gradient-brand rounded-full"
+            className="h-full bg-gradient-to-r from-brand-500 to-indigo-600 rounded-full"
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           />
@@ -903,7 +1013,7 @@ function NuevaEvaluacionContent() {
             <button
               onClick={() => setCurrentCategoryIndex((i) => i - 1)}
               disabled={currentCategoryIndex === 0}
-              className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl border border-border text-foreground text-xs sm:text-sm font-medium hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Anterior</span>
@@ -1050,17 +1160,17 @@ function NuevaEvaluacionContent() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Promedio obtenido:</span>
                   <span className="font-bold text-foreground">
-                    {formatScore(savedEvaluation.result?.[0]?.overall_average || 0)} / 5.0
+                    {formatScore(overallScore)} / 5.0
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Resultado general:</span>
                   <span className={cn(
                     "font-bold uppercase text-xs px-2 py-0.5 rounded border",
-                    (savedEvaluation.result?.[0]?.result === "aprobado") ? "text-success-600 bg-success-50 border-success-200" :
-                    (savedEvaluation.result?.[0]?.result === "plan_mejoramiento") ? "text-warning-600 bg-warning-50 border-warning-200" : "text-danger-600 bg-danger-50 border-danger-200"
+                    (evalResult?.result === "aprobado") ? "text-success-600 bg-success-50 border-success-200" :
+                    (evalResult?.result === "plan_mejoramiento") ? "text-warning-600 bg-warning-50 border-warning-200" : "text-danger-600 bg-danger-50 border-danger-200"
                   )}>
-                    {getResultLabel(savedEvaluation.result?.[0]?.result || "pendiente")}
+                    {getResultLabel(evalResult?.result || "pendiente")}
                   </span>
                 </div>
               </div>
@@ -1103,8 +1213,8 @@ function NuevaEvaluacionContent() {
                           recipientEmail: emailInput,
                           recipientName: savedEvaluation.collaborator?.full_name || "Colaborador",
                           evaluationYear: savedEvaluation.evaluation_year || new Date().getFullYear(),
-                          score: savedEvaluation.result?.[0]?.overall_average || 0,
-                          result: savedEvaluation.result?.[0]?.result || "pendiente"
+                          score: overallScore,
+                          result: evalResult?.result || "pendiente"
                         });
 
                         if (emailResult.error) {
@@ -1134,8 +1244,8 @@ function NuevaEvaluacionContent() {
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-2 border-t pt-4">
                 <button
-                  onClick={() => generatePDF(true)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold hover:bg-accent transition-colors"
+                  onClick={handlePreviewPDF}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-accent transition-colors text-sm font-semibold"
                 >
                   <FileText className="w-4 h-4" />
                   Ver PDF Corporativo
@@ -1154,6 +1264,13 @@ function NuevaEvaluacionContent() {
           </div>
         )}
       </AnimatePresence>
+
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        onClose={() => setShowPdfPreview(false)}
+        pdfBlob={previewPdfBlob}
+        fileName={previewPdfFileName}
+      />
     </div>
   );
 }
