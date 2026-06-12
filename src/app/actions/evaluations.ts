@@ -52,7 +52,7 @@ export async function getActiveVersion() {
 export async function getEvaluationConfig() {
   const supabase = await getSupabase();
   const version = await getActiveVersion();
-  
+
   if (!version) return { categories: [], questions: [], version: null };
 
   const [categoriesRes, questionsRes] = await Promise.all([
@@ -90,7 +90,7 @@ async function getSupabaseAdmin() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch (error) {}
+          } catch (error) { }
         },
       },
     }
@@ -433,9 +433,8 @@ export async function sendEvaluationEmail({
             </tr>
             <tr>
               <td style="padding: 6px 0; font-weight: bold;">Resultado General:</td>
-              <td style="padding: 6px 0; font-weight: bold; color: ${
-                result.toLowerCase() === "aprobado" ? "#10b981" : result.toLowerCase() === "plan_mejoramiento" ? "#f59e0b" : "#ef4444"
-              };">${result.replace(/_/g, " ").toUpperCase()}</td>
+              <td style="padding: 6px 0; font-weight: bold; color: ${result.toLowerCase() === "aprobado" ? "#10b981" : result.toLowerCase() === "plan_mejoramiento" ? "#f59e0b" : "#ef4444"
+      };">${result.replace(/_/g, " ").toUpperCase()}</td>
             </tr>
           </table>
         </div>
@@ -451,7 +450,7 @@ export async function sendEvaluationEmail({
     const response = await resend.emails.send({
       from: "Evaluaciones Flota Sugamuxi <onboarding@resend.dev>",
       to: recipientEmail,
-      subject: `Reporte de Evaluación de Desempeño ${evaluationYear} - ${recipientName}`,
+      subject: `Reporte de Evaluación de Desempeño F.S ${evaluationYear} - ${recipientName}`,
       html: emailHtml,
       attachments: [
         {
@@ -489,12 +488,12 @@ export async function getEvaluationVersions() {
     .order("created_at", { ascending: false });
 
   if (error) return { error: error.message, data: [] };
-  
+
   const formatted = (data || []).map((v: any) => ({
     ...v,
     questions_count: v.questions?.[0]?.count || 0
   }));
-  
+
   return { data: formatted };
 }
 
