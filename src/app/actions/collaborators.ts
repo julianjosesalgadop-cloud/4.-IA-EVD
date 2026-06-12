@@ -3,6 +3,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { logAudit } from "./audit";
 
 async function getSupabase() {
   const cookieStore = await cookies();
@@ -92,6 +93,17 @@ export async function createCollaborator(collaboratorData: any) {
   }
 
   revalidatePath("/colaboradores");
+
+  // Registrar en auditoría
+  try {
+    await logAudit(
+      "crear",
+      "collaborators",
+      data.id,
+      `Colaborador creado: ${dataToInsert.first_name} ${dataToInsert.last_name} (${dataToInsert.document_number})`
+    );
+  } catch (_) { /* no bloquear */ }
+
   return { success: true, data };
 }
 
@@ -156,6 +168,17 @@ export async function updateCollaborator(collaboratorId: string, updates: any) {
   }
 
   revalidatePath("/colaboradores");
+
+  // Registrar en auditoría
+  try {
+    await logAudit(
+      "editar",
+      "collaborators",
+      collaboratorId,
+      `Colaborador actualizado: ID ${collaboratorId}`
+    );
+  } catch (_) { /* no bloquear */ }
+
   return { data, error: null };
 }
 

@@ -51,11 +51,8 @@ const navGroups: NavGroup[] = [
           { title: "Resultados Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
         ],
       },
-      {
-        title: "Plan de Mejoramiento",
-        href: "/pmi",
-        icon: Target,
-      },
+      // Plan de Mejoramiento oculto temporalmente
+      // { title: "Plan de Mejoramiento", href: "/pmi", icon: Target },
       {
         title: "Reportes",
         href: "/reportes",

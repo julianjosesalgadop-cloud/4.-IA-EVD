@@ -47,7 +47,7 @@ export async function getAuditLogs(limit = 200, filters?: {
       ip_address,
       user_agent,
       created_at,
-      profile:profiles!user_id(first_name, last_name, email)
+      user_id
     `)
     .eq("company_id", profile.company_id)
     .order("created_at", { ascending: false })
@@ -73,7 +73,31 @@ export async function getAuditLogs(limit = 200, filters?: {
     return { data: [], error: error.message };
   }
 
-  return { data, error: null };
+  // Enrich with profile data if possible
+  if (data && data.length > 0) {
+    const userIds = [...new Set(data.map((l: any) => l.user_id).filter(Boolean))];
+    let profilesMap: Record<string, any> = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name, email")
+        .in("id", userIds);
+
+      if (profiles) {
+        profilesMap = Object.fromEntries(profiles.map((p: any) => [p.id, p]));
+      }
+    }
+
+    const enriched = data.map((log: any) => ({
+      ...log,
+      profile: log.user_id ? profilesMap[log.user_id] || null : null,
+    }));
+
+    return { data: enriched, error: null };
+  }
+
+  return { data: data || [], error: null };
 }
 
 // Function to log an audit event

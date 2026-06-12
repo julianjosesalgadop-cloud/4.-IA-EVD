@@ -85,10 +85,14 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
       )}
       style={{ borderColor: "hsl(var(--border))" }}
     >
-      {/* Mobile Menu */}
+      {/* Menu Toggle - visible in mobile always, and in desktop when collapsed */}
       <button
         onClick={onMenuToggle}
-        className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+        className={cn(
+          "p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer",
+          collapsed ? "flex" : "md:hidden flex"
+        )}
+        title={collapsed ? "Expandir menú" : "Colapsar menú"}
       >
         <Menu className="w-5 h-5" />
       </button>

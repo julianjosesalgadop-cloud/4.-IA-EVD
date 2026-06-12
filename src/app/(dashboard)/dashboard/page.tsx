@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ClipboardList, CheckCircle2, AlertCircle, TrendingUp,
   Clock, Target, BarChart3, Activity, AlertTriangle, ArrowUpRight,
-  ArrowDownRight, Minus, Star, Eye, Maximize2, Minimize2
+  ArrowDownRight, Minus, Star, Eye, Maximize2, Minimize2,
+  ArrowUpDown, ChevronUp, ChevronDown
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid,
@@ -26,7 +27,6 @@ function buildKpiData(stats: any) {
     { title: "Evaluaciones Aprobadas", value: stats.aprobados, change: 0, icon: CheckCircle2, color: "success", suffix: "" },
     { title: "Con Plan de Mejora", value: stats.conPMI, change: 0, icon: Target, color: "warning", suffix: "" },
     { title: "No Aprobados", value: stats.reprobados, change: 0, icon: AlertCircle, color: "danger", suffix: "" },
-    { title: "PMI Activos", value: stats.pmisCount, change: 0, icon: Activity, color: "warning", suffix: "" },
     { title: "Promedio General", value: stats.avgScore, change: 0, icon: Star, color: "brand", suffix: "/5.0" },
   ];
 }
@@ -152,6 +152,47 @@ function AlertsPanel() {
 
 // ---- Recent Evaluations Table ----
 function RecentEvaluations({ evaluations }: { evaluations: any[] }) {
+  const [sortField, setSortField] = useState<string>("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedEvaluations = [...evaluations].sort((a, b) => {
+    let valA: any = a[sortField as keyof typeof a];
+    let valB: any = b[sortField as keyof typeof b];
+
+    if (sortField === "collaborator") {
+      valA = (a.collaborator || "").toLowerCase();
+      valB = (b.collaborator || "").toLowerCase();
+    } else if (sortField === "position") {
+      valA = (a.position || "").toLowerCase();
+      valB = (b.position || "").toLowerCase();
+    } else if (sortField === "result") {
+      valA = (a.result || "").toLowerCase();
+      valB = (b.result || "").toLowerCase();
+    } else if (sortField === "score") {
+      valA = Number(a.score) || 0;
+      valB = Number(b.score) || 0;
+    } else if (sortField === "date") {
+      valA = a.date ? new Date(a.date).getTime() : 0;
+      valB = b.date ? new Date(b.date).getTime() : 0;
+    }
+
+    if (valA === undefined || valA === null) return 1;
+    if (valB === undefined || valB === null) return -1;
+
+    if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -170,23 +211,68 @@ function RecentEvaluations({ evaluations }: { evaluations: any[] }) {
         <table className="w-full text-sm data-table">
           <thead>
             <tr className="border-b text-left">
-              <th className="pb-3 text-muted-foreground font-medium">Colaborador</th>
-              <th className="pb-3 text-muted-foreground font-medium hidden md:table-cell">Cargo / Área</th>
-              <th className="pb-3 text-muted-foreground font-medium">Resultado</th>
-              <th className="pb-3 text-muted-foreground font-medium text-right">Promedio</th>
-              <th className="pb-3 text-muted-foreground font-medium text-right">Fecha</th>
+              <th className="pb-3 text-muted-foreground font-semibold cursor-pointer select-none" onClick={() => handleSort("collaborator")}>
+                <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                  Colaborador
+                  {sortField === "collaborator" ? (
+                    sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-55" />
+                  )}
+                </div>
+              </th>
+              <th className="pb-3 text-muted-foreground font-semibold hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort("position")}>
+                <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                  Cargo / Área
+                  {sortField === "position" ? (
+                    sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-55" />
+                  )}
+                </div>
+              </th>
+              <th className="pb-3 text-muted-foreground font-semibold cursor-pointer select-none" onClick={() => handleSort("result")}>
+                <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                  Resultado
+                  {sortField === "result" ? (
+                    sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-55" />
+                  )}
+                </div>
+              </th>
+              <th className="pb-3 text-muted-foreground font-semibold text-right cursor-pointer select-none" onClick={() => handleSort("score")}>
+                <div className="flex items-center justify-end gap-1 hover:text-foreground transition-colors font-semibold">
+                  Promedio
+                  {sortField === "score" ? (
+                    sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-55" />
+                  )}
+                </div>
+              </th>
+              <th className="pb-3 text-muted-foreground font-semibold text-right cursor-pointer select-none" onClick={() => handleSort("date")}>
+                <div className="flex items-center justify-end gap-1 hover:text-foreground transition-colors font-semibold">
+                  Fecha
+                  {sortField === "date" ? (
+                    sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-55" />
+                  )}
+                </div>
+              </th>
               <th className="pb-3 text-muted-foreground font-medium text-center"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {evaluations.length === 0 ? (
+            {sortedEvaluations.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-muted-foreground">
                   No hay evaluaciones recientes
                 </td>
               </tr>
             ) : (
-              evaluations.map((ev) => (
+              sortedEvaluations.map((ev) => (
                 <tr key={ev.id} className="hover:bg-muted/40 transition-colors">
                   <td className="py-3 font-medium">{ev.collaborator}</td>
                   <td className="py-3 hidden md:table-cell">
@@ -314,7 +400,6 @@ export default function DashboardPage() {
     { title: "Evaluaciones Aprobadas", value: aprobados, icon: CheckCircle2, color: "success", suffix: "" },
     { title: "Con Plan de Mejora", value: conPMI, icon: Target, color: "warning", suffix: "" },
     { title: "No Aprobados", value: reprobados, icon: AlertCircle, color: "danger", suffix: "" },
-    { title: "PMI Activos", value: pmisCount, icon: Activity, color: "warning", suffix: "" },
     { title: "Promedio General", value: avgScore, icon: Star, color: "brand", suffix: "/5.0" },
   ];
 

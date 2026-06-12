@@ -31,6 +31,7 @@ export default function ColaboradoresPage() {
 
   const [collaborators, setCollaborators] = useState<Partial<Collaborator>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [availableAreas, setAvailableAreas] = useState<string[]>([]);
 
   React.useEffect(() => {
     async function fetchCollabs() {
@@ -43,6 +44,15 @@ export default function ColaboradoresPage() {
           position: item.positions ? { name: item.positions.name } : null
         }));
         setCollaborators(formatted);
+        // Extraer áreas únicas desde los datos reales
+        const areas = Array.from(
+          new Set(
+            formatted
+              .map((c: any) => c.area?.name)
+              .filter(Boolean)
+          )
+        ).sort() as string[];
+        setAvailableAreas(areas);
       }
       setIsLoading(false);
     }
@@ -58,6 +68,9 @@ export default function ColaboradoresPage() {
     const matchesStatus = !selectedStatus || c.status === selectedStatus;
     return matchesSearch && matchesArea && matchesStatus;
   });
+
+  // Reset page when filters change
+  React.useEffect(() => { setPage(1); }, [search, selectedArea, selectedStatus]);
 
   const [sortField, setSortField] = useState<string>("full_name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -222,12 +235,9 @@ export default function ColaboradoresPage() {
                   className="w-full h-9 rounded-lg border bg-background text-sm px-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   <option value="">Todas las áreas</option>
-                  <option value="Operaciones">Operaciones</option>
-                  <option value="Mantenimiento">Mantenimiento</option>
-                  <option value="Gestión Humana">Gestión Humana</option>
-                  <option value="Comercial">Comercial</option>
-                  <option value="Financiera">Financiera</option>
-                  <option value="Tecnología">Tecnología</option>
+                  {availableAreas.map((area) => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-1">

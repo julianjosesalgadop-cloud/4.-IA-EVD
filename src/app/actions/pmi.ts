@@ -32,7 +32,8 @@ export async function getPMIs() {
   const supabase = await getSupabase();
   
   // A PMI is basically an evaluation_result where pmi_required = true
-  const { data, error } = await supabase
+  // or where the result is 'no_aprobado'
+  const { data: pmiData, error: pmiError } = await supabase
     .from("evaluation_results")
     .select(`
       *,
@@ -45,12 +46,52 @@ export async function getPMIs() {
     .eq("pmi_required", true)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching PMIs:", error);
-    return { data: [], error: error.message };
+  // If we have data with pmi_required=true, return it
+  if (!pmiError && pmiData && pmiData.length > 0) {
+    return { data: pmiData, error: null };
   }
 
-  return { data, error: null };
+  // Fallback: fetch evaluations with result = 'no_aprobado'
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("evaluation_results")
+    .select(`
+      *,
+      evaluation:evaluations(
+        id,
+        created_at,
+        collaborator:collaborators(id, full_name, positions(name), areas(name))
+      )
+    `)
+    .eq("result", "no_aprobado")
+    .order("created_at", { ascending: false });
+
+  if (fallbackError) {
+    console.error("Error fetching PMIs (fallback):", fallbackError);
+    // Try another fallback with result not being approved
+    const { data: altData, error: altError } = await supabase
+      .from("evaluation_results")
+      .select(`
+        *,
+        evaluation:evaluations(
+          id,
+          created_at,
+          collaborator:collaborators(id, full_name, positions(name), areas(name))
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (altError) {
+      return { data: [], error: altError.message };
+    }
+    // Filter client-side for PMI-worthy records
+    const filtered = (altData || []).filter(
+      (r: any) => r.pmi_required === true || r.result === "no_aprobado" || (r.overall_average && r.overall_average < 3)
+    );
+    return { data: filtered, error: null };
+  }
+
+  return { data: fallbackData || [], error: null };
 }
 
 export async function addPMIFollowup(pmiId: string, followupData: any) {

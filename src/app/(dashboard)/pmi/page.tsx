@@ -237,10 +237,10 @@ export default function PMIPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "PMI Activos", value: 32, color: "warning" },
-          { label: "En Seguimiento", value: 12, color: "brand" },
-          { label: "Cerrados", value: 28, color: "success" },
-          { label: "Vencidos", value: 7, color: "danger" },
+          { label: "PMI Activos", value: pmis.filter(p => p.status === "activo").length, color: "warning" },
+          { label: "En Seguimiento", value: pmis.filter(p => p.followups.some((f: any) => f.status === "completado")).length, color: "brand" },
+          { label: "Cerrados", value: pmis.filter(p => p.status === "cerrado").length, color: "success" },
+          { label: "Vencidos", value: pmis.filter(p => p.status === "vencido").length, color: "danger" },
         ].map((s, i) => (
           <motion.div
             key={s.label}

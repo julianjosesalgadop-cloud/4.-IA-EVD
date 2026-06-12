@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
+import { logAudit } from "./audit";
 
 async function getSupabase() {
   const cookieStore = await cookies();
@@ -389,6 +390,17 @@ export async function saveEvaluation(payload: any) {
 
   revalidatePath("/evaluaciones");
   revalidatePath("/dashboard");
+
+  // Registrar en auditoría
+  try {
+    await logAudit(
+      "finalizar",
+      "evaluations",
+      evalData.id,
+      `Evaluación finalizada para colaborador ID: ${payload.evaluatee_id}. Resultado calculado.`
+    );
+  } catch (_) { /* no bloquear si falla la auditoría */ }
+
   return { success: true, evaluation_id: evalData.id, result: resultData };
 }
 
@@ -464,6 +476,16 @@ export async function sendEvaluationEmail({
       console.error("Resend error detail:", response.error);
       return { error: response.error.message };
     }
+
+    // Registrar en auditoría
+    try {
+      await logAudit(
+        "correo_enviado",
+        "evaluations",
+        evaluationId,
+        `Reporte de evaluación enviado por correo a ${recipientName} (${recipientEmail})`
+      );
+    } catch (_) { /* no bloquear */ }
 
     return { success: true };
   } catch (error: any) {

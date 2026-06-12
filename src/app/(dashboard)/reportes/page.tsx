@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileBarChart2, Download, FileSpreadsheet, FileText, Filter, TrendingUp, Search, Loader2 } from "lucide-react";
+import { FileBarChart2, Download, FileSpreadsheet, FileText, Filter, TrendingUp, Search, Loader2, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { getAreas } from "@/app/actions/config";
 import { getEvaluations } from "@/app/actions/evaluations";
@@ -37,6 +37,54 @@ export default function ReportesPage() {
   const [filteredEvaluations, setFilteredEvaluations] = useState<EvaluationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+
+  const [sortField, setSortField] = useState<string>("collaborator");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedFiltered = [...filteredEvaluations].sort((a, b) => {
+    let valA: any;
+    let valB: any;
+
+    if (sortField === "collaborator") {
+      valA = (a.collaborator?.full_name || "").toLowerCase();
+      valB = (b.collaborator?.full_name || "").toLowerCase();
+    } else if (sortField === "position") {
+      valA = (a.collaborator?.position?.name || "").toLowerCase();
+      valB = (b.collaborator?.position?.name || "").toLowerCase();
+    } else if (sortField === "area") {
+      valA = (a.collaborator?.areas?.name || "").toLowerCase();
+      valB = (b.collaborator?.areas?.name || "").toLowerCase();
+    } else if (sortField === "score") {
+      const resA = a.result && !Array.isArray(a.result) ? a.result : a.result?.[0] || null;
+      const resB = b.result && !Array.isArray(b.result) ? b.result : b.result?.[0] || null;
+      valA = resA ? Number(resA.overall_average) || 0 : 0;
+      valB = resB ? Number(resB.overall_average) || 0 : 0;
+    } else if (sortField === "result") {
+      const resA = a.result && !Array.isArray(a.result) ? a.result : a.result?.[0] || null;
+      const resB = b.result && !Array.isArray(b.result) ? b.result : b.result?.[0] || null;
+      valA = resA ? (resA.result || "").toLowerCase() : "";
+      valB = resB ? (resB.result || "").toLowerCase() : "";
+    } else if (sortField === "date") {
+      valA = a.finalized_at ? new Date(a.finalized_at).getTime() : a.created_at ? new Date(a.created_at).getTime() : 0;
+      valB = b.finalized_at ? new Date(b.finalized_at).getTime() : b.created_at ? new Date(b.created_at).getTime() : 0;
+    }
+
+    if (valA === undefined || valA === null) return 1;
+    if (valB === undefined || valB === null) return -1;
+
+    if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
 
   // Filters
   const [selectedArea, setSelectedArea] = useState("");
@@ -666,16 +714,70 @@ export default function ReportesPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-muted/40 border-b text-muted-foreground uppercase font-semibold">
-                    <th className="p-3">Colaborador</th>
-                    <th className="p-3">Cargo</th>
-                    <th className="p-3">Área</th>
-                    <th className="p-3 text-center">Calificación</th>
-                    <th className="p-3 text-center">Resultado</th>
-                    <th className="p-3">Fecha Finalizado</th>
+                    <th className="p-3 cursor-pointer select-none" onClick={() => handleSort("collaborator")}>
+                      <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Colaborador
+                        {sortField === "collaborator" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-3 cursor-pointer select-none" onClick={() => handleSort("position")}>
+                      <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Cargo
+                        {sortField === "position" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-3 cursor-pointer select-none" onClick={() => handleSort("area")}>
+                      <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Área
+                        {sortField === "area" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-3 text-center cursor-pointer select-none" onClick={() => handleSort("score")}>
+                      <div className="flex items-center justify-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Calificación
+                        {sortField === "score" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-3 text-center cursor-pointer select-none" onClick={() => handleSort("result")}>
+                      <div className="flex items-center justify-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Resultado
+                        {sortField === "result" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="p-3 cursor-pointer select-none" onClick={() => handleSort("date")}>
+                      <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Fecha Finalizado
+                        {sortField === "date" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y text-foreground">
-                  {filteredEvaluations.map((item) => {
+                  {sortedFiltered.map((item) => {
                     const resObj = item.result && !Array.isArray(item.result)
                       ? item.result
                       : item.result?.[0] || null;
