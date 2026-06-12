@@ -250,23 +250,33 @@ export default function EvaluationDetailPage() {
         doc.text("CRITERIOS CRÍTICOS INCUMPLIDOS (Causales de Plan de Mejoramiento):", marginX, posY);
         posY += 4;
         
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
-        doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
-        
-        result.critical_fails_detail.forEach((fail: any) => {
+        const failHeaders = [["Categoría", "Valor Obtenido", "Mínimo Requerido"]];
+        const failRows = result.critical_fails_detail.map((fail: any) => {
           const answerObj = evaluation.answers?.find((a: any) => a.question_id === fail.question_id);
           const categoryId = answerObj?.category_id;
           const categoryName = (categoryId && result.category_scores?.[categoryId]?.name) || "Categoría";
-          
-          const text = `- [${categoryName}] "${fail.question}": Obtuvo ${fail.score} (mínimo requerido: ${fail.min_required})`;
-          const lines = doc.splitTextToSize(text, 180);
-          lines.forEach((line: string) => {
-            doc.text(line, marginX + 4, posY);
-            posY += 4.5;
-          });
+          return [
+            categoryName,
+            `${formatScore(fail.score)} / 5.0`,
+            `${formatScore(fail.min_required)} / 5.0`
+          ];
         });
-        posY += 2;
+
+        autoTable(doc, {
+          startY: posY,
+          head: failHeaders,
+          body: failRows,
+          theme: "striped",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 120 },
+            1: { cellWidth: 30, halign: "center" },
+            2: { cellWidth: 30, halign: "center" }
+          },
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
+        });
+        posY = (doc as any).lastAutoTable.finalY + 8;
       } else {
         posY = (doc as any).lastAutoTable.finalY + 8;
       }
