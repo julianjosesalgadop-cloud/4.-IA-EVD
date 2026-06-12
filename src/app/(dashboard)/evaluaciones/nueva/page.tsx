@@ -1357,7 +1357,7 @@ function NuevaEvaluacionContent() {
                         }
                       } catch (err: any) {
                         console.error(err);
-                        toast.error("Ocurrió un error inesperado al enviar el correo.", { id: toastId });
+                        toast.error("Ocurrió un error inesperado al enviar el correo: " + (err?.message || err), { id: toastId });
                       } finally {
                         setIsSendingEmail(false);
                       }
