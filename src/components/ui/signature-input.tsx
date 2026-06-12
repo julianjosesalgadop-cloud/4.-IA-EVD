@@ -127,7 +127,37 @@ export function SignatureInput({ value, onChange, placeholder = "Firme aquí", c
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
-        onChange(e.target.result as string);
+        const img = new Image();
+        img.src = e.target.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            onChange(e.target?.result as string);
+            return;
+          }
+
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 150;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          const compressed = canvas.toDataURL("image/png");
+          onChange(compressed);
+        };
       }
     };
     reader.readAsDataURL(file);

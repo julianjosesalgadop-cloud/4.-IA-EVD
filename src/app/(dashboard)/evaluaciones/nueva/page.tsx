@@ -6,7 +6,7 @@ import {
   ClipboardList, ChevronLeft, ChevronRight, Save,
   CheckCircle2, AlertCircle, Star, Info, Send, FileText, X
 } from "lucide-react";
-import { cn, getScoreLabel, formatScore, getResultLabel } from "@/lib/utils";
+import { cn, getScoreLabel, formatScore, getResultLabel, compressImageIfNeeded } from "@/lib/utils";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -713,8 +713,11 @@ function NuevaEvaluacionContent() {
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
       doc.text("9. CONFORMIDAD Y FIRMAS", marginX, posY);
       
-      const evaluatorSig = savedEvaluation.evaluator?.avatar_url;
-      const collaboratorSig = (savedEvaluation.draft_data as any)?.collaborator_signature;
+      const evaluatorSigRaw = savedEvaluation.evaluator?.avatar_url;
+      const collaboratorSigRaw = (savedEvaluation.draft_data as any)?.collaborator_signature;
+      
+      const evaluatorSig = evaluatorSigRaw ? await compressImageIfNeeded(evaluatorSigRaw) : null;
+      const collaboratorSig = collaboratorSigRaw ? await compressImageIfNeeded(collaboratorSigRaw) : null;
       
       let sigHeight = 14;
       let sigWidth = 38;

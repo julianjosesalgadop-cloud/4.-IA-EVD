@@ -260,3 +260,47 @@ export function buildQueryString(params: Record<string, unknown>): string {
   });
   return qs.toString();
 }
+
+export async function compressImageIfNeeded(src: string, maxWidth: number = 400, maxHeight: number = 150): Promise<string> {
+  if (typeof window === "undefined" || !src) return src;
+  if (src.startsWith("http") && src.length < 500) return src;
+  
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.src = src;
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (img.width <= maxWidth && img.height <= maxHeight) {
+        resolve(src);
+        return;
+      }
+      
+      const canvas = window.document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(src);
+        return;
+      }
+      
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      if (height > maxHeight) {
+        width = Math.round((width * maxHeight) / height);
+        height = maxHeight;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => {
+      resolve(src);
+    };
+  });
+}
+

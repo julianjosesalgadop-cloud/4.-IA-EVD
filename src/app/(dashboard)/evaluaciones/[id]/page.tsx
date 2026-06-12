@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Edit, CalendarCheck, CheckCircle2, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getEvaluationById } from "@/app/actions/evaluations";
-import { formatDate, formatDateTime, formatScore, getResultLabel, getStatusLabel, getInitials } from "@/lib/utils";
+import { formatDate, formatDateTime, formatScore, getResultLabel, getStatusLabel, getInitials, compressImageIfNeeded } from "@/lib/utils";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
 export default function EvaluationDetailPage() {
@@ -450,8 +450,11 @@ export default function EvaluationDetailPage() {
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
       doc.text("9. CONFORMIDAD Y FIRMAS", marginX, posY);
       
-      const evaluatorSig = evaluation.evaluator?.avatar_url;
-      const collaboratorSig = (evaluation.draft_data as any)?.collaborator_signature;
+      const evaluatorSigRaw = evaluation.evaluator?.avatar_url;
+      const collaboratorSigRaw = (evaluation.draft_data as any)?.collaborator_signature;
+      
+      const evaluatorSig = evaluatorSigRaw ? await compressImageIfNeeded(evaluatorSigRaw) : null;
+      const collaboratorSig = collaboratorSigRaw ? await compressImageIfNeeded(collaboratorSigRaw) : null;
       
       let sigHeight = 14;
       let sigWidth = 38;
