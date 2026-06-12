@@ -255,7 +255,34 @@ export default function EvaluacionesPage() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 8;
+      posY = (doc as any).lastAutoTable.finalY + 4;
+      if (resultObj?.has_critical_fails && resultObj.critical_fails_detail?.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(239, 68, 68); // Red color
+        doc.text("CRITERIOS CRÍTICOS INCUMPLIDOS (Causales de Plan de Mejoramiento):", marginX, posY);
+        posY += 4;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+        
+        resultObj.critical_fails_detail.forEach((fail: any) => {
+          const answerObj = evalData.answers?.find((a: any) => a.question_id === fail.question_id);
+          const categoryId = answerObj?.category_id;
+          const categoryName = (categoryId && resultObj.category_scores?.[categoryId]?.name) || "Categoría";
+          
+          const text = `- [${categoryName}] "${fail.question}": Obtuvo ${fail.score} (mínimo requerido: ${fail.min_required})`;
+          const lines = doc.splitTextToSize(text, 180);
+          lines.forEach((line: string) => {
+            doc.text(line, marginX + 4, posY);
+            posY += 4.5;
+          });
+        });
+        posY += 2;
+      } else {
+        posY = (doc as any).lastAutoTable.finalY + 8;
+      }
 
       // SECTION: CATEGORY SCORES
       const categoryScores = resultObj?.category_scores || {};
@@ -289,12 +316,70 @@ export default function EvaluacionesPage() {
         posY = (doc as any).lastAutoTable.finalY + 8;
       }
       
+      // Check space for Escala and Rangos section
+      if (posY > 230) {
+        doc.addPage();
+        posY = 28;
+      }
+
+      // SECTION: ESCALA DE CALIFICACIÓN & RANGOS DE RESULTADOS
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("5. ESCALA DE CALIFICACIÓN", marginX, posY);
+      doc.text("6. RANGOS DE RESULTADOS", marginX + 95, posY);
+      posY += 6;
+
+      autoTable(doc, {
+        startY: posY,
+        margin: { left: marginX },
+        tableWidth: 85,
+        head: [["Calificación", "Descripción"]],
+        body: [
+          ["5", "Excelente"],
+          ["4", "Sobresaliente"],
+          ["3", "Cumple lo esperado"],
+          ["2", "Requiere mejora"],
+          ["1", "No cumple"]
+        ],
+        theme: "grid",
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { halign: "center", fontStyle: "bold", cellWidth: 25 },
+          1: { cellWidth: 60 }
+        }
+      });
+      const finalY1 = (doc as any).lastAutoTable.finalY;
+
+      autoTable(doc, {
+        startY: posY,
+        margin: { left: marginX + 95 },
+        tableWidth: 85,
+        head: [["Porcentaje", "Resultado"]],
+        body: [
+          ["4.0 – 5.0", "Aprobado"],
+          ["3.1 – 3.9", "Plan de Mejoramiento"],
+          ["1.0 - 3.0", "No Aprobado"]
+        ],
+        theme: "grid",
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { halign: "center", fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 50, halign: "center" }
+        }
+      });
+      const finalY2 = (doc as any).lastAutoTable.finalY;
+
+      posY = Math.max(finalY1, finalY2) + 8;
+
       // PAGE 1 (continued): DETAILED ANSWERS TABLE
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("5. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+      doc.text("7. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
       posY += 6;
       
       const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
@@ -330,7 +415,7 @@ export default function EvaluacionesPage() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("6. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+      doc.text("8. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
       posY += 6;
       
       const narratives = [
@@ -364,7 +449,7 @@ export default function EvaluacionesPage() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
+      doc.text("9. CONFORMIDAD Y FIRMAS", marginX, posY);
       
       const evaluatorSig = evalData.evaluator?.avatar_url;
       const collaboratorSig = (evalData.draft_data as any)?.collaborator_signature;

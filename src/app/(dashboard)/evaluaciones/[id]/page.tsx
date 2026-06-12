@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Edit, CalendarCheck, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, Edit, CalendarCheck, CheckCircle2, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getEvaluationById } from "@/app/actions/evaluations";
 import { formatDate, formatScore, getResultLabel, getStatusLabel, getInitials } from "@/lib/utils";
@@ -242,7 +242,34 @@ export default function EvaluationDetailPage() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 8;
+      posY = (doc as any).lastAutoTable.finalY + 4;
+      if (result?.has_critical_fails && result.critical_fails_detail?.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(239, 68, 68); // Red color
+        doc.text("CRITERIOS CRÍTICOS INCUMPLIDOS (Causales de Plan de Mejoramiento):", marginX, posY);
+        posY += 4;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+        
+        result.critical_fails_detail.forEach((fail: any) => {
+          const answerObj = evaluation.answers?.find((a: any) => a.question_id === fail.question_id);
+          const categoryId = answerObj?.category_id;
+          const categoryName = (categoryId && result.category_scores?.[categoryId]?.name) || "Categoría";
+          
+          const text = `- [${categoryName}] "${fail.question}": Obtuvo ${fail.score} (mínimo requerido: ${fail.min_required})`;
+          const lines = doc.splitTextToSize(text, 180);
+          lines.forEach((line: string) => {
+            doc.text(line, marginX + 4, posY);
+            posY += 4.5;
+          });
+        });
+        posY += 2;
+      } else {
+        posY = (doc as any).lastAutoTable.finalY + 8;
+      }
 
       // SECTION: CATEGORY SCORES
       const categoryScores = result?.category_scores || {};
@@ -276,12 +303,70 @@ export default function EvaluationDetailPage() {
         posY = (doc as any).lastAutoTable.finalY + 8;
       }
       
+      // Check space for Escala and Rangos section
+      if (posY > 230) {
+        doc.addPage();
+        posY = 28;
+      }
+
+      // SECTION: ESCALA DE CALIFICACIÓN & RANGOS DE RESULTADOS
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+      doc.text("5. ESCALA DE CALIFICACIÓN", marginX, posY);
+      doc.text("6. RANGOS DE RESULTADOS", marginX + 95, posY);
+      posY += 6;
+
+      autoTable(doc, {
+        startY: posY,
+        margin: { left: marginX },
+        tableWidth: 85,
+        head: [["Calificación", "Descripción"]],
+        body: [
+          ["5", "Excelente"],
+          ["4", "Sobresaliente"],
+          ["3", "Cumple lo esperado"],
+          ["2", "Requiere mejora"],
+          ["1", "No cumple"]
+        ],
+        theme: "grid",
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { halign: "center", fontStyle: "bold", cellWidth: 25 },
+          1: { cellWidth: 60 }
+        }
+      });
+      const finalY1 = (doc as any).lastAutoTable.finalY;
+
+      autoTable(doc, {
+        startY: posY,
+        margin: { left: marginX + 95 },
+        tableWidth: 85,
+        head: [["Porcentaje", "Resultado"]],
+        body: [
+          ["4.0 – 5.0", "Aprobado"],
+          ["3.1 – 3.9", "Plan de Mejoramiento"],
+          ["1.0 - 3.0", "No Aprobado"]
+        ],
+        theme: "grid",
+        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
+        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+        columnStyles: {
+          0: { halign: "center", fontStyle: "bold", cellWidth: 35 },
+          1: { cellWidth: 50, halign: "center" }
+        }
+      });
+      const finalY2 = (doc as any).lastAutoTable.finalY;
+
+      posY = Math.max(finalY1, finalY2) + 8;
+
       // PAGE 1 (continued): DETAILED ANSWERS TABLE
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("5. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+      doc.text("7. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
       posY += 6;
       
       const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
@@ -318,7 +403,7 @@ export default function EvaluationDetailPage() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("6. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+      doc.text("8. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
       posY += 6;
       
       const narratives = [
@@ -353,7 +438,7 @@ export default function EvaluationDetailPage() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("7. CONFORMIDAD Y FIRMAS", marginX, posY);
+      doc.text("9. CONFORMIDAD Y FIRMAS", marginX, posY);
       
       const evaluatorSig = evaluation.evaluator?.avatar_url;
       const collaboratorSig = (evaluation.draft_data as any)?.collaborator_signature;
@@ -514,6 +599,36 @@ export default function EvaluationDetailPage() {
               </p>
             </div>
           </div>
+
+          {result?.pmi_required && (
+            <div className="rounded-lg sm:rounded-xl border border-warning-200 bg-warning-50 dark:border-warning-900/50 dark:bg-warning-950/20 p-4 sm:p-5 text-warning-800 dark:text-warning-300 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm sm:text-base">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 text-warning-600 dark:text-warning-400" />
+                <span>Plan de Mejoramiento Individual (PMI) Requerido</span>
+              </div>
+              <p className="text-xs sm:text-sm">
+                Esta evaluación requiere la generación de un Plan de Mejoramiento debido a: <strong className="text-foreground">{result.pmi_reason}</strong>.
+              </p>
+              {result.has_critical_fails && result.critical_fails_detail?.length > 0 && (
+                <div className="mt-3 space-y-1.5 border-t border-warning-200 dark:border-warning-900/40 pt-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-warning-700 dark:text-warning-400">Detalle de Criterios Críticos Incumplidos:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-xs">
+                    {result.critical_fails_detail.map((fail: any, idx: number) => {
+                      const answerObj = evaluation.answers?.find((a: any) => a.question_id === fail.question_id);
+                      const categoryId = answerObj?.category_id;
+                      const categoryName = (categoryId && result.category_scores?.[categoryId]?.name) || "Categoría";
+                      return (
+                        <li key={idx}>
+                          En la categoría <strong className="text-foreground">"{categoryName}"</strong>:
+                          La pregunta <strong className="text-foreground">"{fail.question}"</strong> obtuvo un puntaje de <strong className="text-danger-600 font-bold">{fail.score}</strong> (el mínimo requerido era <strong className="text-foreground">{fail.min_required}</strong>).
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Category Scores */}
           {result?.category_scores && Object.keys(result.category_scores).length > 0 && (
