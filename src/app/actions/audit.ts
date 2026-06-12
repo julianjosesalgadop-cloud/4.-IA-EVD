@@ -17,6 +17,20 @@ async function getSupabase() {
   );
 }
 
+async function getSupabaseAdmin() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {}
+      },
+    }
+  );
+}
+
 export async function getAuditLogs(limit = 200, filters?: {
   action?: string;
   dateFrom?: string;
@@ -34,7 +48,8 @@ export async function getAuditLogs(limit = 200, filters?: {
 
   if (!profile?.company_id) return { data: [], error: "Empresa no encontrada" };
 
-  let query = supabase
+  const adminClient = await getSupabaseAdmin();
+  let query = adminClient
     .from("audit_logs")
     .select(`
       id,
@@ -79,7 +94,7 @@ export async function getAuditLogs(limit = 200, filters?: {
     let profilesMap: Record<string, any> = {};
 
     if (userIds.length > 0) {
-      const { data: profiles } = await supabase
+      const { data: profiles } = await adminClient
         .from("profiles")
         .select("id, first_name, last_name, email")
         .in("id", userIds);
@@ -121,7 +136,8 @@ export async function logAudit(
 
   if (!profile?.company_id) return;
 
-  await supabase.from("audit_logs").insert({
+  const adminClient = await getSupabaseAdmin();
+  await adminClient.from("audit_logs").insert({
     company_id: profile.company_id,
     user_id: userData.user.id,
     action,
