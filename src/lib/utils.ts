@@ -269,7 +269,7 @@ export async function compressImageIfNeeded(src: string, maxWidth: number = 400,
     img.src = src;
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      if (img.width <= maxWidth && img.height <= maxHeight) {
+      if (img.width <= maxWidth && img.height <= maxHeight && src.length < 50000) {
         resolve(src);
         return;
       }
