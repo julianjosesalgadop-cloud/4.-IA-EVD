@@ -232,10 +232,9 @@ export default function EvaluacionesPage() {
       const overallScore = resultObj ? resultObj.overall_average : 0;
       const statusLabelText = resultObj ? getResultLabel(resultObj.result) : "Pendiente de finalizar";
       const scoreExplanation = overallScore >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
-                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple y a veces supera las expectativas."
-                           : overallScore >= 3.0 ? "Desempeño Competente: Cumple satisfactoriamente con los estándares."
-                           : overallScore >= 2.0 ? "Desempeño en Desarrollo: Requiere plan de mejora y formación."
-                           : "Desempeño No Aceptable.";
+                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple lo esperado y a veces lo supera."
+                           : overallScore >= 3.1 ? "Desempeño Aceptable (Plan de Mejoramiento): Cumple lo esperado, pero requiere plan de mejora."
+                           : "Desempeño Insatisfactorio (No Aprobado): No cumple con los estándares mínimos requeridos.";
       
       const summaryInfo = [
         ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScore)} / 5.0`],

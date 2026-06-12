@@ -368,17 +368,17 @@ export default function DashboardPage() {
 
   // 1. Niveles de Desempeño
   const tierExcelente = filteredEvals.filter((e: any) => e.score >= 4.5 && e.score <= 5.0).length;
-  const tierSobresaliente = filteredEvals.filter((e: any) => e.score >= 4.0 && e.score < 4.5).length;
-  const tierCompetente = filteredEvals.filter((e: any) => e.score >= 3.0 && e.score < 4.0).length;
-  const tierRequiereMejora = filteredEvals.filter((e: any) => e.score >= 2.0 && e.score < 3.0).length;
-  const tierInsatisfactorio = filteredEvals.filter((e: any) => e.score > 0 && e.score < 2.0).length;
+  const tierSobresaliente = filteredEvals.filter((e: any) => e.score >= 3.5 && e.score < 4.5).length;
+  const tierCompetente = filteredEvals.filter((e: any) => e.score >= 2.5 && e.score < 3.5).length;
+  const tierRequiereMejora = filteredEvals.filter((e: any) => e.score >= 1.5 && e.score < 2.5).length;
+  const tierInsatisfactorio = filteredEvals.filter((e: any) => e.score > 0 && e.score < 1.5).length;
 
   const performanceTiersData = [
     { name: "Excelente (4.5 - 5.0)", value: tierExcelente, color: "#10b981" },
-    { name: "Sobresaliente (4.0 - 4.49)", value: tierSobresaliente, color: "#3b82f6" },
-    { name: "Competente (3.0 - 3.99)", value: tierCompetente, color: "#71717a" },
-    { name: "Requiere Mejora (2.0 - 2.99)", value: tierRequiereMejora, color: "#f59e0b" },
-    { name: "Insatisfactorio (< 2.0)", value: tierInsatisfactorio, color: "#ef4444" },
+    { name: "Sobresaliente (3.5 - 4.49)", value: tierSobresaliente, color: "#3b82f6" },
+    { name: "Cumple lo esperado (2.5 - 3.49)", value: tierCompetente, color: "#71717a" },
+    { name: "Requiere Mejora (1.5 - 2.49)", value: tierRequiereMejora, color: "#f59e0b" },
+    { name: "No cumple (< 1.5)", value: tierInsatisfactorio, color: "#ef4444" },
   ];
 
   // 2. Rendimiento Promedio por Sede (Ciudad)

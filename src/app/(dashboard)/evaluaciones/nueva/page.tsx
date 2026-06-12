@@ -41,7 +41,7 @@ interface Category {
 const SCORES = [
   { value: 5, label: "Excelente", color: "5" },
   { value: 4, label: "Sobresaliente", color: "4" },
-  { value: 3, label: "Cumple", color: "3" },
+  { value: 3, label: "Cumple lo esperado", color: "3" },
   { value: 2, label: "Requiere mejora", color: "2" },
   { value: 1, label: "No cumple", color: "1" },
 ];
@@ -484,10 +484,9 @@ function NuevaEvaluacionContent() {
       const overallScoreLocal = evalResultLocal && typeof evalResultLocal.overall_average === "number" ? evalResultLocal.overall_average : 0;
       const statusLabelLocal = evalResultLocal?.result ? getResultLabel(evalResultLocal.result) : "Pendiente";
       const scoreExplanation = overallScoreLocal >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
-                           : overallScoreLocal >= 4.0 ? "Desempeño Sobresaliente: Cumple y a veces supera las expectativas."
-                           : overallScoreLocal >= 3.0 ? "Desempeño Competente: Cumple satisfactoriamente con los estándares."
-                           : overallScoreLocal >= 2.0 ? "Desempeño en Desarrollo: Requiere plan de mejora y formación."
-                           : "Desempeño No Aceptable.";
+                           : overallScoreLocal >= 4.0 ? "Desempeño Sobresaliente: Cumple lo esperado y a veces lo supera."
+                           : overallScoreLocal >= 3.1 ? "Desempeño Aceptable (Plan de Mejoramiento): Cumple lo esperado, pero requiere plan de mejora."
+                           : "Desempeño Insatisfactorio (No Aprobado): No cumple con los estándares mínimos requeridos.";
       
       const summaryInfo = [
         ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScoreLocal)} / 5.0`],
@@ -819,7 +818,7 @@ function NuevaEvaluacionContent() {
             2: Requiere mejora
           </span>
           <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs shadow-sm">
-            3: Cumple
+            3: Cumple lo esperado
           </span>
           <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 font-bold text-xs shadow-sm">
             4: Sobresaliente
