@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  BookOpen, Plus, Edit2, Trash2, Save, X, Loader2, AlertTriangle
+  BookOpen, Plus, Edit2, Trash2, Save, X, Loader2, AlertTriangle,
+  ArrowUpDown, ChevronUp, ChevronDown
 } from "lucide-react";
 import { getPositions, getAreas, createPosition, updatePosition, deletePosition } from "@/app/actions/config";
 import { toast } from "sonner";
@@ -44,6 +45,44 @@ export default function CargosPage() {
   const [selectedPos, setSelectedPos] = useState<Position | null>(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [sortField, setSortField] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedPositions = [...positions].sort((a, b) => {
+    let valA: any = a[sortField as keyof typeof a];
+    let valB: any = b[sortField as keyof typeof b];
+
+    if (sortField === "name") {
+      valA = (a.name || "").toLowerCase();
+      valB = (b.name || "").toLowerCase();
+    } else if (sortField === "code") {
+      valA = (a.code || "").toLowerCase();
+      valB = (b.code || "").toLowerCase();
+    } else if (sortField === "area") {
+      valA = (a.areas?.name || "").toLowerCase();
+      valB = (b.areas?.name || "").toLowerCase();
+    } else if (sortField === "level") {
+      valA = Number(a.level) || 0;
+      valB = Number(b.level) || 0;
+    }
+
+    if (valA === undefined || valA === null) return 1;
+    if (valB === undefined || valB === null) return -1;
+
+    if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
 
   useEffect(() => {
     loadData();
@@ -187,11 +226,47 @@ export default function CargosPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/30 border-b">
               <tr>
-                <th className="px-4 py-3 font-semibold text-muted-foreground">Código</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground">Nombre del Cargo</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Área</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground">Nivel</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground text-right">Acciones</th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("code")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Código
+                    {sortField === "code" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("name")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Nombre del Cargo
+                    {sortField === "name" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell cursor-pointer select-none" onClick={() => handleSort("area")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Área
+                    {sortField === "area" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("level")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Nivel
+                    {sortField === "level" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground text-right select-none">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -212,7 +287,7 @@ export default function CargosPage() {
                   </td>
                 </tr>
               ) : (
-                positions.map((pos) => {
+                sortedPositions.map((pos) => {
                   const levelInfo = LEVEL_LABELS[pos.level] || LEVEL_LABELS[1];
                   return (
                     <motion.tr

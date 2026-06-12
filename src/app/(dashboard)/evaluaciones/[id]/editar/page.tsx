@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Edit, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getEvaluationById, updateEvaluation } from "@/app/actions/evaluations";
-import { formatDate, getStatusLabel } from "@/lib/utils";
+import { formatDate, formatDateTime, getStatusLabel } from "@/lib/utils";
 
 const statusOptions = [
   { value: "borrador", label: "Borrador" },
@@ -121,7 +121,7 @@ export default function EvaluationEditPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Creado</label>
-                <p className="text-sm text-muted-foreground">{formatDate(evaluation.created_at)}</p>
+                <p className="text-sm text-muted-foreground">{formatDateTime(evaluation.created_at)}</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Evaluador</label>
@@ -140,7 +140,7 @@ export default function EvaluationEditPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Finalizado</label>
-                <p className="text-sm text-muted-foreground">{evaluation.finalized_at ? formatDate(evaluation.finalized_at) : "—"}</p>
+                <p className="text-sm text-muted-foreground">{evaluation.finalized_at ? formatDateTime(evaluation.finalized_at) : "—"}</p>
               </div>
             </div>
           </div>

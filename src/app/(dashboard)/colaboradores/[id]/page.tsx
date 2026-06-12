@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Briefcase, Calendar, User } from "lucide-react";
 import { toast } from "sonner";
 import { getCollaboratorById } from "@/app/actions/collaborators";
-import { formatDate, getStatusLabel, getInitials } from "@/lib/utils";
+import { formatDate, formatDateTime, getStatusLabel, getInitials } from "@/lib/utils";
 
 export default function CollaboratorDetailPage() {
   const params = useParams();
@@ -199,11 +199,11 @@ export default function CollaboratorDetailPage() {
             <div className="grid gap-3 text-xs text-muted-foreground">
               <div className="flex justify-between">
                 <span>Creado:</span>
-                <span>{collaborator.created_at ? formatDate(collaborator.created_at) : "—"}</span>
+                <span>{collaborator.created_at ? formatDateTime(collaborator.created_at) : "—"}</span>
               </div>
               <div className="flex justify-between">
                 <span>Actualizado:</span>
-                <span>{collaborator.updated_at ? formatDate(collaborator.updated_at) : "—"}</span>
+                <span>{collaborator.updated_at ? formatDateTime(collaborator.updated_at) : "—"}</span>
               </div>
             </div>
           </div>

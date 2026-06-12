@@ -12,7 +12,7 @@ import {
   PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, LabelList
 } from "recharts";
-import { cn, formatNumber, formatScore, getResultLabel, formatDate } from "@/lib/utils";
+import { cn, formatNumber, formatScore, getResultLabel, formatDate, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 import { getDashboardStats } from "@/app/actions/dashboard";
 
@@ -215,7 +215,7 @@ function RecentEvaluations({ evaluations }: { evaluations: any[] }) {
                     </span>
                   </td>
                   <td className="py-3 text-right text-muted-foreground text-xs">
-                    {formatDate(ev.date)}
+                    {formatDateTime(ev.date)}
                   </td>
                   <td className="py-3 text-center">
                     <Link href={`/evaluaciones/${ev.id}`}>

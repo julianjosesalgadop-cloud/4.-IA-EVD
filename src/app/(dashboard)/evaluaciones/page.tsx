@@ -4,10 +4,11 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Plus, Search, Filter, Eye,
-  Edit, FileDown, MoreHorizontal, ChevronLeft, ChevronRight, FileText
+  Edit, FileDown, MoreHorizontal, ChevronLeft, ChevronRight, FileText,
+  ArrowUpDown, ChevronUp, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
-import { cn, getResultLabel, getStatusLabel, formatDate, formatScore, getInitials } from "@/lib/utils";
+import { cn, getResultLabel, getStatusLabel, formatDate, formatDateTime, formatScore, getInitials } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { getEvaluations, getEvaluationById } from "@/app/actions/evaluations";
@@ -31,7 +32,10 @@ const RESULT_STYLE: Record<string, string> = {
 export default function EvaluacionesPage() {
   const [search, setSearch] = useState("");
   const [filterResult, setFilterResult] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [sortField, setSortField] = useState<string>("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -554,18 +558,76 @@ export default function EvaluacionesPage() {
     loadEvaluations();
   }, []);
 
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
   const filtered = evaluations.filter((e) => {
     const matchSearch = !search || e.collaborator.toLowerCase().includes(search.toLowerCase());
     const matchResult = !filterResult || 
       (filterResult === "plan_mejoramiento" 
         ? (e.result === "plan_mejoramiento" || e.has_pmi) 
         : e.result === filterResult);
-    const matchStatus = !filterStatus || e.status === filterStatus;
-    return matchSearch && matchResult && matchStatus;
+    
+    let matchDate = true;
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const evalDate = new Date(e.date);
+      if (evalDate < start) matchDate = false;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      const evalDate = new Date(e.date);
+      if (evalDate > end) matchDate = false;
+    }
+    
+    return matchSearch && matchResult && matchDate;
   });
 
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const sorted = [...filtered].sort((a, b) => {
+    let valA: any = a[sortField as keyof typeof a];
+    let valB: any = b[sortField as keyof typeof b];
+
+    if (sortField === "collaborator") {
+      valA = (a.collaborator || "").toLowerCase();
+      valB = (b.collaborator || "").toLowerCase();
+    } else if (sortField === "area") {
+      valA = (a.area || "").toLowerCase();
+      valB = (b.area || "").toLowerCase();
+    } else if (sortField === "position") {
+      valA = (a.position || "").toLowerCase();
+      valB = (b.position || "").toLowerCase();
+    } else if (sortField === "status") {
+      valA = (a.status || "").toLowerCase();
+      valB = (b.status || "").toLowerCase();
+    } else if (sortField === "result") {
+      valA = (a.result || "").toLowerCase();
+      valB = (b.result || "").toLowerCase();
+    } else if (sortField === "score") {
+      valA = Number(a.score) || 0;
+      valB = Number(b.score) || 0;
+    } else if (sortField === "date") {
+      valA = a.date ? new Date(a.date).getTime() : 0;
+      valB = b.date ? new Date(b.date).getTime() : 0;
+    }
+
+    if (valA === undefined || valA === null) return 1;
+    if (valB === undefined || valB === null) return -1;
+
+    if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
   const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   // Summary stats
   const total = evaluations.length;
@@ -627,25 +689,31 @@ export default function EvaluacionesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Buscar por colaborador..."
             className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Todos los estados</option>
-          <option value="borrador">Borrador</option>
-          <option value="en_proceso">En proceso</option>
-          <option value="finalizada">Finalizada</option>
-          <option value="reabierta">Reabierta</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+            className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-muted-foreground"
+            title="Fecha Inicio"
+          />
+          <span className="text-muted-foreground text-xs">a</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+            className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-muted-foreground"
+            title="Fecha Fin"
+          />
+        </div>
         <select
           value={filterResult}
-          onChange={(e) => setFilterResult(e.target.value)}
+          onChange={(e) => { setFilterResult(e.target.value); setPage(1); }}
           className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Todos los resultados</option>
@@ -666,13 +734,67 @@ export default function EvaluacionesPage() {
           <table className="w-full text-sm data-table">
             <thead className="border-b bg-muted/30">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Colaborador</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden md:table-cell">Área / Cargo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Estado</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden lg:table-cell">Resultado</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Promedio</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden lg:table-cell">Fecha</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Acciones</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase cursor-pointer select-none" onClick={() => handleSort("collaborator")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Colaborador
+                    {sortField === "collaborator" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort("position")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Área / Cargo
+                    {sortField === "position" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase cursor-pointer select-none" onClick={() => handleSort("status")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Estado
+                    {sortField === "status" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden lg:table-cell cursor-pointer select-none" onClick={() => handleSort("result")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Resultado
+                    {sortField === "result" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase cursor-pointer select-none" onClick={() => handleSort("score")}>
+                  <div className="flex items-center justify-end gap-1 hover:text-foreground transition-colors font-semibold">
+                    Promedio
+                    {sortField === "score" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden lg:table-cell cursor-pointer select-none" onClick={() => handleSort("date")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Fecha
+                    {sortField === "date" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase select-none">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -746,7 +868,7 @@ export default function EvaluacionesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell text-sm text-muted-foreground">
-                    {formatDate(ev.date)}
+                    {formatDateTime(ev.date)}
                   </td>
                   <td className="px-4 py-3 relative">
                     <div className="flex items-center justify-center gap-1">

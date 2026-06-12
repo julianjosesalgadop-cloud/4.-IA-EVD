@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ClipboardList, RefreshCcw, Search, Filter,
-  ChevronDown, Calendar, User, Database, ArrowUpCircle
+  ChevronDown, Calendar, User, Database, ArrowUpCircle,
+  ArrowUpDown, ChevronUp
 } from "lucide-react";
 import { getAuditLogs } from "@/app/actions/audit";
 import { toast } from "sonner";
@@ -69,6 +70,49 @@ export default function AuditoriaPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+
+  const [sortField, setSortField] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedLogs = (filteredLogs: AuditLog[]) => {
+    return [...filteredLogs].sort((a, b) => {
+      let valA: any = a[sortField as keyof typeof a];
+      let valB: any = b[sortField as keyof typeof b];
+
+      if (sortField === "created_at") {
+        valA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        valB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      } else if (sortField === "action") {
+        valA = (a.action || "").toLowerCase();
+        valB = (b.action || "").toLowerCase();
+      } else if (sortField === "profile") {
+        valA = a.profile ? `${a.profile.first_name} ${a.profile.last_name}`.toLowerCase() : "";
+        valB = b.profile ? `${b.profile.first_name} ${b.profile.last_name}`.toLowerCase() : "";
+      } else if (sortField === "table_name") {
+        valA = (a.table_name || "").toLowerCase();
+        valB = (b.table_name || "").toLowerCase();
+      } else if (sortField === "description") {
+        valA = (a.description || "").toLowerCase();
+        valB = (b.description || "").toLowerCase();
+      }
+
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
+      if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+      if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+  };
 
   const loadLogs = useCallback(async () => {
     setIsLoading(true);
@@ -243,11 +287,56 @@ export default function AuditoriaPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/30 border-b">
               <tr>
-                <th className="px-4 py-3 font-semibold text-muted-foreground">Fecha / Hora</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground">Acción</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Usuario</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Tabla</th>
-                <th className="px-4 py-3 font-semibold text-muted-foreground">Descripción</th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("created_at")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Fecha / Hora
+                    {sortField === "created_at" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("action")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Acción
+                    {sortField === "action" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell cursor-pointer select-none" onClick={() => handleSort("profile")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Usuario
+                    {sortField === "profile" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort("table_name")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Tabla
+                    {sortField === "table_name" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 font-semibold text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("description")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Descripción
+                    {sortField === "description" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -275,7 +364,7 @@ export default function AuditoriaPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((log, idx) => {
+                sortedLogs(filtered).map((log, idx) => {
                   const actionConf = ACTION_CONFIG[log.action] || {
                     label: log.action,
                     color: "text-muted-foreground",

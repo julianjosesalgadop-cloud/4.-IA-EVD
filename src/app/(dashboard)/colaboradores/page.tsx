@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Search, Filter, Download, Upload,
   ChevronLeft, ChevronRight, Eye, Edit, MoreHorizontal,
-  UserCheck, UserX, ArrowUpDown, Building2
+  UserCheck, UserX, ArrowUpDown, Building2, ChevronUp, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 import { cn, getStatusLabel, getInitials, formatDate, getContractTypeLabel } from "@/lib/utils";
@@ -59,8 +59,49 @@ export default function ColaboradoresPage() {
     return matchesSearch && matchesArea && matchesStatus;
   });
 
+  const [sortField, setSortField] = useState<string>("full_name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    let valA: any = a[sortField as keyof typeof a];
+    let valB: any = b[sortField as keyof typeof b];
+
+    if (sortField === "full_name") {
+      valA = (a.full_name || "").toLowerCase();
+      valB = (b.full_name || "").toLowerCase();
+    } else if (sortField === "area") {
+      valA = (a.area?.name || "").toLowerCase();
+      valB = (b.area?.name || "").toLowerCase();
+    } else if (sortField === "position") {
+      valA = (a.position?.name || "").toLowerCase();
+      valB = (b.position?.name || "").toLowerCase();
+    } else if (sortField === "hire_date") {
+      valA = a.hire_date ? new Date(a.hire_date).getTime() : 0;
+      valB = b.hire_date ? new Date(b.hire_date).getTime() : 0;
+    } else if (sortField === "status") {
+      valA = (a.status || "").toLowerCase();
+      valB = (b.status || "").toLowerCase();
+    }
+
+    if (valA === undefined || valA === null) return 1;
+    if (valB === undefined || valB === null) return -1;
+
+    if (valA < valB) return sortOrder === "asc" ? -1 : 1;
+    if (valA > valB) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
+
   const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const stats = {
     total: collaborators.length,
@@ -228,26 +269,57 @@ export default function ColaboradoresPage() {
           <table className="w-full text-sm data-table">
             <thead className="border-b bg-muted/30">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                    Colaborador <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none" onClick={() => handleSort("full_name")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Colaborador
+                    {sortField === "full_name" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">
-                  Cargo
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort("position")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Cargo
+                    {sortField === "position" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">
-                  <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                    Área <ArrowUpDown className="w-3 h-3" />
-                  </button>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell cursor-pointer select-none" onClick={() => handleSort("area")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Área
+                    {sortField === "area" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">
-                  Ingreso
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell cursor-pointer select-none" onClick={() => handleSort("hire_date")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Ingreso
+                    {sortField === "hire_date" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Estado
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none" onClick={() => handleSort("status")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Estado
+                    {sortField === "status" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide select-none">
                   Acciones
                 </th>
               </tr>

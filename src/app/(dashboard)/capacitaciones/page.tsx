@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { GraduationCap, Search, CheckCircle2, AlertCircle, Clock, BookOpen } from "lucide-react";
 import { getTrainingRecommendations } from "@/app/actions/training";
-import { formatDate } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 export default function CapacitacionesPage() {
   const [trainings, setTrainings] = useState<any[]>([]);
@@ -61,7 +61,7 @@ export default function CapacitacionesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm capitalize">{t.topic}</h3>
-                    <p className="text-xs text-muted-foreground">Recomendada: {formatDate(t.created_at)}</p>
+                    <p className="text-xs text-muted-foreground">Recomendada: {formatDateTime(t.created_at)}</p>
                   </div>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${

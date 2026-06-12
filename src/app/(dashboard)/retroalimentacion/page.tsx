@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare, Calendar, CheckCircle2, User, Clock, FileText } from "lucide-react";
 import { getFeedbackSessions } from "@/app/actions/feedback";
-import { formatDate } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 export default function RetroalimentacionPage() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -69,7 +69,7 @@ export default function RetroalimentacionPage() {
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Programada: {formatDate(session.scheduled_date)}</span>
+                  <span>Programada: {formatDateTime(session.scheduled_date)}</span>
                 </div>
                 {session.notes && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">

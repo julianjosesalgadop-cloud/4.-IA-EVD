@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Edit, CalendarCheck, CheckCircle2, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getEvaluationById } from "@/app/actions/evaluations";
-import { formatDate, formatScore, getResultLabel, getStatusLabel, getInitials } from "@/lib/utils";
+import { formatDate, formatDateTime, formatScore, getResultLabel, getStatusLabel, getInitials } from "@/lib/utils";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
 export default function EvaluationDetailPage() {
@@ -706,11 +706,11 @@ export default function EvaluationDetailPage() {
               <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-muted-foreground">
                 <div>
                   <p className="font-semibold text-foreground mb-0.5">Creado</p>
-                  <p>{formatDate(evaluation.created_at)}</p>
+                  <p>{formatDateTime(evaluation.created_at)}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground mb-0.5">Finalizado</p>
-                  <p>{evaluation.finalized_at ? formatDate(evaluation.finalized_at) : "—"}</p>
+                  <p>{evaluation.finalized_at ? formatDateTime(evaluation.finalized_at) : "—"}</p>
                 </div>
               </div>
             </div>
