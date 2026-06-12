@@ -144,12 +144,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border min-h-[72px]">
         {/* Logo Icon */}
-        <div className="relative flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-lg shadow-brand-500/10">
-            <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-0.5" />
+        {!collapsed && (
+          <div className="relative flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-lg shadow-brand-500/10">
+              <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-0.5" />
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success-500 border-2 border-sidebar-background" />
           </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success-500 border-2 border-sidebar-background" />
-        </div>
+        )}
 
         <AnimatePresence>
           {!collapsed && (
@@ -168,9 +170,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         <button
           onClick={onToggle}
-          className="ml-auto flex-shrink-0 p-1 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+          className={cn(
+            "p-1 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground",
+            collapsed ? "mx-auto w-8 h-8 flex items-center justify-center" : "ml-auto flex-shrink-0"
+          )}
         >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
 
