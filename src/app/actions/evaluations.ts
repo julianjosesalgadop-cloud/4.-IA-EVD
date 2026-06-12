@@ -430,12 +430,19 @@ export async function sendEvaluationEmail({
 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // Determinar remitente: usar dominio verificado si existe, sino el de prueba de Resend
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    const fromName = process.env.RESEND_FROM_NAME || "Evaluaciones Flota Sugamuxi";
+
+    const resultColor =
+      result.toLowerCase() === "aprobado" ? "#10b981" :
+      result.toLowerCase() === "plan_mejoramiento" ? "#f59e0b" : "#ef4444";
+
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b;">
         <h2 style="color: #012169; border-bottom: 2px solid #0084D5; padding-bottom: 10px; margin-bottom: 20px;">FLOTA SUGAMUXI S.A.</h2>
         <p>Estimado(a) <strong>${recipientName}</strong>,</p>
         <p>Se ha finalizado y registrado con éxito su <strong>Evaluación de Desempeño (EVD)</strong> correspondiente al año <strong>${evaluationYear}</strong>.</p>
-        
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0;">
           <h3 style="margin-top: 0; color: #0084D5;">Resumen de Resultados</h3>
           <table style="width: 100%; border-collapse: collapse;">
@@ -445,36 +452,43 @@ export async function sendEvaluationEmail({
             </tr>
             <tr>
               <td style="padding: 6px 0; font-weight: bold;">Resultado General:</td>
-              <td style="padding: 6px 0; font-weight: bold; color: ${result.toLowerCase() === "aprobado" ? "#10b981" : result.toLowerCase() === "plan_mejoramiento" ? "#f59e0b" : "#ef4444"
-      };">${result.replace(/_/g, " ").toUpperCase()}</td>
+              <td style="padding: 6px 0; font-weight: bold; color: ${resultColor};">${result.replace(/_/g, " ").toUpperCase()}</td>
             </tr>
           </table>
         </div>
-
-        <p>Adjunto a este correo encontrará el reporte en formato PDF Corporativo con el desglose detallado de sus competencias evaluadas, calificaciones y observaciones del proceso.</p>
-        
+        <p>Adjunto encontrará el reporte en formato PDF con el desglose detallado de competencias, calificaciones y observaciones del proceso.</p>
         <p style="margin-top: 30px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center;">
-          Este es un correo automático del Sistema de Gestión de Desempeño Flota Sugamuxi S.A. Por favor no responder a este mensaje.
+          Correo automático del Sistema de Gestión de Desempeño — Flota Sugamuxi S.A.
         </p>
       </div>
     `;
 
+    // Convertir base64 a Buffer para el adjunto (requerido por Resend v6+)
+    const pdfBuffer = Buffer.from(pdfBase64, "base64");
+
     const response = await resend.emails.send({
-      from: "Evaluaciones Flota Sugamuxi <onboarding@resend.dev>",
+      from: `${fromName} <${fromEmail}>`,
       to: recipientEmail,
-      subject: `Reporte de Evaluación de Desempeño F.S ${evaluationYear} - ${recipientName}`,
+      subject: `Reporte EVD ${evaluationYear} - ${recipientName}`,
       html: emailHtml,
       attachments: [
         {
           filename: fileName,
-          content: pdfBase64,
+          content: pdfBuffer,
         },
       ],
     });
 
     if (response.error) {
       console.error("Resend error detail:", response.error);
-      return { error: response.error.message };
+      const errMsg = (response.error as any)?.message || JSON.stringify(response.error);
+      // Error de dominio no verificado — instrucción clara
+      if (errMsg.includes("not allowed") || errMsg.includes("verify") || errMsg.includes("domain") || errMsg.includes("authorized")) {
+        return {
+          error: `Dominio no verificado: con el plan gratuito de Resend solo puedes enviar al correo del propietario de la cuenta. Para enviar a cualquier destinatario, verifica tu dominio en resend.com/domains y agrega RESEND_FROM_EMAIL=noreply@tudominio.com al archivo .env.local`
+        };
+      }
+      return { error: `Error al enviar: ${errMsg}` };
     }
 
     // Registrar en auditoría
@@ -483,14 +497,14 @@ export async function sendEvaluationEmail({
         "correo_enviado",
         "evaluations",
         evaluationId,
-        `Reporte de evaluación enviado por correo a ${recipientName} (${recipientEmail})`
+        `Reporte de evaluación enviado a ${recipientName} (${recipientEmail})`
       );
-    } catch (_) { /* no bloquear */ }
+    } catch (_) { /* no bloquear si falla la auditoría */ }
 
     return { success: true };
   } catch (error: any) {
     console.error("Error sending email:", error);
-    return { error: error?.message || "Ocurrió un error inesperado al enviar el correo." };
+    return { error: error?.message || "Error inesperado al enviar el correo." };
   }
 }
 
