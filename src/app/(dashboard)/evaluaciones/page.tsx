@@ -556,7 +556,10 @@ export default function EvaluacionesPage() {
 
   const filtered = evaluations.filter((e) => {
     const matchSearch = !search || e.collaborator.toLowerCase().includes(search.toLowerCase());
-    const matchResult = !filterResult || e.result === filterResult;
+    const matchResult = !filterResult || 
+      (filterResult === "plan_mejoramiento" 
+        ? (e.result === "plan_mejoramiento" || e.has_pmi) 
+        : e.result === filterResult);
     const matchStatus = !filterStatus || e.status === filterStatus;
     return matchSearch && matchResult && matchStatus;
   });
@@ -568,7 +571,7 @@ export default function EvaluacionesPage() {
   const total = evaluations.length;
   const aprobados = evaluations.filter(e => e.result === "aprobado").length;
   const conPMI = evaluations.filter(e => e.has_pmi).length;
-  const pendientes = evaluations.filter(e => e.status === "borrador" || e.status === "en_proceso").length;
+  const noAprobados = evaluations.filter(e => e.result === "no_aprobado").length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -598,7 +601,7 @@ export default function EvaluacionesPage() {
           { label: "Total", value: total, color: "brand" },
           { label: "Aprobados", value: aprobados, color: "success" },
           { label: "Con PMI", value: conPMI, color: "warning" },
-          { label: "Pendientes", value: pendientes, color: "violet" },
+          { label: "No Aprobados", value: noAprobados, color: "danger" },
         ].map((s, i) => (
           <motion.div
             key={s.label}
@@ -611,7 +614,7 @@ export default function EvaluacionesPage() {
               "text-3xl font-bold",
               s.color === "success" ? "text-success-600" :
               s.color === "warning" ? "text-warning-600" :
-              s.color === "violet" ? "text-violet-500" : "text-brand-500"
+              s.color === "danger" ? "text-danger-600" : "text-brand-500"
             )}>{s.value}</p>
             <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
           </motion.div>
