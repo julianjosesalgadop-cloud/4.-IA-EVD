@@ -263,7 +263,6 @@ export function buildQueryString(params: Record<string, unknown>): string {
 
 export async function compressImageIfNeeded(src: string, maxWidth: number = 400, maxHeight: number = 150): Promise<string> {
   if (typeof window === "undefined" || !src) return src;
-  if (src.startsWith("http") && src.length < 500) return src;
   
   return new Promise((resolve) => {
     const img = new window.Image();

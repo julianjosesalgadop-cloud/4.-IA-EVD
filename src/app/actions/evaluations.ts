@@ -276,7 +276,11 @@ export async function getEvaluations() {
 
 export async function getEvaluationById(evaluationId: string) {
   const supabase = await getSupabase();
-  const { data, error } = await supabase
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado", data: null };
+
+  const adminClient = await getSupabaseAdmin();
+  const { data, error } = await adminClient
     .from("evaluations")
     .select(`
       *,
