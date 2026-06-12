@@ -266,8 +266,10 @@ export async function compressImageIfNeeded(src: string, maxWidth: number = 400,
   
   return new Promise((resolve) => {
     const img = new window.Image();
+    if (src.startsWith("http") || src.startsWith("//")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = src;
-    img.crossOrigin = "anonymous";
     img.onload = () => {
       if (img.width <= maxWidth && img.height <= maxHeight && src.length < 50000) {
         resolve(src);

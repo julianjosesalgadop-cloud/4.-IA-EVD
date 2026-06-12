@@ -326,9 +326,10 @@ function NuevaEvaluacionContent() {
       // Load logo image first
       let logoImg: HTMLImageElement | null = null;
       try {
-        logoImg = await new Promise<HTMLImageElement | null>((resolve, reject) => {
+        const logoSrc = await compressImageIfNeeded("/logo.png", 200, 200);
+        logoImg = await new Promise<HTMLImageElement | null>((resolve) => {
           const img = new Image();
-          img.src = "/logo.png";
+          img.src = logoSrc;
           img.onload = () => resolve(img);
           img.onerror = () => resolve(null);
         });

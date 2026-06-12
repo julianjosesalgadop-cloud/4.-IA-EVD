@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getAreas } from "@/app/actions/config";
 import { getEvaluations } from "@/app/actions/evaluations";
 import { getPMIs } from "@/app/actions/pmi";
-import { formatScore, getResultLabel, getResultColor } from "@/lib/utils";
+import { formatScore, getResultLabel, getResultColor, compressImageIfNeeded } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
 interface AreaData {
@@ -276,9 +276,10 @@ export default function ReportesPage() {
       // Load logo image first
       let logoImg: HTMLImageElement | null = null;
       try {
+        const logoSrc = await compressImageIfNeeded("/logo.png", 200, 200);
         logoImg = await new Promise<HTMLImageElement | null>((resolve) => {
           const img = new Image();
-          img.src = "/logo.png";
+          img.src = logoSrc;
           img.onload = () => resolve(img);
           img.onerror = () => resolve(null);
         });
