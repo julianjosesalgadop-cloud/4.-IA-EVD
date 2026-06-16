@@ -9,6 +9,22 @@ import { getEvaluationById } from "@/app/actions/evaluations";
 import { formatDate, formatDateTime, formatScore, getResultLabel, getStatusLabel, getInitials, compressImageIfNeeded } from "@/lib/utils";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
+const SCORE_BADGES: Record<number, string> = {
+  5: "bg-success-50 dark:bg-success-950/20 text-success-700 dark:text-success-400 border-success-200 dark:border-success-800/40",
+  4: "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/40",
+  3: "bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
+  2: "bg-warning-50 dark:bg-warning-950/20 text-warning-700 dark:text-warning-400 border-warning-200 dark:border-warning-800/40",
+  1: "bg-danger-50 dark:bg-danger-950/20 text-danger-700 dark:text-danger-400 border-danger-200 dark:border-danger-800/40"
+};
+
+const SCORE_LABELS: Record<number, string> = {
+  5: "Excelente",
+  4: "Sobresaliente",
+  3: "Cumple lo esperado",
+  2: "Requiere mejora",
+  1: "No cumple"
+};
+
 export default function EvaluationDetailPage() {
   const params = useParams();
   const evaluationId = params?.id as string;
@@ -535,6 +551,16 @@ export default function EvaluationDetailPage() {
     }
   };
 
+  // Group answers by category
+  const answersByCategory = (evaluation?.answers || []).reduce((acc: Record<string, any[]>, answer: any) => {
+    const categoryName = answer.category?.name || "Sin Categoría";
+    if (!acc[categoryName]) {
+      acc[categoryName] = [];
+    }
+    acc[categoryName].push(answer);
+    return acc;
+  }, {});
+
   return (
     <div className="w-full min-h-screen px-3 sm:px-4 py-4 sm:py-6">
       <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 animate-fade-in">
@@ -720,19 +746,67 @@ export default function EvaluationDetailPage() {
             </div>
           </div>
 
-          <div className="rounded-lg sm:rounded-xl border bg-card p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Respuestas</h2>
+          <div className="rounded-lg sm:rounded-xl border bg-card p-4 sm:p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h2 className="text-base sm:text-lg font-bold text-foreground">Respuestas por Categoría</h2>
+              <span className="text-xs font-medium bg-muted px-2.5 py-0.5 rounded-full text-muted-foreground">
+                {evaluation.answers?.length || 0} Preguntas Evaluadas
+              </span>
+            </div>
+            
             {evaluation.answers?.length ? (
-              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-                {evaluation.answers.map((answer: any) => (
-                  <div key={answer.question_id} className="rounded-lg border border-muted/30 p-3 sm:p-4 bg-muted/10">
-                    <p className="font-semibold text-sm">{answer.question?.question || answer.question_id}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Puntaje: {answer.score}</p>
+              <div className="space-y-6 sm:space-y-8">
+                {Object.entries(answersByCategory).map(([categoryName, catAnswers]: [string, any]) => (
+                  <div key={categoryName} className="space-y-3">
+                    <div className="flex items-center gap-2 border-l-4 border-primary pl-2 sm:pl-3 py-0.5">
+                      <h3 className="font-bold text-sm sm:text-base text-foreground">{categoryName}</h3>
+                      <span className="text-[10px] sm:text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        {catAnswers.length} {catAnswers.length === 1 ? "pregunta" : "preguntas"}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+                      {catAnswers.map((answer: any) => {
+                        const score = answer.score || 0;
+                        const badgeClass = SCORE_BADGES[score] || "bg-muted text-muted-foreground border-border";
+                        const labelText = SCORE_LABELS[score] || "Sin calificar";
+                        return (
+                          <div key={answer.question_id} className="rounded-xl border border-border/60 bg-muted/5 p-3 sm:p-4 flex flex-col justify-between gap-3 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div className="space-y-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded border">
+                                  {answer.question?.code || "PREG"}
+                                </span>
+                                {answer.question?.is_critical && (
+                                  <span className="text-[9px] font-extrabold text-danger-700 bg-danger-50 dark:bg-danger-950/30 border border-danger-200 px-1.5 py-0.5 rounded-full animate-pulse uppercase">
+                                    Crítico
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-medium text-xs sm:text-sm text-foreground leading-snug">
+                                {answer.question?.question || answer.question_id}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-border/40 pt-2.5 mt-auto">
+                              <span className="text-xs text-muted-foreground">Calificación:</span>
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-bold ${badgeClass}`}>
+                                  <span className="text-sm font-extrabold">{score}</span>
+                                  <span className="opacity-70">|</span>
+                                  <span>{labelText}</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs sm:text-sm text-muted-foreground">No se encontraron respuestas asociadas.</p>
+              <p className="text-xs sm:text-sm text-muted-foreground text-center py-6">
+                No se encontraron respuestas asociadas a esta evaluación.
+              </p>
             )}
           </div>
         </div>
