@@ -308,13 +308,33 @@ export async function getEvaluationById(evaluationId: string) {
         category_id,
         score,
         comment,
-        question:evaluation_questions(question, code, is_critical)
+        question:evaluation_questions(question, code, is_critical),
+        category:evaluation_categories(name)
       )
     `)
     .eq("id", evaluationId)
     .single();
 
   if (error) return { error: error.message, data: null };
+
+  // Fetch evaluator cargo (position name) if their email is registered as a collaborator
+  if (data && data.evaluator?.email) {
+    const { data: evaluatorCollab } = await adminClient
+      .from("collaborators")
+      .select("position:positions(name)")
+      .eq("email", data.evaluator.email)
+      .maybeSingle();
+
+    const positionData = evaluatorCollab?.position;
+    const cargoName = Array.isArray(positionData) 
+      ? positionData[0]?.name 
+      : (positionData as any)?.name;
+
+    if (cargoName) {
+      data.evaluator.cargo = cargoName;
+    }
+  }
+
   return { data };
 }
 

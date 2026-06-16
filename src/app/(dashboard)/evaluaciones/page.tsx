@@ -162,11 +162,12 @@ export default function EvaluacionesPage() {
       doc.setFontSize(10);
       doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
       const dateText = evalData.finalized_at 
-        ? `Fecha de Finalización: ${formatPDFDate(evalData.finalized_at)}`
-        : `Fecha de Registro: ${formatPDFDate(evalData.created_at)}`;
+        ? `Fecha de Finalización: ${formatDateTime(evalData.finalized_at)}`
+        : `Fecha de Registro: ${formatDateTime(evalData.created_at)}`;
       doc.text(dateText, marginX, posY);
       posY += 10;
       
+      // SECTION: COLLABORATOR INFO (EVALUATED)
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
@@ -184,12 +185,12 @@ export default function EvaluacionesPage() {
         startY: posY,
         head: [],
         body: collabInfo,
-        theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any, lineColor: [226, 232, 240], lineWidth: 0.2 },
         columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 35 },
+          0: { fontStyle: "bold", cellWidth: 35, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 55 },
-          2: { fontStyle: "bold", cellWidth: 35 },
+          2: { fontStyle: "bold", cellWidth: 35, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 55 }
         },
         margin: { left: marginX, right: marginX }
@@ -205,7 +206,7 @@ export default function EvaluacionesPage() {
       posY += 4;
       
       const evaluatorInfo = [
-        ["Nombre del Evaluador:", evalData.evaluator ? `${evalData.evaluator.first_name} ${evalData.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", evalData.evaluator?.role?.display_name || "N/A"],
+        ["Nombre del Evaluador:", evalData.evaluator ? `${evalData.evaluator.first_name} ${evalData.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", evalData.evaluator?.cargo || evalData.evaluator?.role?.display_name || evalData.evaluator?.roles?.display_name || "N/A"],
         ["Correo Electrónico:", evalData.evaluator?.email || "N/A", "Versión del Proceso EVD:", evalData.version?.name || "N/A"]
       ];
       
@@ -213,12 +214,12 @@ export default function EvaluacionesPage() {
         startY: posY,
         head: [],
         body: evaluatorInfo,
-        theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any, lineColor: [226, 232, 240], lineWidth: 0.2 },
         columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 45 },
+          0: { fontStyle: "bold", cellWidth: 45, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 45 },
-          2: { fontStyle: "bold", cellWidth: 45 },
+          2: { fontStyle: "bold", cellWidth: 45, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 45 }
         },
         margin: { left: marginX, right: marginX }
@@ -397,9 +398,9 @@ export default function EvaluacionesPage() {
       doc.text("7. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
       posY += 6;
       
-      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
+      const answersHeaders = [["Categoría", "Pregunta", "Calificación"]];
       const answersRows = (evalData.answers || []).map((ans: any, idx: number) => [
-        ans.question?.code || `PREG-${idx + 1}`,
+        ans.category?.name || "N/A",
         ans.question?.question || "Pregunta sin descripción",
         `${ans.score} / 5.0`
       ]);
@@ -412,8 +413,8 @@ export default function EvaluacionesPage() {
         headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
         styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 35 },
-          1: { cellWidth: 120 },
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: 110 },
           2: { cellWidth: 25, halign: "center" }
         },
         margin: { left: marginX, right: marginX, top: 26, bottom: 24 }

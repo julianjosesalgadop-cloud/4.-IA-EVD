@@ -6,7 +6,7 @@ import {
   ClipboardList, ChevronLeft, ChevronRight, Save,
   CheckCircle2, AlertCircle, Star, Info, Send, FileText, X
 } from "lucide-react";
-import { cn, getScoreLabel, formatScore, getResultLabel, compressImageIfNeeded } from "@/lib/utils";
+import { cn, getScoreLabel, formatScore, getResultLabel, compressImageIfNeeded, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -410,8 +410,8 @@ function NuevaEvaluacionContent() {
       doc.setFontSize(10);
       doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
       const dateText = savedEvaluation.finalized_at 
-        ? `Fecha de Finalización: ${formatPDFDate(savedEvaluation.finalized_at)}`
-        : `Fecha de Registro: ${formatPDFDate(savedEvaluation.created_at)}`;
+        ? `Fecha de Finalización: ${formatDateTime(savedEvaluation.finalized_at)}`
+        : `Fecha de Registro: ${formatDateTime(savedEvaluation.created_at)}`;
       doc.text(dateText, marginX, posY);
       posY += 10;
       
@@ -432,12 +432,12 @@ function NuevaEvaluacionContent() {
         startY: posY,
         head: [],
         body: collabInfo,
-        theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any, lineColor: [226, 232, 240], lineWidth: 0.2 },
         columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 35 },
+          0: { fontStyle: "bold", cellWidth: 35, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 55 },
-          2: { fontStyle: "bold", cellWidth: 35 },
+          2: { fontStyle: "bold", cellWidth: 35, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 55 }
         },
         margin: { left: marginX, right: marginX }
@@ -453,7 +453,7 @@ function NuevaEvaluacionContent() {
       posY += 4;
       
       const evaluatorInfo = [
-        ["Nombre del Evaluador:", savedEvaluation.evaluator ? `${savedEvaluation.evaluator.first_name} ${savedEvaluation.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", savedEvaluation.evaluator?.role?.display_name || "N/A"],
+        ["Nombre del Evaluador:", savedEvaluation.evaluator ? `${savedEvaluation.evaluator.first_name} ${savedEvaluation.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", savedEvaluation.evaluator?.cargo || savedEvaluation.evaluator?.role?.display_name || savedEvaluation.evaluator?.roles?.display_name || "N/A"],
         ["Correo Electrónico:", savedEvaluation.evaluator?.email || "N/A", "Versión del Proceso EVD:", savedEvaluation.version?.name || "N/A"]
       ];
       
@@ -461,12 +461,12 @@ function NuevaEvaluacionContent() {
         startY: posY,
         head: [],
         body: evaluatorInfo,
-        theme: "plain",
-        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any, lineColor: [226, 232, 240], lineWidth: 0.2 },
         columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 45 },
+          0: { fontStyle: "bold", cellWidth: 45, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 45 },
-          2: { fontStyle: "bold", cellWidth: 45 },
+          2: { fontStyle: "bold", cellWidth: 45, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 45 }
         },
         margin: { left: marginX, right: marginX }
@@ -645,9 +645,9 @@ function NuevaEvaluacionContent() {
       doc.text("7. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
       posY += 6;
       
-      const answersHeaders = [["Código / Competencia", "Pregunta", "Calificación"]];
+      const answersHeaders = [["Categoría", "Pregunta", "Calificación"]];
       const answersRows = (savedEvaluation.answers || []).map((ans: any, idx: number) => [
-        ans.question?.code || `PREG-${idx + 1}`,
+        ans.category?.name || "N/A",
         ans.question?.question || "Pregunta sin descripción",
         `${ans.score} / 5.0`
       ]);
@@ -660,8 +660,8 @@ function NuevaEvaluacionContent() {
         headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
         styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 35 },
-          1: { cellWidth: 120 },
+          0: { fontStyle: "bold", cellWidth: 45 },
+          1: { cellWidth: 110 },
           2: { cellWidth: 25, halign: "center" }
         },
         margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
