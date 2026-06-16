@@ -31,29 +31,17 @@ const step1Schema = z.object({
   last_name: z.string().min(2, "Apellido requerido").max(100),
   email: z.string().email("Correo inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  birth_date: z.string().optional(),
   gender: z.enum(["masculino", "femenino", "otro", "no_informa"]).optional(),
 });
 
 const step2Schema = z.object({
-  internal_code: z.string().optional(),
   area_id: z.string().min(1, "Selecciona un área"),
   position_id: z.string().min(1, "Selecciona un cargo"),
-  process_id: z.string().optional(),
-  cost_center_id: z.string().optional(),
-  workplace_city: z.string().optional(),
-  workplace: z.string().optional(),
-  contract_type: z.enum(["indefinido", "fijo", "obra_labor", "aprendizaje", "prestacion_servicios", "temporal"]).optional(),
-  hire_date: z.string().min(1, "Fecha de ingreso requerida"),
   status: z.enum(["activo", "inactivo", "retirado", "vacaciones", "incapacidad"]),
 });
 
 const step3Schema = z.object({
   immediate_boss_id: z.string().optional(),
-  area_leader_id: z.string().optional(),
-  responsible_manager_id: z.string().optional(),
 });
 
 type Step1Data = z.infer<typeof step1Schema>;
@@ -131,47 +119,18 @@ function StepPersonal({ form }: { form: ReturnType<typeof useForm<Step1Data>> })
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-1.5">
-          <label className="text-sm font-medium">Dirección</label>
-          <input
-            {...register("address")}
-            placeholder="Calle 15 # 8-32"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Ciudad</label>
-          <input
-            {...register("city")}
-            placeholder="Sogamoso"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Fecha de Nacimiento</label>
-          <input
-            {...register("birth_date")}
-            type="date"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Género</label>
-          <select
-            {...register("gender")}
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">Seleccionar...</option>
-            <option value="masculino">Masculino</option>
-            <option value="femenino">Femenino</option>
-            <option value="otro">Otro</option>
-            <option value="no_informa">No informa</option>
-          </select>
-        </div>
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Género</label>
+        <select
+          {...register("gender")}
+          className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="">Seleccionar...</option>
+          <option value="masculino">Masculino</option>
+          <option value="femenino">Femenino</option>
+          <option value="otro">Otro</option>
+          <option value="no_informa">No informa</option>
+        </select>
       </div>
     </div>
   );
@@ -190,32 +149,6 @@ function StepLaboral({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Código Interno</label>
-          <input
-            {...register("internal_code")}
-            placeholder="Ej: EMP-001"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Tipo de Contrato</label>
-          <select
-            {...register("contract_type")}
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="">Seleccionar...</option>
-            <option value="indefinido">Término Indefinido</option>
-            <option value="fijo">Término Fijo</option>
-            <option value="obra_labor">Obra o Labor</option>
-            <option value="aprendizaje">Aprendizaje</option>
-            <option value="prestacion_servicios">Prestación de Servicios</option>
-            <option value="temporal">Temporal</option>
-          </select>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Área *</label>
@@ -245,47 +178,17 @@ function StepLaboral({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Ciudad de Trabajo</label>
-          <input
-            {...register("workplace_city")}
-            placeholder="Sogamoso"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Sede</label>
-          <input
-            {...register("workplace")}
-            placeholder="Terminal Principal"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Fecha de Ingreso *</label>
-          <input
-            {...register("hire_date")}
-            type="date"
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          {errors.hire_date && <p className="text-danger-500 text-xs">{errors.hire_date.message}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Estado</label>
-          <select
-            {...register("status")}
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          >
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-            <option value="vacaciones">Vacaciones</option>
-            <option value="incapacidad">Incapacidad</option>
-          </select>
-        </div>
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Estado</label>
+        <select
+          {...register("status")}
+          className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
+          <option value="vacaciones">Vacaciones</option>
+          <option value="incapacidad">Incapacidad</option>
+        </select>
       </div>
     </div>
   );
@@ -293,12 +196,10 @@ function StepLaboral({
 
 function StepJerarquia({ 
   form,
-  collaborators,
-  managers
+  collaborators
 }: { 
   form: ReturnType<typeof useForm<Step3Data>>,
-  collaborators: any[],
-  managers: any[]
+  collaborators: any[]
 }) {
   const { register } = form;
 
@@ -307,7 +208,7 @@ function StepJerarquia({
       <div className="p-4 rounded-xl border border-dashed bg-muted/20 space-y-2">
         <p className="text-sm text-muted-foreground">
           Configura la estructura jerárquica del colaborador para el proceso de evaluación.
-          Los evaluadores podrán ser el jefe inmediato o el líder de área.
+          El jefe inmediato será quien realice la evaluación directa del colaborador.
         </p>
       </div>
 
@@ -324,33 +225,6 @@ function StepJerarquia({
         </select>
         <p className="text-xs text-muted-foreground">Quien realizará la evaluación directa del colaborador</p>
       </div>
-
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Líder de Área</label>
-        <select
-          {...register("area_leader_id")}
-          className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Seleccionar líder de área...</option>
-          {collaborators.map((c) => (
-            <option key={c.id} value={c.id}>{c.full_name} — {c.areas?.name || 'N/A'}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Gerente Responsable</label>
-        <select
-          {...register("responsible_manager_id")}
-          className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Seleccionar gerente...</option>
-          {managers.map((m) => (
-            <option key={m.id} value={m.id}>{m.first_name} {m.last_name} {m.roles?.name ? `— ${m.roles.name}` : ''}</option>
-          ))}
-        </select>
-        <p className="text-xs text-muted-foreground">Recibirá notificaciones de evaluaciones y PMI de este colaborador</p>
-      </div>
     </div>
   );
 }
@@ -364,22 +238,19 @@ export default function NuevoColaboradorPage() {
   const [areas, setAreas] = useState<any[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
   const [collaborators, setCollaborators] = useState<any[]>([]);
-  const [managers, setManagers] = useState<any[]>([]);
 
   React.useEffect(() => {
     async function loadData() {
       try {
         const { getCollaborators } = await import("@/app/actions/collaborators");
-        const [areasData, positionsData, collabsData, profilesData] = await Promise.all([
+        const [areasData, positionsData, collabsData] = await Promise.all([
           getAreas(),
           getPositions(),
-          getCollaborators(),
-          getProfiles()
+          getCollaborators()
         ]);
         setAreas(areasData || []);
         setPositions(positionsData || []);
         setCollaborators(collabsData?.data || []);
-        setManagers(profilesData?.data || []);
       } catch (err) {
         console.error("Error loading config data", err);
       }
@@ -516,7 +387,7 @@ export default function NuevoColaboradorPage() {
         <AnimatePresence mode="wait">
           {currentStep === 1 && <StepPersonal form={form1} />}
           {currentStep === 2 && <StepLaboral form={form2} areas={areas} positions={positions} />}
-          {currentStep === 3 && <StepJerarquia form={form3} collaborators={collaborators} managers={managers} />}
+          {currentStep === 3 && <StepJerarquia form={form3} collaborators={collaborators} />}
           {currentStep === 4 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -538,6 +409,14 @@ export default function NuevoColaboradorPage() {
                       <span className="text-muted-foreground">Correo:</span>
                       <span className="font-medium text-xs">{formData.email || "—"}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Celular:</span>
+                      <span className="font-medium">{formData.phone || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Género:</span>
+                      <span className="font-medium capitalize">{formData.gender || "—"}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
@@ -547,12 +426,22 @@ export default function NuevoColaboradorPage() {
                   </p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
+                      <span className="text-muted-foreground">Área:</span>
+                      <span className="font-medium">{areas.find(a => a.id === formData.area_id)?.name || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cargo:</span>
+                      <span className="font-medium">{positions.find(p => p.id === formData.position_id)?.name || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Estado:</span>
                       <span className="font-medium capitalize">{formData.status || "Activo"}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Ingreso:</span>
-                      <span className="font-medium">{formData.hire_date || "—"}</span>
+                    <div className="flex justify-between border-t border-border/40 pt-1.5 mt-1">
+                      <span className="text-muted-foreground">Jefe Inmediato:</span>
+                      <span className="font-medium text-xs truncate max-w-[120px]">
+                        {collaborators.find(c => c.id === formData.immediate_boss_id)?.full_name || "—"}
+                      </span>
                     </div>
                   </div>
                 </div>
