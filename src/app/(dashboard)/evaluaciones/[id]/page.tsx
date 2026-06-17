@@ -303,7 +303,7 @@ export default function EvaluationDetailPage() {
       const categoryScores = result?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
         // Prevent signatures from being on a page by themselves for colaborador
-        if (pdfType === "colaborador" && posY > 200) {
+        if (pdfType === "colaborador" && posY > 180) {
           doc.addPage();
           posY = 28;
         }
@@ -429,7 +429,7 @@ export default function EvaluationDetailPage() {
         posY = (doc as any).lastAutoTable.finalY + 12;
         
         // Prevent signatures from being on a page by themselves for evaluador
-        if (posY > 175) {
+        if (posY > 145) {
           doc.addPage();
           posY = 28;
         }
