@@ -164,7 +164,7 @@ export default function EvaluationDetailPage() {
         : `Fecha de Registro: ${formatDateTime(evaluation.created_at)}`;
       const evalYear = evaluation.evaluation_year || new Date().getFullYear();
       doc.text(`${dateText}  |  Año de Evaluación: ${evalYear}`, marginX, posY);
-      posY += 10;
+      posY += 15;
       
       // SECTION: COLLABORATOR INFO (EVALUATED)
       doc.setFont("helvetica", "bold");

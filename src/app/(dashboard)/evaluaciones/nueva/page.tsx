@@ -432,7 +432,7 @@ function NuevaEvaluacionContent() {
         : `Fecha de Registro: ${formatDateTime(savedEvaluation.created_at)}`;
       const evalYear = savedEvaluation.evaluation_year || new Date().getFullYear();
       doc.text(`${dateText}  |  Año de Evaluación: ${evalYear}`, marginX, posY);
-      posY += 10;
+      posY += 15;
       
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
