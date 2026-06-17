@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Search, Menu, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { Bell, Search, Menu, LogOut, User, Settings, ChevronDown, Building2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -176,12 +176,20 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
                 {/* Items */}
                 <div className="p-1.5 space-y-0.5">
                   <Link
-                    href="/configuracion/empresa"
+                    href="/perfil"
                     onClick={() => setShowDropdown(false)}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-accent transition-colors text-foreground"
                   >
                     <User className="w-4 h-4 text-muted-foreground" />
-                    <span>Mi Perfil / Empresa</span>
+                    <span>Mi Perfil</span>
+                  </Link>
+                  <Link
+                    href="/configuracion/empresa"
+                    onClick={() => setShowDropdown(false)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-accent transition-colors text-foreground"
+                  >
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <span>Empresa</span>
                   </Link>
                   <Link
                     href="/configuracion/preguntas"
@@ -214,4 +222,3 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
     </header>
   );
 }
-

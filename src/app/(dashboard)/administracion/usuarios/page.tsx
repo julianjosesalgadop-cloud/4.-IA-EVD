@@ -6,7 +6,7 @@ import {
   Users, Plus, Search, Edit2, Shield, Mail, Phone,
   X, Save, Loader2, UserCheck, UserX, Eye, EyeOff, Briefcase, KeyRound
 } from "lucide-react";
-import { getProfiles, updateProfile, inviteUser, getRoles, resetUserPassword } from "@/app/actions/admin";
+import { getProfiles, updateProfile, inviteUser, getRoles, resetUserPassword, getCurrentUserRole } from "@/app/actions/admin";
 import { getPositions } from "@/app/actions/config";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -45,12 +45,14 @@ function UserModal({
   user,
   roles,
   positions,
+  isAdmin,
   onClose,
   onSave,
 }: {
   user: UserProfile | null;
   roles: Role[];
   positions: any[];
+  isAdmin: boolean;
   onClose: () => void;
   onSave: () => void;
 }) {
@@ -192,10 +194,10 @@ function UserModal({
             )}
           </div>
 
-          {!isEdit && (
+          {(!isEdit || isAdmin) && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium">
-                Contraseña (Opcional)
+                {isEdit ? "Nueva Contraseña (Opcional)" : "Contraseña (Opcional)"}
               </label>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -204,7 +206,7 @@ function UserModal({
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="Si no se ingresa, se usará Sugamuxi2026*"
+                  placeholder={isEdit ? "Dejar en blanco para no cambiar" : "Si no se ingresa, se usará Sugamuxi2026*"}
                 />
               </div>
             </div>
@@ -332,6 +334,7 @@ export default function UsuariosPage() {
   const [search, setSearch] = useState("");
   const [modalUser, setModalUser] = useState<UserProfile | null | "new">(undefined as any);
   const [showModal, setShowModal] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
 
   useEffect(() => {
     loadAll();
@@ -340,10 +343,11 @@ export default function UsuariosPage() {
   async function loadAll() {
     setIsLoading(true);
     try {
-      const [usersRes, rolesRes, positionsData] = await Promise.all([
+      const [usersRes, rolesRes, positionsData, roleRes] = await Promise.all([
         getProfiles(),
         getRoles(),
         getPositions(),
+        getCurrentUserRole(),
       ]);
 
       if (usersRes.error) {
@@ -356,6 +360,9 @@ export default function UsuariosPage() {
       setUsers((usersRes.data as UserProfile[]) || []);
       setRoles((rolesRes.data as Role[]) || []);
       setPositions(positionsData || []);
+      if (roleRes?.data) {
+        setCurrentUserRole(roleRes.data);
+      }
     } catch (err) {
       toast.error("Error al cargar usuarios");
     } finally {
@@ -389,6 +396,7 @@ export default function UsuariosPage() {
   }
 
   async function handleResetPassword(user: UserProfile) {
+    if (currentUserRole !== "admin") return;
     if (!window.confirm(`¿Estás seguro de que deseas restablecer la contraseña de ${user.first_name} ${user.last_name}? La contraseña se cambiará a la predeterminada.`)) return;
 
     try {
@@ -399,6 +407,8 @@ export default function UsuariosPage() {
       toast.error(err.message || "Error al intentar restablecer la contraseña");
     }
   }
+
+  const isAdmin = currentUserRole === "admin";
 
   const filtered = users.filter((u) => {
     const term = search.toLowerCase();
@@ -523,13 +533,15 @@ export default function UsuariosPage() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleResetPassword(user)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors opacity-0 group-hover:opacity-100"
-                    title="Restablecer contraseña"
-                  >
-                    <KeyRound className="w-4 h-4" />
-                  </button>
+              {isAdmin && (
+                <button
+                  onClick={() => handleResetPassword(user)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Restablecer contraseña"
+                >
+                  <KeyRound className="w-4 h-4" />
+                </button>
+              )}
                   <button
                     onClick={() => openEdit(user)}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors opacity-0 group-hover:opacity-100"
@@ -593,6 +605,7 @@ export default function UsuariosPage() {
             user={modalUser as UserProfile | null}
             roles={roles}
             positions={positions}
+            isAdmin={isAdmin}
             onClose={closeModal}
             onSave={loadAll}
           />

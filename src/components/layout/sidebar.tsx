@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, ClipboardList, Settings, TrendingUp,
   FileBarChart2, Bell, Shield, ChevronLeft, ChevronRight,
   Building2, BookOpen, MessageSquare, Target, LogOut,
-  GraduationCap, ChevronDown, ChevronUp
+  GraduationCap, ChevronDown, ChevronUp, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -65,6 +65,11 @@ const navGroups: NavGroup[] = [
   {
     groupTitle: "Administración & Configuración",
     items: [
+      {
+        title: "Mi Perfil",
+        href: "/perfil",
+        icon: User,
+      },
       {
         title: "Configuración",
         icon: Settings,

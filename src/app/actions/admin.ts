@@ -36,6 +36,22 @@ function getSupabaseAdmin() {
 // PROFILES (Usuarios)
 // ==========================================
 
+export async function getCurrentUserRole() {
+  const supabaseUser = await getSupabase();
+  const { data: userData } = await supabaseUser.auth.getUser();
+  if (!userData.user) return { data: null, error: "No autenticado" };
+
+  const adminClient = getSupabaseAdmin();
+  const { data, error } = await adminClient
+    .from("profiles")
+    .select(`roles(name)`)
+    .eq("id", userData.user.id)
+    .single();
+
+  if (error) return { data: null, error: error.message };
+  return { data: (data as any)?.roles?.name as string | undefined, error: null };
+}
+
 export async function getProfiles() {
   const supabaseUser = await getSupabase();
   const { data: userData } = await supabaseUser.auth.getUser();
@@ -182,6 +198,42 @@ export async function resetUserPassword(userId: string, newPassword?: string) {
   const { error: authError } = await adminClient.auth.admin.updateUserById(userId, { password: newPassword || 'Sugamuxi2026*' });
 
   if (authError) return { error: authError.message };
+  return { success: true };
+}
+
+export async function getCurrentUserProfile() {
+  const supabase = await getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: null, error: "No autenticado" };
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(`
+      *,
+      roles(id, name, display_name),
+      positions(id, name, areas(name))
+    `)
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching current user profile:", error);
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+export async function updateCurrentUserPassword(newPassword: string) {
+  const supabase = await getSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'No autenticado' };
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    return { error: error.message };
+  }
   return { success: true };
 }
 
