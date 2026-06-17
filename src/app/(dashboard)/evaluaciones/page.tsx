@@ -307,7 +307,7 @@ export default function EvaluacionesPage() {
       const categoryScores = resultObj?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
         // Prevent signatures from being on a page by themselves for colaborador
-        if (pdfType === "colaborador" && posY > 180) {
+        if (pdfType === "colaborador" && posY > 240) {
           doc.addPage();
           posY = 28;
         }
@@ -433,7 +433,7 @@ export default function EvaluacionesPage() {
         posY = (doc as any).lastAutoTable.finalY + 12;
         
         // Prevent signatures from being on a page by themselves for evaluador
-        if (posY > 145) {
+        if (posY > 240) {
           doc.addPage();
           posY = 28;
         }
@@ -468,7 +468,7 @@ export default function EvaluacionesPage() {
         posY = (doc as any).lastAutoTable.finalY + 15;
       }
       
-      if (posY > 230) {
+      if (posY > 245) {
         doc.addPage();
         posY = 28;
       }
@@ -485,12 +485,12 @@ export default function EvaluacionesPage() {
       const evaluatorSig = evaluatorSigRaw ? await compressImageIfNeeded(evaluatorSigRaw) : null;
       const collaboratorSig = collaboratorSigRaw ? await compressImageIfNeeded(collaboratorSigRaw) : null;
       
-      let sigHeight = 14;
+      let sigHeight = 11;
       let sigWidth = 38;
       
       if (evaluatorSig) {
         try {
-          doc.addImage(evaluatorSig, "PNG", marginX + 16, posY + 4, sigWidth, sigHeight);
+          doc.addImage(evaluatorSig, "PNG", marginX + 16, posY + 2, sigWidth, sigHeight);
         } catch (err) {
           console.error("Error adding evaluator signature to PDF:", err);
         }
@@ -498,13 +498,13 @@ export default function EvaluacionesPage() {
       
       if (collaboratorSig) {
         try {
-          doc.addImage(collaboratorSig, "PNG", 210 - marginX - 54, posY + 4, sigWidth, sigHeight);
+          doc.addImage(collaboratorSig, "PNG", 210 - marginX - 54, posY + 2, sigWidth, sigHeight);
         } catch (err) {
           console.error("Error adding collaborator signature to PDF:", err);
         }
       }
 
-      posY += 20;
+      posY += 15;
       
       doc.setDrawColor(100, 116, 139);
       doc.setLineWidth(0.5);
