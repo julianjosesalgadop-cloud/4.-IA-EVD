@@ -98,6 +98,7 @@ export async function updateProfile(userId: string, updates: {
 
 export async function inviteUser(data: {
   email: string;
+  password?: string;
   first_name: string;
   last_name: string;
   phone?: string;
@@ -128,12 +129,28 @@ export async function inviteUser(data: {
 
   if (existing) return { error: "Ya existe un usuario con ese correo en la empresa" };
 
-  // Use admin client to insert user profile
-  const tempId = crypto.randomUUID();
+  // 1. Create User in Auth
+  const defaultPassword = data.password || "Sugamuxi2026*";
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email: data.email,
+    password: defaultPassword,
+    email_confirm: true,
+  });
+
+  if (authError) {
+    console.error("Auth create error:", authError);
+    return { error: authError.message };
+  }
+
+  if (!authData.user) {
+    return { error: "No se pudo crear el usuario en autenticación." };
+  }
+
+  // 2. Use admin client to insert user profile
   const { error: profileError } = await adminClient
     .from("profiles")
     .insert({
-      id: tempId,
+      id: authData.user.id,
       company_id: currentProfile.company_id,
       email: data.email,
       first_name: data.first_name,
@@ -146,14 +163,25 @@ export async function inviteUser(data: {
     });
 
   if (profileError) {
-    // If profile can't be created directly, we note that admin needs to use Supabase Auth
     console.error("Profile insert error:", profileError);
     return { 
-      error: "Para crear usuarios nuevos, el usuario debe registrarse con ese correo o usar la invitación desde Supabase Dashboard. El perfil se creará automáticamente al primer inicio de sesión." 
+      error: "Error creando el perfil del usuario. Por favor, verifique." 
     };
   }
 
   revalidatePath("/administracion/usuarios");
+  return { success: true };
+}
+
+export async function resetUserPassword(userId: string, newPassword?: string) {
+  const supabaseUser = await getSupabase();
+  const { data: userData } = await supabaseUser.auth.getUser();
+  if (!userData.user) return { error: 'No autenticado' };
+
+  const adminClient = getSupabaseAdmin();
+  const { error: authError } = await adminClient.auth.admin.updateUserById(userId, { password: newPassword || 'Sugamuxi2026*' });
+
+  if (authError) return { error: authError.message };
   return { success: true };
 }
 

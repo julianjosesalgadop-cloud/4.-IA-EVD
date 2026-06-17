@@ -259,7 +259,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            © 2026 Flota Sugamuxi S.A. · Sistema EVD v2.0
+            © 2026 Flota Sugamuxi S.A. · Sistema EVD v1.0
           </p>
         </motion.div>
       </div>

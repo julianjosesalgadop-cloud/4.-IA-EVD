@@ -4,9 +4,9 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Search, Edit2, Shield, Mail, Phone,
-  X, Save, Loader2, UserCheck, UserX, Eye, EyeOff, Briefcase
+  X, Save, Loader2, UserCheck, UserX, Eye, EyeOff, Briefcase, KeyRound
 } from "lucide-react";
-import { getProfiles, updateProfile, inviteUser, getRoles } from "@/app/actions/admin";
+import { getProfiles, updateProfile, inviteUser, getRoles, resetUserPassword } from "@/app/actions/admin";
 import { getPositions } from "@/app/actions/config";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,7 @@ function UserModal({
     first_name: user?.first_name || "",
     last_name: user?.last_name || "",
     email: user?.email || "",
+    password: "",
     phone: user?.phone || "",
     role_id: user?.role_id || user?.roles?.id || "",
     position_id: user?.position_id || user?.positions?.id || "",
@@ -96,6 +97,7 @@ function UserModal({
         }
         const result = await inviteUser({
           email: formData.email.trim(),
+          password: formData.password?.trim() || undefined,
           first_name: formData.first_name.trim(),
           last_name: formData.last_name.trim(),
           phone: formData.phone.trim() || undefined,
@@ -189,6 +191,24 @@ function UserModal({
               <p className="text-xs text-muted-foreground">El correo no puede modificarse</p>
             )}
           </div>
+
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                Contraseña (Opcional)
+              </label>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Si no se ingresa, se usará Sugamuxi2026*"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Phone */}
           <div className="space-y-1.5">
@@ -491,6 +511,13 @@ export default function UsuariosPage() {
                       )}
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleResetPassword(user)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Restablecer contraseña"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={() => openEdit(user)}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors opacity-0 group-hover:opacity-100"
