@@ -463,31 +463,86 @@ export async function sendEvaluationEmail({
     const fromName = process.env.RESEND_FROM_NAME || "Evaluaciones Flota Sugamuxi";
 
     const resultColor =
-      result.toLowerCase() === "aprobado" ? "#10b981" :
-      result.toLowerCase() === "plan_mejoramiento" ? "#f59e0b" : "#ef4444";
+      result.toLowerCase() === "aprobado" ? "#047857" :
+      result.toLowerCase() === "plan_mejoramiento" ? "#b45309" : "#b91c1c";
+    const resultBg =
+      result.toLowerCase() === "aprobado" ? "#ecfdf5" :
+      result.toLowerCase() === "plan_mejoramiento" ? "#fffbeb" : "#fef2f2";
+    const resultBorder =
+      result.toLowerCase() === "aprobado" ? "#a7f3d0" :
+      result.toLowerCase() === "plan_mejoramiento" ? "#fde68a" : "#fecaca";
+
+    const resultLabel =
+      result.toLowerCase() === "aprobado" ? "APROBADO" :
+      result.toLowerCase() === "plan_mejoramiento" ? "PLAN DE MEJORAMIENTO" : "NO APROBADO";
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
 
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; color: #1e293b;">
-        <h2 style="color: #012169; border-bottom: 2px solid #0084D5; padding-bottom: 10px; margin-bottom: 20px;">FLOTA SUGAMUXI S.A.</h2>
-        <p>Estimado(a) <strong>${recipientName}</strong>,</p>
-        <p>Se ha finalizado y registrado con éxito su <strong>Evaluación de Desempeño (EVD)</strong> correspondiente al año <strong>${evaluationYear}</strong>.</p>
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin: 20px 0;">
-          <h3 style="margin-top: 0; color: #0084D5;">Resumen de Resultados</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 6px 0; font-weight: bold; width: 40%;">Calificación Promedio:</td>
-              <td style="padding: 6px 0;">${score.toFixed(2)} / 5.00</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; font-weight: bold;">Resultado General:</td>
-              <td style="padding: 6px 0; font-weight: bold; color: ${resultColor};">${result.replace(/_/g, " ").toUpperCase()}</td>
-            </tr>
-          </table>
+      <div style="font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; padding: 40px 20px; color: #1e293b; min-height: 100%;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
+          <!-- Top Accent Bar -->
+          <div style="height: 6px; background-color: #012169;"></div>
+          
+          <!-- Corporate Header -->
+          <div style="background-color: #012169; padding: 24px 32px; border-bottom: 3px solid #0084D5; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px; font-family: 'Segoe UI', Arial, sans-serif;">FLOTA SUGAMUXI S.A.</h1>
+            <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Segoe UI', Arial, sans-serif;">Sistema de Gestión de Desempeño (EVD)</p>
+          </div>
+          
+          <!-- Body Content -->
+          <div style="padding: 32px;">
+            <h2 style="color: #012169; font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 16px; font-family: 'Segoe UI', Arial, sans-serif;">Registro de Evaluación de Desempeño</h2>
+            
+            <p style="font-size: 14.5px; line-height: 1.6; margin-bottom: 20px; color: #334155;">
+              Estimado(a) <strong style="color: #0f172a;">${recipientName}</strong>,
+            </p>
+            
+            <p style="font-size: 14.5px; line-height: 1.6; margin-bottom: 24px; color: #334155;">
+              Le informamos que se ha registrado y finalizado exitosamente su **Evaluación de Desempeño (EVD)** correspondiente al periodo fiscal **${evaluationYear}**.
+            </p>
+            
+            <!-- Result Summary Card -->
+            <div style="background-color: #f8fafc; border-left: 4px solid #0084D5; border-radius: 4px 8px 8px 4px; padding: 20px; margin-bottom: 28px; border-top: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: #012169; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; font-family: 'Segoe UI', Arial, sans-serif;">Resumen Ejecutivo de Resultados</h3>
+              
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Segoe UI', Arial, sans-serif;">
+                <tr>
+                  <td style="padding: 8px 0; color: #475569; width: 45%;">Calificación Promedio:</td>
+                  <td style="padding: 8px 0; font-weight: 700; color: #0f172a; font-size: 15px;">${score.toFixed(2)} / 5.00</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #475569; vertical-align: middle;">Resultado General:</td>
+                  <td style="padding: 8px 0; vertical-align: middle;">
+                    <span style="display: inline-block; background-color: ${resultBg}; color: ${resultColor}; border: 1px solid ${resultBorder}; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; letter-spacing: 0.5px;">
+                      ${resultLabel}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            
+            <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 28px;">
+              En el archivo adjunto encontrará el reporte formal en formato PDF con la firma de conformidad del evaluador y el colaborador evaluado, así como el desglose detallado de calificaciones por categoría.
+            </p>
+
+            <!-- Action Button -->
+            <div style="text-align: center; margin-bottom: 12px;">
+              <a href="${appUrl}" style="display: inline-block; background-color: #012169; color: #ffffff; text-decoration: none; padding: 12px 28px; font-size: 14px; font-weight: 600; border-radius: 8px; border-bottom: 2px solid #0056b3; font-family: 'Segoe UI', Arial, sans-serif;">
+                Ingresar al Portal EVD
+              </a>
+            </div>
+          </div>
+          
+          <!-- Corporate Footer -->
+          <div style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b; line-height: 1.5; font-family: 'Segoe UI', Arial, sans-serif;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">FLOTA SUGAMUXI S.A.</p>
+            <p style="margin: 0 0 12px 0;">Este es un mensaje automático generado por el Sistema de Gestión de Desempeño (EVD). Por favor no responda a este correo.</p>
+            <p style="margin: 0; font-style: italic; font-size: 10px;">
+              CONFIDENCIALIDAD: La información contenida en este correo electrónico y sus anexos es confidencial y está dirigida únicamente al destinatario. Si usted ha recibido este mensaje por error, por favor notifíquelo al remitente y elimínelo de su sistema.
+            </p>
+          </div>
         </div>
-        <p>Adjunto encontrará el reporte en formato PDF con el desglose detallado de competencias, calificaciones y observaciones del proceso.</p>
-        <p style="margin-top: 30px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center;">
-          Correo automático del Sistema de Gestión de Desempeño — Flota Sugamuxi S.A.
-        </p>
       </div>
     `;
 

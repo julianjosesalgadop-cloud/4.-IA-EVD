@@ -196,7 +196,7 @@ export default function EvaluationDetailPage() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 8;
+      posY = (doc as any).lastAutoTable.finalY + 12;
       
       // SECTION: EVALUATOR INFO
       doc.setFont("helvetica", "bold");
@@ -225,7 +225,7 @@ export default function EvaluationDetailPage() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 8;
+      posY = (doc as any).lastAutoTable.finalY + 12;
       
       // SECTION: SUMMARY OF RESULTS
       doc.setFont("helvetica", "bold");
@@ -263,7 +263,7 @@ export default function EvaluationDetailPage() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 4;
+      posY = (doc as any).lastAutoTable.finalY + 6;
       if (result?.has_critical_fails && result.critical_fails_detail?.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
@@ -294,14 +294,20 @@ export default function EvaluationDetailPage() {
           },
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
       } else {
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
       }
 
       // SECTION: CATEGORY SCORES
       const categoryScores = result?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
+        // Prevent signatures from being on a page by themselves for colaborador
+        if (pdfType === "colaborador" && posY > 180) {
+          doc.addPage();
+          posY = 28;
+        }
+
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
@@ -328,7 +334,7 @@ export default function EvaluationDetailPage() {
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
       }
       
       if (pdfType === "evaluador") {
@@ -388,7 +394,7 @@ export default function EvaluationDetailPage() {
         });
         const finalY2 = (doc as any).lastAutoTable.finalY;
 
-        posY = Math.max(finalY1, finalY2) + 8;
+        posY = Math.max(finalY1, finalY2) + 12;
 
         // PAGE 1 (continued): DETAILED ANSWERS TABLE
         
@@ -420,10 +426,10 @@ export default function EvaluationDetailPage() {
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
         
-        // Check if we need to add a page for Narratives or if it fits
-        if (posY > 200) {
+        // Prevent signatures from being on a page by themselves for evaluador
+        if (posY > 175) {
           doc.addPage();
           posY = 28;
         }
@@ -455,9 +461,9 @@ export default function EvaluationDetailPage() {
           margin: { left: marginX, right: marginX }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 12;
+        posY = (doc as any).lastAutoTable.finalY + 15;
       }
-      
+
       // Check if signature section fits, if not, add a page
       if (posY > 230) {
         doc.addPage();

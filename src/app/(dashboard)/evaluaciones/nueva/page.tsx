@@ -462,7 +462,7 @@ function NuevaEvaluacionContent() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 8;
+      posY = (doc as any).lastAutoTable.finalY + 12;
       
       // SECTION: EVALUATOR INFO
       doc.setFont("helvetica", "bold");
@@ -491,7 +491,7 @@ function NuevaEvaluacionContent() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 8;
+      posY = (doc as any).lastAutoTable.finalY + 12;
       
       // SECTION: SUMMARY OF RESULTS
       doc.setFont("helvetica", "bold");
@@ -530,7 +530,7 @@ function NuevaEvaluacionContent() {
         margin: { left: marginX, right: marginX }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 4;
+      posY = (doc as any).lastAutoTable.finalY + 6;
       if (evalResultLocal?.has_critical_fails && evalResultLocal.critical_fails_detail?.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
@@ -561,14 +561,20 @@ function NuevaEvaluacionContent() {
           },
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
       } else {
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
       }
 
       // SECTION: CATEGORY SCORES
       const categoryScores = evalResultLocal?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
+        // Prevent signatures from being on a page by themselves for colaborador
+        if (pdfType === "colaborador" && posY > 180) {
+          doc.addPage();
+          posY = 28;
+        }
+
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
@@ -595,7 +601,7 @@ function NuevaEvaluacionContent() {
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
       }
       
       if (pdfType === "evaluador") {
@@ -655,7 +661,7 @@ function NuevaEvaluacionContent() {
         });
         const finalY2 = (doc as any).lastAutoTable.finalY;
 
-        posY = Math.max(finalY1, finalY2) + 8;
+        posY = Math.max(finalY1, finalY2) + 12;
 
         // PAGE 1 (continued): DETAILED ANSWERS TABLE
         
@@ -687,9 +693,10 @@ function NuevaEvaluacionContent() {
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 8;
+        posY = (doc as any).lastAutoTable.finalY + 12;
         
-        if (posY > 200) {
+        // Prevent signatures from being on a page by themselves for evaluador
+        if (posY > 175) {
           doc.addPage();
           posY = 28;
         }
@@ -721,7 +728,7 @@ function NuevaEvaluacionContent() {
           margin: { left: marginX, right: marginX }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 12;
+        posY = (doc as any).lastAutoTable.finalY + 15;
       }
 
       if (posY > 230) {
