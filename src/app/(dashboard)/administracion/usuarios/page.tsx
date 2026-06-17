@@ -388,6 +388,18 @@ export default function UsuariosPage() {
     }
   }
 
+  async function handleResetPassword(user: UserProfile) {
+    if (!window.confirm(`¿Estás seguro de que deseas restablecer la contraseña de ${user.first_name} ${user.last_name}? La contraseña se cambiará a la predeterminada.`)) return;
+
+    try {
+      const result = await resetUserPassword(user.id);
+      if (result?.error) throw new Error(result.error);
+      toast.success(`La contraseña de ${user.first_name} ha sido restablecida.`);
+    } catch (err: any) {
+      toast.error(err.message || "Error al intentar restablecer la contraseña");
+    }
+  }
+
   const filtered = users.filter((u) => {
     const term = search.toLowerCase();
     const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
