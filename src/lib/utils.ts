@@ -63,6 +63,15 @@ export function getResultLabel(result: string) {
   return labels[result] ?? result;
 }
 
+export function getScoreDescription(score: number): string {
+  const rounded = Math.round(score);
+  if (rounded >= 5) return "Excelente";
+  if (rounded === 4) return "Sobresaliente";
+  if (rounded === 3) return "Cumple lo esperado";
+  if (rounded === 2) return "Requiere mejora";
+  return "No cumple";
+}
+
 export function getResultColor(result: string) {
   const colors: Record<string, string> = {
     aprobado: "text-success-600 bg-success-50 border-success-200",

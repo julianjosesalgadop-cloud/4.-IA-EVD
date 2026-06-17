@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { FolderTree, Plus, Edit2, Trash2, Scale } from "lucide-react";
+import { FolderTree, Plus, Edit2, Trash2, Scale, AlertCircle } from "lucide-react";
 import { getEvaluationConfig, saveCategory, deleteCategory } from "@/app/actions/evaluations";
 import { toast } from "sonner";
 
@@ -10,6 +10,8 @@ interface Category {
   name: string;
   weight: number;
   description?: string;
+  is_critical: boolean;
+  min_score_required: number;
 }
 
 export default function CategoriasPage() {
@@ -22,6 +24,8 @@ export default function CategoriasPage() {
   const [name, setName] = useState("");
   const [weight, setWeight] = useState<number>(0);
   const [description, setDescription] = useState("");
+  const [isCritical, setIsCritical] = useState(false);
+  const [minScoreRequired, setMinScoreRequired] = useState<number>(4.0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadCategories = async () => {
@@ -33,7 +37,9 @@ export default function CategoriasPage() {
           id: c.id,
           name: c.name,
           weight: Number(c.weight || 0),
-          description: c.description || ""
+          description: c.description || "",
+          is_critical: c.is_critical || false,
+          min_score_required: Number(c.min_score_required || 4.0)
         })));
       }
     } catch (err) {
@@ -53,6 +59,8 @@ export default function CategoriasPage() {
     setName("");
     setWeight(0);
     setDescription("");
+    setIsCritical(false);
+    setMinScoreRequired(4.0);
     setIsModalOpen(true);
   };
 
@@ -61,6 +69,8 @@ export default function CategoriasPage() {
     setName(cat.name);
     setWeight(cat.weight);
     setDescription(cat.description || "");
+    setIsCritical(cat.is_critical || false);
+    setMinScoreRequired(cat.min_score_required || 4.0);
     setIsModalOpen(true);
   };
 
@@ -77,13 +87,15 @@ export default function CategoriasPage() {
         id: editingCategory?.id,
         name,
         weight,
-        description
+        description,
+        is_critical: isCritical,
+        min_score_required: minScoreRequired
       });
 
       if (res.error) {
         toast.error("Error al guardar: " + res.error);
       } else {
-        toast.success(editingCategory ? "Categoría actualizada" : "Categoría creada");
+        toast.success(editingCategory ? `Categoría actualizada: ${JSON.stringify(res.data)}` : "Categoría creada");
         setIsModalOpen(false);
         loadCategories();
       }
@@ -138,14 +150,23 @@ export default function CategoriasPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/20 text-sm">
-        <div className="flex items-center gap-2">
-          <Scale className="w-4 h-4 text-brand-500" />
-          <span>Suma de pesos de las categorías: <strong className={totalWeight === 100 ? "text-success-600 font-bold" : "text-warning-600 font-bold"}>{totalWeight}%</strong></span>
+      <div className="flex flex-col gap-3 p-4 rounded-xl border bg-muted/20 text-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-brand-500" />
+            <span>Suma de pesos de las categorías: <strong className={totalWeight === 100 ? "text-success-600 font-bold" : "text-warning-600 font-bold"}>{totalWeight}%</strong></span>
+          </div>
+          {totalWeight !== 100 && (
+            <span className="text-xs text-warning-600 font-medium hidden sm:inline">⚠️ El peso total acumulado debería sumar 100%</span>
+          )}
         </div>
-        {totalWeight !== 100 && (
-          <span className="text-xs text-warning-600 font-medium hidden sm:inline">⚠️ El peso total acumulado debería sumar 100%</span>
-        )}
+        
+        <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <span>🛡️ <strong>Regla de Criterios Críticos:</strong> Calificación mínima de 4.0 requerida. El incumplimiento genera un Plan de Mejoramiento Individual.</span>
+          <a href="/configuracion/preguntas" className="text-brand-600 hover:text-brand-700 font-bold underline">
+            Parametrizar preguntas y criterios crí­ticos →
+          </a>
+        </div>
       </div>
 
       {isLoading ? (
@@ -160,7 +181,13 @@ export default function CategoriasPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((cat) => (
-            <div key={cat.id} className="p-5 rounded-xl border bg-card hover:shadow-md transition-all group relative">
+            <div 
+              key={cat.id} 
+              className="p-5 rounded-xl border bg-card hover:shadow-md transition-all group relative overflow-hidden"
+            >
+              {cat.is_critical && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-danger-500 z-10" />
+              )}
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-bold text-lg leading-tight pr-12">{cat.name}</h3>
                 <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -181,8 +208,16 @@ export default function CategoriasPage() {
                 </div>
               </div>
               
-              <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary mb-4">
-                Peso: {cat.weight}%
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                  Peso: {cat.weight}%
+                </div>
+                {cat.is_critical && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-extrabold bg-danger-50 dark:bg-danger-950/20 text-danger-700 dark:text-danger-400 border border-danger-200/60 shadow-sm">
+                    <AlertCircle className="w-3.5 h-3.5 text-danger-500" />
+                    Criterio Crítico (Mín. {cat.min_score_required})
+                  </div>
+                )}
               </div>
               
               <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
@@ -232,6 +267,37 @@ export default function CategoriasPage() {
                   placeholder="Escribe el propósito de esta categoría..."
                 />
               </div>
+
+              <div className="flex items-center gap-2 py-1 select-none">
+                <input
+                  type="checkbox"
+                  id="is_critical"
+                  checked={isCritical}
+                  onChange={(e) => setIsCritical(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
+                />
+                <label htmlFor="is_critical" className="text-sm font-medium cursor-pointer">
+                  Categoría Crítica Obligatoria (PMI si promedio &lt; nota mínima)
+                </label>
+              </div>
+
+              {isCritical && (
+                <div className="space-y-1.5 animate-fade-in">
+                  <label className="text-sm font-medium">Calificación Mínima Requerida *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    step={0.1}
+                    required
+                    value={minScoreRequired}
+                    onChange={(e) => setMinScoreRequired(Number(e.target.value))}
+                    className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="Ej. 4.0"
+                  />
+                  <p className="text-xs text-muted-foreground">Si el promedio ponderado de esta categoría es menor a este valor, se requiere un PMI.</p>
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button 
                   type="button" 

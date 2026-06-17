@@ -39,9 +39,11 @@ const navGroups: NavGroup[] = [
       },
       {
         title: "Colaboradores",
-        href: "/colaboradores",
         icon: Users,
-        badge: 0,
+        children: [
+          { title: "Nuevo Colaborador", href: "/colaboradores/nuevo", icon: Users },
+          { title: "Listado Colaboradores", href: "/colaboradores", icon: Users },
+        ],
       },
       {
         title: "Evaluaciones",
@@ -103,6 +105,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { theme, setTheme } = useTheme();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Evaluaciones: true,
+    Colaboradores: true,
   });
 
   const toggleGroup = (title: string) => {
@@ -114,6 +117,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (href === "/dashboard") return pathname === "/dashboard";
     if (href === "/evaluaciones") {
       return pathname === "/evaluaciones" || (pathname.startsWith("/evaluaciones/") && pathname !== "/evaluaciones/nueva");
+    }
+    if (href === "/colaboradores") {
+      return pathname === "/colaboradores" || (pathname.startsWith("/colaboradores/") && pathname !== "/colaboradores/nuevo");
     }
     return pathname.startsWith(href);
   };

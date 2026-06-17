@@ -162,7 +162,8 @@ export default function EvaluationDetailPage() {
       const dateText = evaluation.finalized_at 
         ? `Fecha de Finalización: ${formatDateTime(evaluation.finalized_at)}`
         : `Fecha de Registro: ${formatDateTime(evaluation.created_at)}`;
-      doc.text(dateText, marginX, posY);
+      const evalYear = evaluation.evaluation_year || new Date().getFullYear();
+      doc.text(`${dateText}  |  Año de Evaluación: ${evalYear}`, marginX, posY);
       posY += 10;
       
       // SECTION: COLLABORATOR INFO (EVALUATED)
@@ -176,8 +177,8 @@ export default function EvaluationDetailPage() {
       const collabInfo = [
         ["Nombre Completo:", evaluation.collaborator?.full_name || "N/A", "Documento:", `${evaluation.collaborator?.document_type || "CC"} ${evaluation.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", evaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", evaluation.collaborator?.areas?.name || evaluation.collaborator?.area?.name || "N/A"],
-        ["Sede / Ciudad:", evaluation.collaborator?.workplace_city || evaluation.collaborator?.workplace || "N/A", "Tipo de Contrato:", evaluation.collaborator?.contract_type || "N/A"],
-        ["Fecha de Ingreso:", evaluation.collaborator?.hire_date ? new Date(evaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A", "Estado:", evaluation.collaborator?.status || "N/A"]
+        ["Sede / Ciudad:", evaluation.collaborator?.workplace_city || evaluation.collaborator?.workplace || "N/A", "Fecha de Ingreso:", evaluation.collaborator?.hire_date ? new Date(evaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A"],
+        ["Estado:", evaluation.collaborator?.status || "N/A", "", ""]
       ];
       
       autoTable(doc, {
@@ -235,15 +236,18 @@ export default function EvaluationDetailPage() {
       
       const overallScore = result ? result.overall_average : 0;
       const statusLabel = result ? getResultLabel(result.result) : "Pendiente de finalizar";
-      const scoreExplanation = overallScore >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
-                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple lo esperado y a veces lo supera."
-                           : overallScore >= 3.1 ? "Desempeño Aceptable (Plan de Mejoramiento): Cumple lo esperado, pero requiere plan de mejora."
-                           : "Desempeño Insatisfactorio (No Aprobado): No cumple con los estándares mínimos requeridos.";
+      let resultGeneralText = statusLabel.toUpperCase();
+      if (result?.result === "plan_mejoramiento") {
+        if (result?.has_critical_fails) {
+          resultGeneralText = "PLAN DE MEJORAMIENTO (POR CATEGORÍA)";
+        } else {
+          resultGeneralText = "PLAN DE MEJORAMIENTO (POR PUNTUACIÓN OBTENIDA (PROMEDIO))";
+        }
+      }
       
       const summaryInfo = [
         ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScore)} / 5.0`],
-        ["RESULTADO GENERAL:", statusLabel.toUpperCase()],
-        ["DESCRIPCIÓN:", scoreExplanation]
+        ["RESULTADO GENERAL:", resultGeneralText]
       ];
       
       autoTable(doc, {
@@ -267,13 +271,10 @@ export default function EvaluationDetailPage() {
         doc.text("CRITERIOS CRÍTICOS INCUMPLIDOS (Causales de Plan de Mejoramiento):", marginX, posY);
         posY += 4;
         
-        const failHeaders = [["Categoría", "Valor Obtenido", "Mínimo Requerido"]];
+        const failHeaders = [["Criterio Crítico", "Valor Obtenido", "Mínimo Requerido"]];
         const failRows = result.critical_fails_detail.map((fail: any) => {
-          const answerObj = evaluation.answers?.find((a: any) => a.question_id === fail.question_id);
-          const categoryId = answerObj?.category_id;
-          const categoryName = (categoryId && result.category_scores?.[categoryId]?.name) || "Categoría";
           return [
-            categoryName,
+            fail.question || "Criterio Crítico",
             `${formatScore(fail.score)} / 5.0`,
             `${formatScore(fail.min_required)} / 5.0`
           ];
@@ -370,7 +371,7 @@ export default function EvaluationDetailPage() {
         startY: posY,
         margin: { left: marginX + 95 },
         tableWidth: 85,
-        head: [["Porcentaje", "Resultado"]],
+        head: [["Promedio", "Resultado"]],
         body: [
           ["4.0 – 5.0", "Aprobado"],
           ["3.1 – 3.9", "Plan de Mejoramiento"],
@@ -654,13 +655,9 @@ export default function EvaluationDetailPage() {
                   <p className="text-xs font-bold uppercase tracking-wider text-warning-700 dark:text-warning-400">Detalle de Criterios Críticos Incumplidos:</p>
                   <ul className="list-disc pl-5 space-y-1 text-xs">
                     {result.critical_fails_detail.map((fail: any, idx: number) => {
-                      const answerObj = evaluation.answers?.find((a: any) => a.question_id === fail.question_id);
-                      const categoryId = answerObj?.category_id;
-                      const categoryName = (categoryId && result.category_scores?.[categoryId]?.name) || "Categoría";
                       return (
                         <li key={idx}>
-                          En la categoría <strong className="text-foreground">"{categoryName}"</strong>:
-                          La pregunta <strong className="text-foreground">"{fail.question}"</strong> obtuvo un puntaje de <strong className="text-danger-600 font-bold">{fail.score}</strong> (el mínimo requerido era <strong className="text-foreground">{fail.min_required}</strong>).
+                          La categoría <strong className="text-foreground">"{fail.question}"</strong> obtuvo un promedio de <strong className="text-danger-600 font-bold">{formatScore(fail.score)}</strong> (el mínimo requerido era <strong className="text-foreground">{formatScore(fail.min_required)}</strong>).
                         </li>
                       );
                     })}

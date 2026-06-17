@@ -31,6 +31,8 @@ interface Category {
   sort_order: number;
   weight: number;
   active: boolean;
+  is_critical?: boolean;
+  min_score_required?: number;
   questions: Question[];
 }
 
@@ -65,12 +67,6 @@ function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{question.question}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          {question.is_critical && (
-            <span className="flex items-center gap-1 text-[10px] font-bold text-danger-600 bg-danger-50 dark:bg-danger-950/30 px-1.5 py-0.5 rounded-full border border-danger-200">
-              <AlertCircle className="w-3 h-3" />
-              Crítico · Mín {question.min_score_required}
-            </span>
-          )}
           {question.is_required && (
             <span className="text-[10px] text-muted-foreground">Obligatoria</span>
           )}
@@ -125,7 +121,7 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
   const [expanded, setExpanded] = useState(true);
   const [questions, setQuestions] = useState(category.questions);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newQuestion, setNewQuestion] = useState({ question: "", code: "", is_critical: false, min_score_required: 1, weight: 1 });
+  const [newQuestion, setNewQuestion] = useState({ question: "", code: "", weight: 1 });
 
   // Form edit states
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -134,8 +130,6 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
   const [editDescription, setEditDescription] = useState("");
   const [editIsRequired, setEditIsRequired] = useState(true);
   const [editIsActive, setEditIsActive] = useState(true);
-  const [editIsCritical, setEditIsCritical] = useState(false);
-  const [editMinScore, setEditMinScore] = useState(1);
   const [editWeight, setEditWeight] = useState(1);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
@@ -190,8 +184,8 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
         description: q.description,
         is_required: q.is_required,
         is_active: true,
-        is_critical: q.is_critical,
-        min_score_required: q.min_score_required,
+        is_critical: false,
+        min_score_required: 1.0,
         weight: q.weight,
       });
 
@@ -221,8 +215,8 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
         description: "",
         is_required: true,
         is_active: true,
-        is_critical: newQuestion.is_critical,
-        min_score_required: newQuestion.min_score_required,
+        is_critical: false,
+        min_score_required: 1.0,
         weight: newQuestion.weight,
       });
 
@@ -230,7 +224,7 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
         toast.error("Error al crear pregunta: " + res.error);
       } else {
         toast.success("Pregunta agregada exitosamente");
-        setNewQuestion({ question: "", code: "", is_critical: false, min_score_required: 1, weight: 1 });
+        setNewQuestion({ question: "", code: "", weight: 1 });
         setShowAddForm(false);
         onReload();
       }
@@ -247,8 +241,6 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
     setEditDescription(q.description || "");
     setEditIsRequired(q.is_required);
     setEditIsActive(q.is_active);
-    setEditIsCritical(q.is_critical);
-    setEditMinScore(q.min_score_required);
     setEditWeight(q.weight);
   };
 
@@ -270,8 +262,8 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
         description: editDescription,
         is_required: editIsRequired,
         is_active: editIsActive,
-        is_critical: editIsCritical,
-        min_score_required: editMinScore,
+        is_critical: false,
+        min_score_required: 1.0,
         weight: editWeight,
       });
 
@@ -384,34 +376,9 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
                         />
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newQuestion.is_critical}
-                          onChange={(e) => setNewQuestion(p => ({ ...p, is_critical: e.target.checked }))}
-                          className="rounded"
-                        />
-                        <span className="text-danger-600 font-medium flex items-center gap-1">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          Criterio crítico
-                        </span>
-                      </label>
-                      {newQuestion.is_critical && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Nota mínima:</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={5}
-                            value={newQuestion.min_score_required}
-                            onChange={(e) => setNewQuestion(p => ({ ...p, min_score_required: Number(e.target.value) }))}
-                            className="w-16 h-7 rounded border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                          />
-                        </div>
-                      )}
+                    <div className="flex items-center gap-4 text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Peso:</span>
+                        <span className="text-muted-foreground font-semibold">Peso (Multiplicador):</span>
                         <input
                           type="number"
                           min={0.5}
@@ -419,7 +386,7 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
                           step={0.5}
                           value={newQuestion.weight}
                           onChange={(e) => setNewQuestion(p => ({ ...p, weight: Number(e.target.value) }))}
-                          className="w-16 h-7 rounded border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="w-16 h-7 rounded border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-medium text-foreground"
                         />
                       </div>
                     </div>
@@ -529,34 +496,7 @@ function CategoryPanel({ category, onUpdateQuestions, onReload }: {
                   />
                   <span>Activa</span>
                 </label>
-
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={editIsCritical}
-                    onChange={(e) => setEditIsCritical(e.target.checked)}
-                    className="rounded"
-                  />
-                  <span className="text-danger-600 font-semibold flex items-center gap-0.5">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    Criterio Crítico
-                  </span>
-                </label>
               </div>
-
-              {editIsCritical && (
-                <div className="flex items-center gap-2 text-sm bg-danger-50 dark:bg-danger-950/20 p-2.5 rounded-lg border border-danger-200 animate-fade-in">
-                  <span className="text-xs text-danger-700 dark:text-danger-400">Calificación Mínima Requerida:</span>
-                  <input 
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={editMinScore}
-                    onChange={(e) => setEditMinScore(Number(e.target.value))}
-                    className="w-16 h-8 rounded border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-              )}
 
               <div className="flex gap-3 pt-2">
                 <button 
@@ -600,6 +540,8 @@ export default function PreguntasConfigPage() {
           sort_order: c.sort_order || 0,
           weight: Number(c.weight || 0),
           active: c.active !== false,
+          is_critical: c.is_critical === true,
+          min_score_required: Number(c.min_score_required || 4.0),
           questions: (config.questions || []).filter((q: any) => q.category_id === c.id).map((q: any) => ({
             id: q.id,
             code: q.code || "",
@@ -632,7 +574,7 @@ export default function PreguntasConfigPage() {
 
   const totalQuestions = categories.reduce((sum, c) => sum + c.questions.length, 0);
   const activeQuestions = categories.reduce((sum, c) => sum + c.questions.filter(q => q.is_active).length, 0);
-  const criticalQuestions = categories.reduce((sum, c) => sum + c.questions.filter(q => q.is_critical).length, 0);
+  const criticalCategories = categories.filter(c => c.is_critical).length;
 
   // Search filter
   const filteredCategories = categories.map((cat) => {
@@ -686,7 +628,7 @@ export default function PreguntasConfigPage() {
             {[
               { label: "Total preguntas", value: totalQuestions },
               { label: "Activas", value: activeQuestions },
-              { label: "Criterios críticos", value: criticalQuestions },
+              { label: "Categorías críticas", value: criticalCategories },
             ].map((s, i) => (
               <div key={s.label} className="p-4 rounded-xl border bg-card text-center">
                 <p className="text-2xl font-bold">{s.value}</p>

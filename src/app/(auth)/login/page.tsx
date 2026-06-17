@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,6 +9,7 @@ import { AlertCircle, Eye, EyeOff, Lock, Mail, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { loginAction } from "@/app/actions/auth";
+import { useTheme } from "next-themes";
 
 const loginSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
@@ -21,6 +22,11 @@ export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { setTheme } = useTheme();
+
+  useEffect(() => {
+    setTheme("light");
+  }, [setTheme]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

@@ -2,7 +2,8 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { createClient } from "@supabase/supabase-js";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import { Resend } from "resend";
 import { logAudit } from "./audit";
 
@@ -51,6 +52,7 @@ export async function getActiveVersion() {
 }
 
 export async function getEvaluationConfig() {
+  noStore();
   const supabase = await getSupabase();
   const version = await getActiveVersion();
 
@@ -77,22 +79,13 @@ export async function getEvaluationConfig() {
 }
 
 async function getSupabaseAdmin() {
-  const cookieStore = await cookies();
-  return createServerClient(
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch (error) { }
-        },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     }
   );
@@ -111,7 +104,14 @@ export async function updateQuestionStatus(questionId: string, isActive: boolean
   return { success: true };
 }
 
-export async function saveCategory(category: { id?: string; name: string; weight: number; description?: string }) {
+export async function saveCategory(category: { 
+  id?: string; 
+  name: string; 
+  weight: number; 
+  description?: string;
+  is_critical?: boolean;
+  min_score_required?: number;
+}) {
   const supabase = await getSupabaseAdmin();
   const version = await getActiveVersion();
   if (!version) return { error: "No hay versión de evaluación activa" };
@@ -123,6 +123,8 @@ export async function saveCategory(category: { id?: string; name: string; weight
         name: category.name,
         weight: category.weight,
         description: category.description,
+        is_critical: category.is_critical ?? false,
+        min_score_required: category.min_score_required ?? 4.00,
         updated_at: new Date().toISOString()
       })
       .eq("id", category.id);
@@ -141,6 +143,8 @@ export async function saveCategory(category: { id?: string; name: string; weight
         name: category.name,
         weight: category.weight,
         description: category.description,
+        is_critical: category.is_critical ?? false,
+        min_score_required: category.min_score_required ?? 4.00,
         sort_order: (count || 0) + 1,
         active: true
       });
@@ -151,7 +155,7 @@ export async function saveCategory(category: { id?: string; name: string; weight
   revalidatePath("/configuracion/categorias");
   revalidatePath("/configuracion/preguntas");
   revalidatePath("/evaluaciones/nueva");
-  return { success: true };
+  return { success: true, data: category };
 }
 
 export async function deleteCategory(id: string) {
@@ -372,7 +376,7 @@ export async function saveEvaluation(payload: any) {
       version_id: payload.version_id,
       evaluatee_id: payload.evaluatee_id,
       evaluator_id: userData.user.id,
-      evaluation_year: new Date().getFullYear(),
+      evaluation_year: payload.evaluation_year || new Date().getFullYear(),
       evaluation_type: '90',
       status: 'finalizada',
       observations: payload.observations,
@@ -455,7 +459,7 @@ export async function sendEvaluationEmail({
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Determinar remitente: usar dominio verificado si existe, sino el de prueba de Resend
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "noreply@flotasugamuxisa.com.co";
     const fromName = process.env.RESEND_FROM_NAME || "Evaluaciones Flota Sugamuxi";
 
     const resultColor =

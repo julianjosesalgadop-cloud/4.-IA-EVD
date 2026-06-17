@@ -54,7 +54,8 @@ export async function getProfiles() {
     .from("profiles")
     .select(`
       *,
-      roles(id, name, display_name)
+      roles(id, name, display_name),
+      positions(id, name)
     `)
     .eq("company_id", profile.company_id)
     .order("created_at", { ascending: false });
@@ -72,6 +73,7 @@ export async function updateProfile(userId: string, updates: {
   last_name?: string;
   phone?: string;
   role_id?: string;
+  position_id?: string | null;
   active?: boolean;
   avatar_url?: string | null;
 }) {
@@ -100,6 +102,7 @@ export async function inviteUser(data: {
   last_name: string;
   phone?: string;
   role_id?: string;
+  position_id?: string;
   avatar_url?: string | null;
 }) {
   const supabaseUser = await getSupabase();
@@ -137,6 +140,7 @@ export async function inviteUser(data: {
       last_name: data.last_name,
       phone: data.phone || null,
       role_id: data.role_id || null,
+      position_id: data.position_id || null,
       avatar_url: data.avatar_url || null,
       active: true,
     });

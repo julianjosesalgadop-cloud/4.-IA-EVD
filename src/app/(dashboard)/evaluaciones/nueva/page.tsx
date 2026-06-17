@@ -34,6 +34,8 @@ interface Category {
   description?: string;
   questions: Question[];
   weight: number;
+  is_critical?: boolean;
+  min_score_required?: number;
 }
 
 
@@ -233,6 +235,21 @@ function NuevaEvaluacionContent() {
     return totalWeight > 0 ? weightedSum / totalWeight : 0;
   };
 
+  // Check if any critical category has an average score < min_score_required
+  const hasCriticalFails = () => {
+    let failed = false;
+    categories.forEach((cat) => {
+      if (cat.is_critical) {
+        const avg = getCategoryAverage(cat);
+        const minRequired = cat.min_score_required ?? 4.0;
+        if (avg !== null && avg < minRequired) {
+          failed = true;
+        }
+      }
+    });
+    return failed;
+  };
+
   const categoryComplete = (cat: Category | undefined) =>
     cat ? cat.questions.filter((q) => q.is_required).every((q) => answers[q.id]?.score) : false;
 
@@ -275,6 +292,7 @@ function NuevaEvaluacionContent() {
     const payload = {
       version_id: versionId,
       evaluatee_id: selectedCollaboratorId,
+      evaluation_year: parseInt(evaluationYear) || new Date().getFullYear(),
       answers: formattedAnswers,
       signature: signature, // Pass the base64 signature
       ...narrativa
@@ -412,7 +430,8 @@ function NuevaEvaluacionContent() {
       const dateText = savedEvaluation.finalized_at 
         ? `Fecha de Finalización: ${formatDateTime(savedEvaluation.finalized_at)}`
         : `Fecha de Registro: ${formatDateTime(savedEvaluation.created_at)}`;
-      doc.text(dateText, marginX, posY);
+      const evalYear = savedEvaluation.evaluation_year || new Date().getFullYear();
+      doc.text(`${dateText}  |  Año de Evaluación: ${evalYear}`, marginX, posY);
       posY += 10;
       
       doc.setFont("helvetica", "bold");
@@ -424,8 +443,8 @@ function NuevaEvaluacionContent() {
       const collabInfo = [
         ["Nombre Completo:", savedEvaluation.collaborator?.full_name || "N/A", "Documento:", `${savedEvaluation.collaborator?.document_type || "CC"} ${savedEvaluation.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", savedEvaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", savedEvaluation.collaborator?.areas?.name || savedEvaluation.collaborator?.area?.name || "N/A"],
-        ["Sede / Ciudad:", savedEvaluation.collaborator?.workplace_city || savedEvaluation.collaborator?.workplace || "N/A", "Tipo de Contrato:", savedEvaluation.collaborator?.contract_type || "N/A"],
-        ["Fecha de Ingreso:", formatPDFDate(savedEvaluation.collaborator?.hire_date), "Estado:", savedEvaluation.collaborator?.status || "N/A"]
+        ["Sede / Ciudad:", savedEvaluation.collaborator?.workplace_city || savedEvaluation.collaborator?.workplace || "N/A", "Fecha de Ingreso:", formatPDFDate(savedEvaluation.collaborator?.hire_date)],
+        ["Estado:", savedEvaluation.collaborator?.status || "N/A", "", ""]
       ];
       
       const collabTable = autoTable(doc, {
@@ -484,15 +503,18 @@ function NuevaEvaluacionContent() {
       const evalResultLocal = savedEvaluation.result && !Array.isArray(savedEvaluation.result) ? savedEvaluation.result : savedEvaluation.result?.[0] || null;
       const overallScoreLocal = evalResultLocal && typeof evalResultLocal.overall_average === "number" ? evalResultLocal.overall_average : 0;
       const statusLabelLocal = evalResultLocal?.result ? getResultLabel(evalResultLocal.result) : "Pendiente";
-      const scoreExplanation = overallScoreLocal >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
-                           : overallScoreLocal >= 4.0 ? "Desempeño Sobresaliente: Cumple lo esperado y a veces lo supera."
-                           : overallScoreLocal >= 3.1 ? "Desempeño Aceptable (Plan de Mejoramiento): Cumple lo esperado, pero requiere plan de mejora."
-                           : "Desempeño Insatisfactorio (No Aprobado): No cumple con los estándares mínimos requeridos.";
+      let resultGeneralText = (statusLabelLocal || "Pendiente").toUpperCase();
+      if (evalResultLocal?.result === "plan_mejoramiento") {
+        if (evalResultLocal?.has_critical_fails) {
+          resultGeneralText = "PLAN DE MEJORAMIENTO (POR CATEGORÍA)";
+        } else {
+          resultGeneralText = "PLAN DE MEJORAMIENTO (POR PUNTUACIÓN OBTENIDA (PROMEDIO))";
+        }
+      }
       
       const summaryInfo = [
         ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScoreLocal)} / 5.0`],
-        ["RESULTADO GENERAL:", (statusLabelLocal || "Pendiente").toUpperCase()],
-        ["DESCRIPCIÓN:", scoreExplanation]
+        ["RESULTADO GENERAL:", resultGeneralText]
       ];
       
       autoTable(doc, {
@@ -516,13 +538,10 @@ function NuevaEvaluacionContent() {
         doc.text("CRITERIOS CRÍTICOS INCUMPLIDOS (Causales de Plan de Mejoramiento):", marginX, posY);
         posY += 4;
         
-        const failHeaders = [["Categoría", "Valor Obtenido", "Mínimo Requerido"]];
+        const failHeaders = [["Criterio Crítico", "Valor Obtenido", "Mínimo Requerido"]];
         const failRows = evalResultLocal.critical_fails_detail.map((fail: any) => {
-          const answerObj = savedEvaluation.answers?.find((a: any) => a.question_id === fail.question_id);
-          const categoryId = answerObj?.category_id;
-          const categoryName = (categoryId && evalResultLocal.category_scores?.[categoryId]?.name) || "Categoría";
           return [
-            categoryName,
+            fail.question || "Criterio Crítico",
             `${formatScore(fail.score)} / 5.0`,
             `${formatScore(fail.min_required)} / 5.0`
           ];
@@ -619,7 +638,7 @@ function NuevaEvaluacionContent() {
         startY: posY,
         margin: { left: marginX + 95 },
         tableWidth: 85,
-        head: [["Porcentaje", "Resultado"]],
+        head: [["Promedio", "Resultado"]],
         body: [
           ["4.0 – 5.0", "Aprobado"],
           ["3.1 – 3.9", "Plan de Mejoramiento"],
@@ -794,8 +813,9 @@ function NuevaEvaluacionContent() {
   };
 
   const overall = getOverallAverage();
-  const resultLabel = overall >= 4.0 ? "APROBADO" : overall >= 3.1 ? "PLAN DE MEJORAMIENTO" : overall > 0 ? "NO APROBADO" : null;
-  const resultColor = overall >= 4.0 ? "text-success-600" : overall >= 3.1 ? "text-warning-600" : overall > 0 ? "text-danger-600" : "text-muted-foreground";
+  const criticalFailed = hasCriticalFails();
+  const resultLabel = criticalFailed ? "PLAN DE MEJORAMIENTO" : (overall >= 4.0 ? "APROBADO" : overall >= 3.1 ? "PLAN DE MEJORAMIENTO" : overall > 0 ? "NO APROBADO" : null);
+  const resultColor = (resultLabel === "APROBADO") ? "text-success-600" : (resultLabel === "PLAN DE MEJORAMIENTO") ? "text-warning-600" : "text-danger-600";
 
   return (
     <div className="w-full min-h-screen space-y-4 sm:space-y-6 animate-fade-in px-3 sm:px-4 py-4 sm:py-6">
@@ -899,32 +919,53 @@ function NuevaEvaluacionContent() {
       </div>
 
       {/* Método de Calificación Guía */}
-      <div className="rounded-xl border border-brand-100 dark:border-brand-900/50 bg-brand-50/30 dark:bg-brand-950/10 p-4 shadow-sm text-xs sm:text-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1.5 max-w-xl">
-          <div className="flex items-center gap-2 font-bold text-foreground">
-            <Info className="w-4 h-4 text-brand-500" />
-            <span>Escala de Calificación</span>
+      <div className="rounded-xl border border-brand-100 dark:border-brand-900/50 bg-brand-50/20 dark:bg-brand-950/10 p-5 shadow-sm space-y-4">
+        {/* Title and Intro */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 font-bold text-foreground text-sm sm:text-base">
+            <Info className="w-4.5 h-4.5 text-brand-500" />
+            <span>Escala de Calificación y Criterios Críticos</span>
           </div>
-          <p className="text-muted-foreground leading-relaxed">
-            Evalúe las competencias del colaborador seleccionando un puntaje de **1 a 5** según el nivel de desempeño demostrado:
+          <p className="text-muted-foreground text-xs sm:text-sm">
+            Evalúe las competencias del colaborador seleccionando un puntaje de <strong className="text-foreground font-semibold">1 a 5</strong> según el nivel de desempeño demostrado:
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-danger-200 bg-danger-50 dark:border-danger-900/50 dark:bg-danger-950/20 text-danger-700 dark:text-danger-400 font-bold text-xs shadow-sm">
-            1: No cumple
-          </span>
-          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-warning-200 bg-warning-50 dark:border-warning-900/50 dark:bg-warning-950/20 text-warning-700 dark:text-warning-400 font-bold text-xs shadow-sm">
-            2: Requiere mejora
-          </span>
-          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs shadow-sm">
-            3: Cumple lo esperado
-          </span>
-          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 font-bold text-xs shadow-sm">
-            4: Sobresaliente
-          </span>
-          <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-success-200 bg-success-50 dark:border-success-900/50 dark:bg-success-950/20 text-success-700 dark:text-success-400 font-bold text-xs shadow-sm">
-            5: Excelente
-          </span>
+
+        {/* Scale Badges Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="flex flex-col justify-center items-center p-2.5 rounded-lg border border-success-200 bg-success-50/50 dark:border-success-900/40 dark:bg-success-950/10 text-center shadow-sm">
+            <span className="text-success-700 dark:text-success-400 font-extrabold text-sm sm:text-base">5</span>
+            <span className="text-success-600 dark:text-success-400 text-[10px] sm:text-xs font-medium mt-0.5">Excelente</span>
+          </div>
+          <div className="flex flex-col justify-center items-center p-2.5 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/10 text-center shadow-sm">
+            <span className="text-blue-700 dark:text-blue-400 font-extrabold text-sm sm:text-base">4</span>
+            <span className="text-blue-600 dark:text-blue-400 text-[10px] sm:text-xs font-medium mt-0.5">Sobresaliente</span>
+          </div>
+          <div className="flex flex-col justify-center items-center p-2.5 rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50 text-center shadow-sm">
+            <span className="text-zinc-700 dark:text-zinc-300 font-extrabold text-sm sm:text-base">3</span>
+            <span className="text-zinc-600 dark:text-zinc-400 text-[10px] sm:text-xs font-medium mt-0.5">Cumple lo esperado</span>
+          </div>
+          <div className="flex flex-col justify-center items-center p-2.5 rounded-lg border border-warning-200 bg-warning-50/50 dark:border-warning-900/40 dark:bg-warning-950/10 text-center shadow-sm">
+            <span className="text-warning-700 dark:text-warning-400 font-extrabold text-sm sm:text-base">2</span>
+            <span className="text-warning-600 dark:text-warning-400 text-[10px] sm:text-xs font-medium mt-0.5">Requiere mejora</span>
+          </div>
+          <div className="flex flex-col justify-center items-center p-2.5 rounded-lg border border-danger-200 bg-danger-50/50 dark:border-danger-900/40 dark:bg-danger-950/10 text-center shadow-sm">
+            <span className="text-danger-700 dark:text-danger-400 font-extrabold text-sm sm:text-base">1</span>
+            <span className="text-danger-600 dark:text-danger-400 text-[10px] sm:text-xs font-medium mt-0.5">No cumple</span>
+          </div>
+        </div>
+
+        {/* Warning Banner */}
+        <div className="flex items-start gap-3 text-xs sm:text-sm text-warning-800 dark:text-warning-300 bg-warning-50/50 dark:bg-warning-950/10 p-3.5 rounded-xl border border-warning-200/60 dark:border-warning-900/30 shadow-xs">
+          <AlertCircle className="w-5 h-5 mt-0.5 text-warning-600 dark:text-warning-500 flex-shrink-0" />
+          <div className="space-y-1">
+            <span className="block font-bold text-warning-900 dark:text-warning-200 text-xs sm:text-sm">
+              Plan de Mejoramiento por Categoría (Criterios Críticos)
+            </span>
+            <span className="block text-warning-800 dark:text-warning-300 text-xs leading-relaxed">
+              Las categorías configuradas como <strong>Criterios Críticos</strong> requieren obtener una calificación promedio mínima de <strong>4.0</strong> (o la establecida en la parametrización). Si el promedio de la categoría es inferior al mínimo requerido, el colaborador ingresará de forma obligatoria al <strong>Plan de Mejoramiento Individual (PMI)</strong>, sin importar su promedio global de evaluación.
+            </span>
+          </div>
         </div>
       </div>
 
@@ -1030,6 +1071,12 @@ function NuevaEvaluacionContent() {
                       <span className="text-xs bg-brand-100 dark:bg-brand-950/30 text-brand-600 px-2 py-0.5 rounded-full flex-shrink-0">
                         Peso: {category.weight}%
                       </span>
+                      {category.is_critical && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-100 dark:bg-danger-950/30 text-danger-600 border border-danger-200 whitespace-nowrap">
+                          <AlertCircle className="w-3 h-3" />
+                          Criterio Crítico (Mínimo {category.min_score_required ?? 4.0})
+                        </span>
+                      )}
                     </div>
                     <h2 className="font-semibold text-base sm:text-lg">{category.name}</h2>
                     {category.description && (
@@ -1054,12 +1101,6 @@ function NuevaEvaluacionContent() {
                             {question.question}
                             {question.is_required && <span className="text-danger-500 ml-1">*</span>}
                           </p>
-                          {question.is_critical && (
-                            <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger-100 dark:bg-danger-950/30 text-danger-600 border border-danger-200 whitespace-nowrap">
-                              <AlertCircle className="w-3 h-3" />
-                              Crítico ≥{question.min_score_required}
-                            </span>
-                          )}
                         </div>
                         {question.description && (
                           <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">

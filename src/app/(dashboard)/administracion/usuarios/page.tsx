@@ -4,9 +4,10 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Search, Edit2, Shield, Mail, Phone,
-  X, Save, Loader2, UserCheck, UserX, Eye, EyeOff
+  X, Save, Loader2, UserCheck, UserX, Eye, EyeOff, Briefcase
 } from "lucide-react";
 import { getProfiles, updateProfile, inviteUser, getRoles } from "@/app/actions/admin";
+import { getPositions } from "@/app/actions/config";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SignatureInput } from "@/components/ui/signature-input";
@@ -20,6 +21,8 @@ interface UserProfile {
   active: boolean;
   role_id?: string;
   roles?: { id: string; name: string; display_name: string };
+  position_id?: string;
+  positions?: { id: string; name: string };
   created_at: string;
   avatar_url?: string;
 }
@@ -41,11 +44,13 @@ const ROLE_COLORS: Record<string, string> = {
 function UserModal({
   user,
   roles,
+  positions,
   onClose,
   onSave,
 }: {
   user: UserProfile | null;
   roles: Role[];
+  positions: any[];
   onClose: () => void;
   onSave: () => void;
 }) {
@@ -56,6 +61,7 @@ function UserModal({
     email: user?.email || "",
     phone: user?.phone || "",
     role_id: user?.role_id || user?.roles?.id || "",
+    position_id: user?.position_id || user?.positions?.id || "",
     active: user?.active ?? true,
     avatar_url: user?.avatar_url || "",
   });
@@ -76,6 +82,7 @@ function UserModal({
           last_name: formData.last_name.trim(),
           phone: formData.phone.trim() || undefined,
           role_id: formData.role_id || undefined,
+          position_id: formData.position_id || null,
           active: formData.active,
           avatar_url: formData.avatar_url || null,
         });
@@ -93,6 +100,7 @@ function UserModal({
           last_name: formData.last_name.trim(),
           phone: formData.phone.trim() || undefined,
           role_id: formData.role_id || undefined,
+          position_id: formData.position_id || undefined,
           avatar_url: formData.avatar_url || null,
         });
         if (result.error) throw new Error(result.error);
@@ -214,6 +222,23 @@ function UserModal({
             </select>
           </div>
 
+          {/* Cargo */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Cargo de la Empresa</label>
+            <select
+              value={formData.position_id}
+              onChange={(e) => setFormData({ ...formData, position_id: e.target.value })}
+              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Sin cargo asignado</option>
+              {positions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.areas?.name ? `(${p.areas.name})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Signature */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Firma del Evaluador</label>
@@ -282,6 +307,7 @@ function UserModal({
 export default function UsuariosPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modalUser, setModalUser] = useState<UserProfile | null | "new">(undefined as any);
@@ -294,12 +320,14 @@ export default function UsuariosPage() {
   async function loadAll() {
     setIsLoading(true);
     try {
-      const [{ data: usersData }, { data: rolesData }] = await Promise.all([
+      const [{ data: usersData }, { data: rolesData }, positionsData] = await Promise.all([
         getProfiles(),
         getRoles(),
+        getPositions(),
       ]);
       setUsers((usersData as UserProfile[]) || []);
       setRoles((rolesData as Role[]) || []);
+      setPositions(positionsData || []);
     } catch (err) {
       toast.error("Error al cargar usuarios");
     } finally {
@@ -338,7 +366,8 @@ export default function UsuariosPage() {
     return (
       fullName.includes(term) ||
       u.email.toLowerCase().includes(term) ||
-      (u.roles?.display_name || "").toLowerCase().includes(term)
+      (u.roles?.display_name || "").toLowerCase().includes(term) ||
+      (u.positions?.name || "").toLowerCase().includes(term)
     );
   });
 
@@ -446,6 +475,12 @@ export default function UsuariosPage() {
                           {user.roles.display_name}
                         </span>
                       )}
+                      {user.positions && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border mt-0.5 bg-muted text-muted-foreground ml-1">
+                          <Briefcase className="w-2.5 h-2.5" />
+                          {user.positions.name}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button
@@ -510,6 +545,7 @@ export default function UsuariosPage() {
           <UserModal
             user={modalUser as UserProfile | null}
             roles={roles}
+            positions={positions}
             onClose={closeModal}
             onSave={loadAll}
           />

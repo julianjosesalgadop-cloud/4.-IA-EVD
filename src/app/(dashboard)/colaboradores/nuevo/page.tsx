@@ -38,6 +38,8 @@ const step2Schema = z.object({
   area_id: z.string().min(1, "Selecciona un área"),
   position_id: z.string().min(1, "Selecciona un cargo"),
   status: z.enum(["activo", "inactivo", "retirado", "vacaciones", "incapacidad"]),
+  workplace_city: z.string().optional().or(z.literal("")),
+  hire_date: z.string().optional().or(z.literal("")),
 });
 
 const step3Schema = z.object({
@@ -178,6 +180,25 @@ function StepLaboral({
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Sede / Ciudad</label>
+          <input
+            {...register("workplace_city")}
+            placeholder="Ej: Sogamoso"
+            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Fecha de Ingreso</label>
+          <input
+            {...register("hire_date")}
+            type="date"
+            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+      </div>
+
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Estado</label>
         <select
@@ -201,7 +222,22 @@ function StepJerarquia({
   form: ReturnType<typeof useForm<Step3Data>>,
   collaborators: any[]
 }) {
-  const { register } = form;
+  const { setValue, watch } = form;
+  const selectedBossId = watch("immediate_boss_id");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Find currently selected boss
+  const selectedBoss = collaborators.find(c => c.id === selectedBossId);
+
+  // Filter collaborators by name, document number, or position
+  const filtered = collaborators.filter((c) => {
+    const term = searchTerm.toLowerCase();
+    const fullName = (c.full_name || "").toLowerCase();
+    const docNumber = (c.document_number || "").toLowerCase();
+    const positionName = (c.positions?.name || "").toLowerCase();
+    return fullName.includes(term) || docNumber.includes(term) || positionName.includes(term);
+  });
 
   return (
     <div className="space-y-4">
@@ -212,17 +248,78 @@ function StepJerarquia({
         </p>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 relative">
         <label className="text-sm font-medium">Jefe Inmediato</label>
-        <select
-          {...register("immediate_boss_id")}
-          className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="">Seleccionar jefe inmediato...</option>
-          {collaborators.map((c) => (
-            <option key={c.id} value={c.id}>{c.full_name} — {c.positions?.name || 'N/A'}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <input
+            type="text"
+            value={showDropdown ? searchTerm : (selectedBoss ? `${selectedBoss.full_name} — ${selectedBoss.positions?.name || 'N/A'}` : "")}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setShowDropdown(true);
+            }}
+            onFocus={() => {
+              setSearchTerm("");
+              setShowDropdown(true);
+            }}
+            placeholder="Buscar por nombre, documento o cargo..."
+            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          {selectedBoss && !showDropdown && (
+            <button
+              type="button"
+              onClick={() => {
+                setValue("immediate_boss_id", "");
+                setSearchTerm("");
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Limpiar
+            </button>
+          )}
+          {showDropdown && (
+            <>
+              <div 
+                className="fixed inset-0 z-40 cursor-default" 
+                onClick={() => setShowDropdown(false)} 
+              />
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl z-50 max-h-56 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue("immediate_boss_id", "");
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground font-medium text-xs text-muted-foreground border-b border-border/40"
+                >
+                  -- Seleccionar jefe inmediato... (Ninguno) --
+                </button>
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+                    No se encontraron colaboradores
+                  </div>
+                ) : (
+                  filtered.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setValue("immediate_boss_id", c.id);
+                        setShowDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-accent hover:text-accent-foreground transition-colors border-b border-border/30 last:border-b-0 text-xs flex flex-col gap-0.5"
+                    >
+                      <span className="font-semibold text-foreground">{c.full_name}</span>
+                      <span className="text-[10px] text-muted-foreground/85">
+                        Documento: {c.document_number} · Cargo: {c.positions?.name || "N/A"}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">Quien realizará la evaluación directa del colaborador</p>
       </div>
     </div>
@@ -437,6 +534,14 @@ export default function NuevoColaboradorPage() {
                       <span className="text-muted-foreground">Estado:</span>
                       <span className="font-medium capitalize">{formData.status || "Activo"}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Sede / Ciudad:</span>
+                      <span className="font-medium">{formData.workplace_city || "—"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fecha de Ingreso:</span>
+                      <span className="font-medium">{formData.hire_date || "—"}</span>
+                    </div>
                     <div className="flex justify-between border-t border-border/40 pt-1.5 mt-1">
                       <span className="text-muted-foreground">Jefe Inmediato:</span>
                       <span className="font-medium text-xs truncate max-w-[120px]">
@@ -452,9 +557,6 @@ export default function NuevoColaboradorPage() {
                   <CheckCircle2 className="w-5 h-5 text-success-600 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-success-700 dark:text-success-400">Listo para guardar</p>
-                    <p className="text-sm text-success-600/80 dark:text-success-500/80 mt-1">
-                      Se creará el colaborador y se enviará un correo de bienvenida al correo registrado.
-                    </p>
                   </div>
                 </div>
               </div>

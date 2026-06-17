@@ -8,6 +8,7 @@ import {
   ArrowUpDown, ChevronUp, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn, getResultLabel, getStatusLabel, formatDate, formatDateTime, formatScore, getInitials, compressImageIfNeeded } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ const RESULT_STYLE: Record<string, string> = {
 };
 
 export default function EvaluacionesPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [filterResult, setFilterResult] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -164,7 +166,8 @@ export default function EvaluacionesPage() {
       const dateText = evalData.finalized_at 
         ? `Fecha de Finalización: ${formatDateTime(evalData.finalized_at)}`
         : `Fecha de Registro: ${formatDateTime(evalData.created_at)}`;
-      doc.text(dateText, marginX, posY);
+      const evalYear = evalData.evaluation_year || new Date().getFullYear();
+      doc.text(`${dateText}  |  Año de Evaluación: ${evalYear}`, marginX, posY);
       posY += 10;
       
       // SECTION: COLLABORATOR INFO (EVALUATED)
@@ -177,8 +180,8 @@ export default function EvaluacionesPage() {
       const collabInfo = [
         ["Nombre Completo:", evalData.collaborator?.full_name || "N/A", "Documento:", `${evalData.collaborator?.document_type || "CC"} ${evalData.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", evalData.collaborator?.position?.name || "N/A", "Área / Departamento:", evalData.collaborator?.areas?.name || evalData.collaborator?.area?.name || "N/A"],
-        ["Sede / Ciudad:", evalData.collaborator?.workplace_city || evalData.collaborator?.workplace || "N/A", "Tipo de Contrato:", evalData.collaborator?.contract_type || "N/A"],
-        ["Fecha de Ingreso:", formatPDFDate(evalData.collaborator?.hire_date), "Estado:", evalData.collaborator?.status || "N/A"]
+        ["Sede / Ciudad:", evalData.collaborator?.workplace_city || evalData.collaborator?.workplace || "N/A", "Fecha de Ingreso:", formatPDFDate(evalData.collaborator?.hire_date)],
+        ["Estado:", evalData.collaborator?.status || "N/A", "", ""]
       ];
       
       autoTable(doc, {
@@ -237,15 +240,18 @@ export default function EvaluacionesPage() {
       const resultObj = evalData.result && !Array.isArray(evalData.result) ? evalData.result : evalData.result?.[0] || null;
       const overallScore = resultObj ? resultObj.overall_average : 0;
       const statusLabelText = resultObj ? getResultLabel(resultObj.result) : "Pendiente de finalizar";
-      const scoreExplanation = overallScore >= 4.5 ? "Desempeño Excelente: Supera las expectativas consistentemente." 
-                           : overallScore >= 4.0 ? "Desempeño Sobresaliente: Cumple lo esperado y a veces lo supera."
-                           : overallScore >= 3.1 ? "Desempeño Aceptable (Plan de Mejoramiento): Cumple lo esperado, pero requiere plan de mejora."
-                           : "Desempeño Insatisfactorio (No Aprobado): No cumple con los estándares mínimos requeridos.";
+      let resultGeneralText = statusLabelText.toUpperCase();
+      if (resultObj?.result === "plan_mejoramiento") {
+        if (resultObj?.has_critical_fails) {
+          resultGeneralText = "PLAN DE MEJORAMIENTO (POR CATEGORÍA)";
+        } else {
+          resultGeneralText = "PLAN DE MEJORAMIENTO (POR PUNTUACIÓN OBTENIDA (PROMEDIO))";
+        }
+      }
       
       const summaryInfo = [
         ["PUNTUACIÓN OBTENIDA (PROMEDIO):", `${formatScore(overallScore)} / 5.0`],
-        ["RESULTADO GENERAL:", statusLabelText.toUpperCase()],
-        ["DESCRIPCIÓN:", scoreExplanation]
+        ["RESULTADO GENERAL:", resultGeneralText]
       ];
       
       autoTable(doc, {
@@ -269,13 +275,10 @@ export default function EvaluacionesPage() {
         doc.text("CRITERIOS CRÍTICOS INCUMPLIDOS (Causales de Plan de Mejoramiento):", marginX, posY);
         posY += 4;
         
-        const failHeaders = [["Categoría", "Valor Obtenido", "Mínimo Requerido"]];
+        const failHeaders = [["Criterio Crítico", "Valor Obtenido", "Mínimo Requerido"]];
         const failRows = resultObj.critical_fails_detail.map((fail: any) => {
-          const answerObj = evalData.answers?.find((a: any) => a.question_id === fail.question_id);
-          const categoryId = answerObj?.category_id;
-          const categoryName = (categoryId && resultObj.category_scores?.[categoryId]?.name) || "Categoría";
           return [
-            categoryName,
+            fail.question || "Criterio Crítico",
             `${formatScore(fail.score)} / 5.0`,
             `${formatScore(fail.min_required)} / 5.0`
           ];
@@ -372,7 +375,7 @@ export default function EvaluacionesPage() {
         startY: posY,
         margin: { left: marginX + 95 },
         tableWidth: 85,
-        head: [["Porcentaje", "Resultado"]],
+        head: [["Promedio", "Resultado"]],
         body: [
           ["4.0 – 5.0", "Aprobado"],
           ["3.1 – 3.9", "Plan de Mejoramiento"],
@@ -825,7 +828,14 @@ export default function EvaluacionesPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.04 }}
-                  className="hover:bg-muted/30 transition-colors"
+                  className="hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest("button") || target.closest("a")) {
+                      return;
+                    }
+                    router.push(`/evaluaciones/${ev.id}`);
+                  }}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
