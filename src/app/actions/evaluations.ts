@@ -476,8 +476,6 @@ export async function sendEvaluationEmail({
       result.toLowerCase() === "aprobado" ? "APROBADO" :
       result.toLowerCase() === "plan_mejoramiento" ? "PLAN DE MEJORAMIENTO" : "NO APROBADO";
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
-
     const emailHtml = `
       <div style="font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; padding: 40px 20px; color: #1e293b; min-height: 100%;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
@@ -485,9 +483,9 @@ export async function sendEvaluationEmail({
           <div style="height: 6px; background-color: #012169;"></div>
           
           <!-- Corporate Header -->
-          <div style="background-color: #012169; padding: 24px 32px; border-bottom: 3px solid #0084D5; text-align: center;">
+          <div style="background-color: #012169; padding: 24px 32px; border-bottom: 3px solid #0084D5; text-align: left;">
             <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px; font-family: 'Segoe UI', Arial, sans-serif;">FLOTA SUGAMUXI S.A.</h1>
-            <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Segoe UI', Arial, sans-serif;">Sistema de Gestión de Desempeño (EVD)</p>
+            <p style="color: #93c5fd; margin: 4px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-family: 'Segoe UI', Arial, sans-serif;">Sistema de Evaluación de Desempeño (EVD)</p>
           </div>
           
           <!-- Body Content -->
@@ -522,22 +520,15 @@ export async function sendEvaluationEmail({
               </table>
             </div>
             
-            <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 28px;">
+            <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin-bottom: 8px;">
               En el archivo adjunto encontrará el reporte formal en formato PDF con la firma de conformidad del evaluador y el colaborador evaluado, así como el desglose detallado de calificaciones por categoría.
             </p>
-
-            <!-- Action Button -->
-            <div style="text-align: center; margin-bottom: 12px;">
-              <a href="${appUrl}" style="display: inline-block; background-color: #012169; color: #ffffff; text-decoration: none; padding: 12px 28px; font-size: 14px; font-weight: 600; border-radius: 8px; border-bottom: 2px solid #0056b3; font-family: 'Segoe UI', Arial, sans-serif;">
-                Ingresar al Portal EVD
-              </a>
-            </div>
           </div>
           
           <!-- Corporate Footer -->
           <div style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #64748b; line-height: 1.5; font-family: 'Segoe UI', Arial, sans-serif;">
             <p style="margin: 0 0 8px 0; font-weight: 600; color: #475569;">FLOTA SUGAMUXI S.A.</p>
-            <p style="margin: 0 0 12px 0;">Este es un mensaje automático generado por el Sistema de Gestión de Desempeño (EVD). Por favor no responda a este correo.</p>
+            <p style="margin: 0 0 12px 0;">Este es un mensaje automático generado por el Sistema de Evaluación de Desempeño (EVD). Por favor no responda a este correo.</p>
             <p style="margin: 0; font-style: italic; font-size: 10px;">
               CONFIDENCIALIDAD: La información contenida en este correo electrónico y sus anexos es confidencial y está dirigida únicamente al destinatario. Si usted ha recibido este mensaje por error, por favor notifíquelo al remitente y elimínelo de su sistema.
             </p>
