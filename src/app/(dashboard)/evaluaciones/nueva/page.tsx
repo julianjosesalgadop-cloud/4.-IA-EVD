@@ -326,7 +326,7 @@ function NuevaEvaluacionContent() {
     }
   };
 
-  const generatePDF = async (download: boolean = true) => {
+  const generatePDF = async (download: boolean = true, pdfType: 'colaborador' | 'evaluador' = 'evaluador') => {
     if (!savedEvaluation) return null;
     
     const toastId = download ? toast.loading("Generando PDF corporativo...") : undefined;
@@ -598,130 +598,132 @@ function NuevaEvaluacionContent() {
         posY = (doc as any).lastAutoTable.finalY + 8;
       }
       
-      // Check space for Escala and Rangos section
-      if (posY > 230) {
-        doc.addPage();
-        posY = 28;
+      if (pdfType === "evaluador") {
+        // Check space for Escala and Rangos section
+        if (posY > 230) {
+          doc.addPage();
+          posY = 28;
+        }
+
+        // SECTION: ESCALA DE CALIFICACIÓN & RANGOS DE RESULTADOS
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+        doc.text("5. ESCALA DE CALIFICACIÓN", marginX, posY);
+        doc.text("6. RANGOS DE RESULTADOS", marginX + 95, posY);
+        posY += 6;
+
+        autoTable(doc, {
+          startY: posY,
+          margin: { left: marginX },
+          tableWidth: 85,
+          head: [["Calificación", "Descripción"]],
+          body: [
+            ["5", "Excelente"],
+            ["4", "Sobresaliente"],
+            ["3", "Cumple lo esperado"],
+            ["2", "Requiere mejora"],
+            ["1", "No cumple"]
+          ],
+          theme: "grid",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { halign: "center", fontStyle: "bold", cellWidth: 25 },
+            1: { cellWidth: 60 }
+          }
+        });
+        const finalY1 = (doc as any).lastAutoTable.finalY;
+
+        autoTable(doc, {
+          startY: posY,
+          margin: { left: marginX + 95 },
+          tableWidth: 85,
+          head: [["Promedio", "Resultado"]],
+          body: [
+            ["4.0 – 5.0", "Aprobado"],
+            ["3.1 – 3.9", "Plan de Mejoramiento"],
+            ["1.0 - 3.0", "No Aprobado"]
+          ],
+          theme: "grid",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { halign: "center", fontStyle: "bold", cellWidth: 35 },
+            1: { cellWidth: 50, halign: "center" }
+          }
+        });
+        const finalY2 = (doc as any).lastAutoTable.finalY;
+
+        posY = Math.max(finalY1, finalY2) + 8;
+
+        // PAGE 1 (continued): DETAILED ANSWERS TABLE
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+        doc.text("7. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
+        posY += 6;
+        
+        const answersHeaders = [["Categoría", "Pregunta", "Calificación"]];
+        const answersRows = (savedEvaluation.answers || []).map((ans: any, idx: number) => [
+          ans.category?.name || "N/A",
+          ans.question?.question || "Pregunta sin descripción",
+          `${ans.score} / 5.0`
+        ]);
+        
+        autoTable(doc, {
+          startY: posY,
+          head: answersHeaders,
+          body: answersRows,
+          theme: "striped",
+          headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
+          styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 45 },
+            1: { cellWidth: 110 },
+            2: { cellWidth: 25, halign: "center" }
+          },
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
+        });
+        
+        posY = (doc as any).lastAutoTable.finalY + 8;
+        
+        if (posY > 200) {
+          doc.addPage();
+          posY = 28;
+        }
+        
+        // SECTION: NARRATIVE
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
+        doc.text("8. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
+        posY += 6;
+        
+        const narratives = [
+          ["Observaciones Generales del Evaluador:", savedEvaluation.observations || "Sin observaciones registradas."],
+          ["Fortalezas Clave Demostradas:", savedEvaluation.strengths || "Sin fortalezas registradas."],
+          ["Oportunidades de Mejora Identificadas:", savedEvaluation.improvement_opportunities || "Sin oportunidades registradas."],
+          ["Necesidades de Formación / Capacitación:", savedEvaluation.training_needs || "Sin necesidades registradas."]
+        ];
+        
+        autoTable(doc, {
+          startY: posY,
+          head: [],
+          body: narratives,
+          theme: "grid",
+          styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark as any },
+          columnStyles: {
+            0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
+            1: { cellWidth: 120 }
+          },
+          margin: { left: marginX, right: marginX }
+        });
+        
+        posY = (doc as any).lastAutoTable.finalY + 12;
       }
 
-      // SECTION: ESCALA DE CALIFICACIÓN & RANGOS DE RESULTADOS
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("5. ESCALA DE CALIFICACIÓN", marginX, posY);
-      doc.text("6. RANGOS DE RESULTADOS", marginX + 95, posY);
-      posY += 6;
-
-      autoTable(doc, {
-        startY: posY,
-        margin: { left: marginX },
-        tableWidth: 85,
-        head: [["Calificación", "Descripción"]],
-        body: [
-          ["5", "Excelente"],
-          ["4", "Sobresaliente"],
-          ["3", "Cumple lo esperado"],
-          ["2", "Requiere mejora"],
-          ["1", "No cumple"]
-        ],
-        theme: "grid",
-        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
-        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
-        columnStyles: {
-          0: { halign: "center", fontStyle: "bold", cellWidth: 25 },
-          1: { cellWidth: 60 }
-        }
-      });
-      const finalY1 = (doc as any).lastAutoTable.finalY;
-
-      autoTable(doc, {
-        startY: posY,
-        margin: { left: marginX + 95 },
-        tableWidth: 85,
-        head: [["Promedio", "Resultado"]],
-        body: [
-          ["4.0 – 5.0", "Aprobado"],
-          ["3.1 – 3.9", "Plan de Mejoramiento"],
-          ["1.0 - 3.0", "No Aprobado"]
-        ],
-        theme: "grid",
-        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold", halign: "center" },
-        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
-        columnStyles: {
-          0: { halign: "center", fontStyle: "bold", cellWidth: 35 },
-          1: { cellWidth: 50, halign: "center" }
-        }
-      });
-      const finalY2 = (doc as any).lastAutoTable.finalY;
-
-      posY = Math.max(finalY1, finalY2) + 8;
-
-      // PAGE 1 (continued): DETAILED ANSWERS TABLE
-      
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("7. DESGLOSE DETALLADO DE COMPETENCIAS Y PREGUNTAS", marginX, posY);
-      posY += 6;
-      
-      const answersHeaders = [["Categoría", "Pregunta", "Calificación"]];
-      const answersRows = (savedEvaluation.answers || []).map((ans: any, idx: number) => [
-        ans.category?.name || "N/A",
-        ans.question?.question || "Pregunta sin descripción",
-        `${ans.score} / 5.0`
-      ]);
-      
-      autoTable(doc, {
-        startY: posY,
-        head: answersHeaders,
-        body: answersRows,
-        theme: "striped",
-        headStyles: { fillColor: brandColorBlue as any, textColor: [255, 255, 255] as any, fontStyle: "bold" },
-        styles: { fontSize: 8, cellPadding: 2, textColor: textColorDark as any },
-        columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 45 },
-          1: { cellWidth: 110 },
-          2: { cellWidth: 25, halign: "center" }
-        },
-        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
-      });
-      
-      posY = (doc as any).lastAutoTable.finalY + 8;
-      
-      if (posY > 200) {
-        doc.addPage();
-        posY = 28;
-      }
-      
-      // SECTION: NARRATIVE
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("8. COMENTARIOS Y NARRATIVA DE DESEMPEÑO", marginX, posY);
-      posY += 6;
-      
-      const narratives = [
-        ["Observaciones Generales del Evaluador:", savedEvaluation.observations || "Sin observaciones registradas."],
-        ["Fortalezas Clave Demostradas:", savedEvaluation.strengths || "Sin fortalezas registradas."],
-        ["Oportunidades de Mejora Identificadas:", savedEvaluation.improvement_opportunities || "Sin oportunidades registradas."],
-        ["Necesidades de Formación / Capacitación:", savedEvaluation.training_needs || "Sin necesidades registradas."]
-      ];
-      
-      autoTable(doc, {
-        startY: posY,
-        head: [],
-        body: narratives,
-        theme: "grid",
-        styles: { fontSize: 8.5, cellPadding: 3, textColor: textColorDark as any },
-        columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
-          1: { cellWidth: 120 }
-        },
-        margin: { left: marginX, right: marginX }
-      });
-      
-      posY = (doc as any).lastAutoTable.finalY + 12;
-      
       if (posY > 230) {
         doc.addPage();
         posY = 28;
@@ -731,7 +733,7 @@ function NuevaEvaluacionContent() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("9. CONFORMIDAD Y FIRMAS", marginX, posY);
+      doc.text(pdfType === "colaborador" ? "5. CONFORMIDAD Y FIRMAS" : "9. CONFORMIDAD Y FIRMAS", marginX, posY);
       
       const evaluatorSigRaw = savedEvaluation.evaluator?.avatar_url;
       const collaboratorSigRaw = (savedEvaluation.draft_data as any)?.collaborator_signature;
@@ -801,12 +803,13 @@ function NuevaEvaluacionContent() {
     }
   };
 
-  const handlePreviewPDF = async () => {
-    const docObj = await generatePDF(false);
+  const handlePreviewPDF = async (pdfType: 'colaborador' | 'evaluador' = 'evaluador') => {
+    const docObj = await generatePDF(false, pdfType);
     if (docObj) {
       const blob = docObj.output("blob");
       setPreviewPdfBlob(blob);
-      const fileName = `EVD_${savedEvaluation?.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${savedEvaluation?.evaluation_year || new Date().getFullYear()}.pdf`;
+      const typeLabel = pdfType === 'colaborador' ? 'Colaborador' : 'Evaluador';
+      const fileName = `EVD_${typeLabel}_${savedEvaluation?.collaborator?.full_name?.replace(/\s+/g, "_") || "Colaborador"}_${savedEvaluation?.evaluation_year || new Date().getFullYear()}.pdf`;
       setPreviewPdfFileName(fileName);
       setShowPdfPreview(true);
     }
@@ -1375,7 +1378,7 @@ function NuevaEvaluacionContent() {
                       setIsSendingEmail(true);
                       const toastId = toast.loading("Generando PDF y preparando envío...");
                       try {
-                        const docObj = await generatePDF(false);
+                        const docObj = await generatePDF(false, 'colaborador');
                         if (!docObj) {
                           toast.error("Error al generar PDF.", { id: toastId });
                           setIsSendingEmail(false);
@@ -1420,20 +1423,29 @@ function NuevaEvaluacionContent() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 border-t pt-4">
-                <button
-                  onClick={handlePreviewPDF}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-accent transition-colors text-sm font-semibold"
-                >
-                  <FileText className="w-4 h-4" />
-                  Ver PDF Corporativo
-                </button>
+              <div className="flex flex-col gap-2 border-t pt-4">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => handlePreviewPDF('colaborador')}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-accent transition-colors text-sm font-semibold"
+                  >
+                    <FileText className="w-4 h-4" />
+                    PDF Colaborador
+                  </button>
+                  <button
+                    onClick={() => handlePreviewPDF('evaluador')}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-accent transition-colors text-sm font-semibold"
+                  >
+                    <FileText className="w-4 h-4" />
+                    PDF Evaluador
+                  </button>
+                </div>
                 <button
                   onClick={() => {
                     setShowSuccessModal(false);
                     router.push("/evaluaciones");
                   }}
-                  className="flex-1 px-4 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity text-center"
+                  className="w-full px-4 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity text-center"
                 >
                   Volver a Evaluaciones
                 </button>

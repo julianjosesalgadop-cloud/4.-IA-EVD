@@ -320,13 +320,21 @@ export default function UsuariosPage() {
   async function loadAll() {
     setIsLoading(true);
     try {
-      const [{ data: usersData }, { data: rolesData }, positionsData] = await Promise.all([
+      const [usersRes, rolesRes, positionsData] = await Promise.all([
         getProfiles(),
         getRoles(),
         getPositions(),
       ]);
-      setUsers((usersData as UserProfile[]) || []);
-      setRoles((rolesData as Role[]) || []);
+
+      if (usersRes.error) {
+        toast.error(`Error al cargar usuarios: ${usersRes.error}`);
+      }
+      if (rolesRes.error) {
+        toast.error(`Error al cargar roles: ${rolesRes.error}`);
+      }
+
+      setUsers((usersRes.data as UserProfile[]) || []);
+      setRoles((rolesRes.data as Role[]) || []);
       setPositions(positionsData || []);
     } catch (err) {
       toast.error("Error al cargar usuarios");
