@@ -570,7 +570,7 @@ function NuevaEvaluacionContent() {
       const categoryScores = evalResultLocal?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
         // Prevent signatures from being on a page by themselves for colaborador
-        if (pdfType === "colaborador" && posY > 180) {
+        if (pdfType === "colaborador" && posY > 200) {
           doc.addPage();
           posY = 28;
         }
