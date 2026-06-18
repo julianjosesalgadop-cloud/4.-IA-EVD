@@ -47,8 +47,11 @@ export default function LoginPage() {
         return;
       }
 
-      // El redirect se maneja en el Server Action si es exitoso
-    } catch {
+      if (result?.success) {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (err: any) {
       toast.error("Error al iniciar sesión. Intenta nuevamente.");
       setIsLoading(false);
     }

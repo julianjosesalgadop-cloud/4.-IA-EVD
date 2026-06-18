@@ -70,7 +70,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     }
   }
 
-  redirect("/dashboard");
+  return { success: true };
 }
 
 export async function logoutAction() {

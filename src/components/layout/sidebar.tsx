@@ -77,6 +77,7 @@ const navGroups: NavGroup[] = [
           { title: "Categorías", href: "/configuracion/categorias", icon: Settings },
           { title: "Preguntas", href: "/configuracion/preguntas", icon: Settings },
           { title: "Versiones", href: "/configuracion/versiones", icon: Settings },
+          { title: "Campos Colaborador", href: "/configuracion/campos", icon: Settings },
           { title: "Empresa", href: "/configuracion/empresa", icon: Building2 },
         ],
       },
