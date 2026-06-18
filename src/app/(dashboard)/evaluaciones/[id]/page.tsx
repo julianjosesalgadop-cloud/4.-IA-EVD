@@ -303,7 +303,7 @@ export default function EvaluationDetailPage() {
       const categoryScores = result?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
         // Prevent signatures from being on a page by themselves for colaborador
-        if (pdfType === "colaborador" && posY > 240) {
+        if (pdfType === "colaborador" && posY > 220) {
           doc.addPage();
           posY = 28;
         }
@@ -338,8 +338,8 @@ export default function EvaluationDetailPage() {
       }
       
       if (pdfType === "evaluador") {
-        // Check space for Escala and Rangos section
-        if (posY > 230) {
+        // Check space for Escala and Rangos section (only page break if title would be alone at bottom)
+        if (posY > 255) {
           doc.addPage();
           posY = 28;
         }
@@ -428,8 +428,8 @@ export default function EvaluationDetailPage() {
         
         posY = (doc as any).lastAutoTable.finalY + 12;
         
-        // Prevent signatures from being on a page by themselves for evaluador
-        if (posY > 240) {
+        // Prevent signatures from being on a page by themselves for evaluador (lower threshold to group narrative + signatures together)
+        if (posY > 200) {
           doc.addPage();
           posY = 28;
         }
