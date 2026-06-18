@@ -196,7 +196,7 @@ export default function EvaluacionesPage() {
           2: { fontStyle: "bold", cellWidth: 35, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 55 }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 12;
@@ -225,7 +225,7 @@ export default function EvaluacionesPage() {
           2: { fontStyle: "bold", cellWidth: 45, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 45 }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 12;
@@ -264,7 +264,7 @@ export default function EvaluacionesPage() {
           0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 120 }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 6;
@@ -342,8 +342,8 @@ export default function EvaluacionesPage() {
       }
       
       if (pdfType === "evaluador") {
-        // Check space for Escala and Rangos section (only page break if title would be alone at bottom)
-        if (posY > 255) {
+        // Check space for Escala and Rangos section (only page break if it cannot fit without splitting)
+        if (posY > 230) {
           doc.addPage();
           posY = 28;
         }
@@ -358,7 +358,7 @@ export default function EvaluacionesPage() {
 
         autoTable(doc, {
           startY: posY,
-          margin: { left: marginX },
+          margin: { left: marginX, top: 26, bottom: 24 },
           tableWidth: 85,
           head: [["Calificación", "Descripción"]],
           body: [
@@ -380,7 +380,7 @@ export default function EvaluacionesPage() {
 
         autoTable(doc, {
           startY: posY,
-          margin: { left: marginX + 95 },
+          margin: { left: marginX + 95, top: 26, bottom: 24 },
           tableWidth: 85,
           head: [["Promedio", "Resultado"]],
           body: [
@@ -462,7 +462,7 @@ export default function EvaluacionesPage() {
             0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
             1: { cellWidth: 120 }
           },
-          margin: { left: marginX, right: marginX }
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
         posY = (doc as any).lastAutoTable.finalY + 15;

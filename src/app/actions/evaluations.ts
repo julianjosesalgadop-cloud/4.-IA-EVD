@@ -369,6 +369,41 @@ export async function saveEvaluation(payload: any) {
 
   if (!profile?.company_id) throw new Error("Compañía no encontrada");
 
+  // Obtener datos del evaluado
+  const { data: evaluatee } = await supabase
+    .from("collaborators")
+    .select("document_type, document_number, email")
+    .eq("id", payload.evaluatee_id)
+    .single();
+
+  // Obtener datos del evaluador y su rol
+  const { data: evaluator } = await supabase
+    .from("profiles")
+    .select("document_type, document_number, email, roles(name)")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (evaluatee && evaluator) {
+    // 1. Validar autoevaluación (mismo documento o correo)
+    const isSameDocument = evaluator.document_type && evaluator.document_number &&
+      evaluatee.document_type === evaluator.document_type &&
+      evaluatee.document_number === evaluator.document_number;
+      
+    const isSameEmail = evaluatee.email && evaluator.email &&
+      evaluatee.email.toLowerCase() === evaluator.email.toLowerCase();
+
+    if (isSameDocument || isSameEmail) {
+      return { error: "No puedes realizar tu propia evaluación de desempeño." };
+    }
+    
+    // 2. Validar rol del evaluador
+    const roleName = (evaluator.roles as any)?.name;
+    const allowedRoles = ["admin", "rrhh", "gerencia", "lider"];
+    if (!allowedRoles.includes(roleName)) {
+      return { error: "No tienes permisos para realizar evaluaciones de desempeño. Solo los roles de Líder, Administrador, RRHH y Gerencia pueden realizar evaluaciones." };
+    }
+  }
+
   const { data: evalData, error: evalError } = await supabase
     .from("evaluations")
     .insert({

@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getEvaluationConfig, saveEvaluation, getEvaluationById, sendEvaluationEmail } from "@/app/actions/evaluations";
 import { getCollaborators } from "@/app/actions/collaborators";
+import { getCurrentUserProfile } from "@/app/actions/admin";
 import type { Collaborator } from "@/types";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 import { SignatureInput } from "@/components/ui/signature-input";
@@ -110,6 +111,24 @@ function NuevaEvaluacionContent() {
   const statusLabel = evalResult?.result ? getResultLabel(evalResult.result) : "Pendiente";
   const [emailInput, setEmailInput] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+
+  useEffect(() => {
+    async function loadCurrentUser() {
+      try {
+        const res = await getCurrentUserProfile();
+        if (res?.data) {
+          setCurrentUserProfile(res.data);
+        }
+      } catch (err) {
+        console.error("Error loading current user profile:", err);
+      } finally {
+        setIsLoadingUser(false);
+      }
+    }
+    loadCurrentUser();
+  }, []);
 
   useEffect(() => {
     async function loadConfig() {
@@ -459,7 +478,7 @@ function NuevaEvaluacionContent() {
           2: { fontStyle: "bold", cellWidth: 35, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 55 }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 12;
@@ -488,7 +507,7 @@ function NuevaEvaluacionContent() {
           2: { fontStyle: "bold", cellWidth: 45, fillColor: [248, 250, 252] as any },
           3: { cellWidth: 45 }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 12;
@@ -527,7 +546,7 @@ function NuevaEvaluacionContent() {
           0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 120 }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
       posY = (doc as any).lastAutoTable.finalY + 6;
@@ -605,8 +624,8 @@ function NuevaEvaluacionContent() {
       }
       
       if (pdfType === "evaluador") {
-        // Check space for Escala and Rangos section (only page break if title would be alone at bottom)
-        if (posY > 255) {
+        // Check space for Escala and Rangos section (only page break if it cannot fit without splitting)
+        if (posY > 230) {
           doc.addPage();
           posY = 28;
         }
@@ -621,7 +640,7 @@ function NuevaEvaluacionContent() {
 
         autoTable(doc, {
           startY: posY,
-          margin: { left: marginX },
+          margin: { left: marginX, top: 26, bottom: 24 },
           tableWidth: 85,
           head: [["Calificación", "Descripción"]],
           body: [
@@ -643,7 +662,7 @@ function NuevaEvaluacionContent() {
 
         autoTable(doc, {
           startY: posY,
-          margin: { left: marginX + 95 },
+          margin: { left: marginX + 95, top: 26, bottom: 24 },
           tableWidth: 85,
           head: [["Promedio", "Resultado"]],
           body: [
@@ -725,7 +744,7 @@ function NuevaEvaluacionContent() {
             0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
             1: { cellWidth: 120 }
           },
-          margin: { left: marginX, right: marginX }
+          margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
         posY = (doc as any).lastAutoTable.finalY + 15;
@@ -837,10 +856,31 @@ function NuevaEvaluacionContent() {
         <span className="sm:hidden">Atrás</span>
       </Link>
 
-      {isLoadingConfig ? (
+      {isLoadingConfig || isLoadingUser ? (
         <div className="py-12 flex flex-col items-center justify-center gap-4">
           <div className="w-8 h-8 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
           <p className="text-muted-foreground">Cargando configuración de la evaluación...</p>
+        </div>
+      ) : currentUserProfile?.roles?.name === 'colaborador' ? (
+        <div className="py-16 flex flex-col items-center justify-center gap-6 rounded-2xl border border-danger-200 bg-danger-50/50 dark:border-danger-900/30 dark:bg-danger-950/10">
+          <div className="w-16 h-16 rounded-full bg-danger-100 dark:bg-danger-900/20 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-danger-600 dark:text-danger-400" />
+          </div>
+          <div className="text-center space-y-2 max-w-md">
+            <h2 className="text-xl font-bold text-danger-700 dark:text-danger-300">Acceso Denegado</h2>
+            <p className="text-sm text-danger-600/80 dark:text-danger-400/80 leading-relaxed">
+              Tu rol de <strong>Colaborador</strong> no tiene permisos para realizar evaluaciones de desempeño.
+              Solo los roles de <strong>Líder / Jefe</strong>, <strong>Administrador</strong>,
+              <strong> Gestión Humana</strong> y <strong>Gerencia</strong> pueden iniciar evaluaciones.
+            </p>
+          </div>
+          <Link
+            href="/evaluaciones"
+            className="inline-flex items-center gap-2 rounded-xl bg-danger-600 hover:bg-danger-700 text-white px-5 py-2.5 text-sm font-semibold transition-colors shadow-sm"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Volver a Evaluaciones
+          </Link>
         </div>
       ) : categories.length === 0 ? (
         <div className="py-12 text-center text-muted-foreground">
@@ -928,6 +968,28 @@ function NuevaEvaluacionContent() {
         </div>
       </div>
 
+      {/* Self-evaluation warning banner */}
+      {selectedCollaborator && currentUserProfile && (() => {
+        const isSameDoc = currentUserProfile.document_type && currentUserProfile.document_number &&
+          selectedCollaborator.document_type === currentUserProfile.document_type &&
+          selectedCollaborator.document_number === currentUserProfile.document_number;
+        const isSameEmail = selectedCollaborator.email && currentUserProfile.email &&
+          selectedCollaborator.email.toLowerCase() === currentUserProfile.email.toLowerCase();
+        return (isSameDoc || isSameEmail) ? (
+          <div className="flex items-start gap-3 text-sm bg-danger-50 dark:bg-danger-950/20 border border-danger-200 dark:border-danger-900/40 rounded-xl p-4 shadow-sm">
+            <AlertCircle className="w-5 h-5 mt-0.5 text-danger-600 dark:text-danger-400 flex-shrink-0" />
+            <div className="space-y-1">
+              <p className="font-bold text-danger-800 dark:text-danger-200 text-sm">Autoevaluación no permitida</p>
+              <p className="text-danger-700 dark:text-danger-300 text-xs leading-relaxed">
+                No puedes realizar tu propia evaluación de desempeño. Por favor selecciona un colaborador diferente.
+                Las evaluaciones deben ser realizadas por un <strong>Líder / Jefe</strong>, <strong>Administrador</strong>,
+                <strong> Gestión Humana</strong> o <strong>Gerencia</strong>.
+              </p>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {/* Método de Calificación Guía */}
       <div className="rounded-xl border border-brand-100 dark:border-brand-900/50 bg-brand-50/20 dark:bg-brand-950/10 p-5 shadow-sm space-y-4">
         {/* Title and Intro */}
@@ -1004,6 +1066,15 @@ function NuevaEvaluacionContent() {
         </div>
       </div>
 
+      {/* Questions grid — hidden if self-evaluation detected */}
+      {selectedCollaborator && currentUserProfile && (() => {
+        const isSameDoc = currentUserProfile.document_type && currentUserProfile.document_number &&
+          selectedCollaborator.document_type === currentUserProfile.document_type &&
+          selectedCollaborator.document_number === currentUserProfile.document_number;
+        const isSameEmail = selectedCollaborator.email && currentUserProfile.email &&
+          selectedCollaborator.email.toLowerCase() === currentUserProfile.email.toLowerCase();
+        return (isSameDoc || isSameEmail);
+      })() ? null : (
       <div id="evaluation-questions-container" className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* Category Nav */}
         <div className="lg:col-span-2">
@@ -1319,9 +1390,12 @@ function NuevaEvaluacionContent() {
           </div>
         </div>
       </div>
+      )}
+
       </>
       )}
       </div>
+
 
       {/* Success Modal */}
       <AnimatePresence>

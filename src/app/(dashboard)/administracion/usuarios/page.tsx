@@ -25,6 +25,8 @@ interface UserProfile {
   positions?: { id: string; name: string };
   created_at: string;
   avatar_url?: string;
+  document_type?: string;
+  document_number?: string;
 }
 
 interface Role {
@@ -67,6 +69,8 @@ function UserModal({
     position_id: user?.position_id || user?.positions?.id || "",
     active: user?.active ?? true,
     avatar_url: user?.avatar_url || "",
+    document_type: user?.document_type || "",
+    document_number: user?.document_number || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,6 +92,8 @@ function UserModal({
           position_id: formData.position_id || null,
           active: formData.active,
           avatar_url: formData.avatar_url || null,
+          document_type: formData.document_type || null,
+          document_number: formData.document_number.trim() || null,
         });
         if (result.error) throw new Error(result.error);
         toast.success("Usuario actualizado correctamente");
@@ -106,6 +112,8 @@ function UserModal({
           role_id: formData.role_id || undefined,
           position_id: formData.position_id || undefined,
           avatar_url: formData.avatar_url || null,
+          document_type: formData.document_type || null,
+          document_number: formData.document_number.trim() || null,
         });
         if (result.error) throw new Error(result.error);
         toast.success("Usuario creado correctamente");
@@ -166,6 +174,35 @@ function UserModal({
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                 className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder="Martínez Rojas"
+              />
+            </div>
+          </div>
+
+          {/* Document Type and Document Number */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5 col-span-1">
+              <label className="text-sm font-medium">Tipo Doc.</label>
+              <select
+                value={formData.document_type}
+                onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">Ninguno</option>
+                <option value="CC">Cédula Ciudadanía</option>
+                <option value="CE">Cédula Extranjería</option>
+                <option value="TI">Tarjeta Identidad</option>
+                <option value="PP">Pasaporte</option>
+                <option value="NIT">NIT</option>
+                <option value="RUT">RUT</option>
+              </select>
+            </div>
+            <div className="space-y-1.5 col-span-2">
+              <label className="text-sm font-medium">Número de Documento</label>
+              <input
+                value={formData.document_number}
+                onChange={(e) => setFormData({ ...formData, document_number: e.target.value })}
+                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Ej: 1012345678"
               />
             </div>
           </div>
@@ -553,6 +590,14 @@ export default function UsuariosPage() {
 
                 {/* Info */}
                 <div className="space-y-1.5 mb-4">
+                  {user.document_number && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-bold border border-border flex-shrink-0">
+                        {user.document_type || "CC"}
+                      </span>
+                      <span className="font-semibold text-foreground/90">{user.document_number}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">{user.email}</span>

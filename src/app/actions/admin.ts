@@ -92,6 +92,8 @@ export async function updateProfile(userId: string, updates: {
   position_id?: string | null;
   active?: boolean;
   avatar_url?: string | null;
+  document_type?: string | null;
+  document_number?: string | null;
 }) {
   const supabaseUser = await getSupabase();
   const { data: userData } = await supabaseUser.auth.getUser();
@@ -121,6 +123,8 @@ export async function inviteUser(data: {
   role_id?: string;
   position_id?: string;
   avatar_url?: string | null;
+  document_type?: string | null;
+  document_number?: string | null;
 }) {
   const supabaseUser = await getSupabase();
   const { data: userData } = await supabaseUser.auth.getUser();
@@ -176,6 +180,8 @@ export async function inviteUser(data: {
       position_id: data.position_id || null,
       avatar_url: data.avatar_url || null,
       active: true,
+      document_type: data.document_type || null,
+      document_number: data.document_number || null,
     });
 
   if (profileError) {

@@ -387,7 +387,7 @@ export default function ReportesPage() {
           0: { fontStyle: "bold", cellWidth: 100, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 80, halign: "center" }
         },
-        margin: { left: marginX, right: marginX }
+        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
 
       let currentY = (doc as any).lastAutoTable.finalY + 8;
