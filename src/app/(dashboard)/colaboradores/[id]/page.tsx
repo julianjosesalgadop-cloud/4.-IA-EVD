@@ -173,26 +173,7 @@ export default function CollaboratorDetailPage() {
             </div>
           </div>
 
-          {/* Jerarquía */}
-          <div className="rounded-xl border bg-card p-6 space-y-4">
-            <h3 className="font-semibold">Estructura Jerárquica</h3>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-lg border border-dashed p-4 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Jefe Inmediato</p>
-                <p className="font-semibold">{collaborator.immediate_boss?.full_name || "—"}</p>
-              </div>
-              <div className="rounded-lg border border-dashed p-4 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Líder de Área</p>
-                <p className="font-semibold">{collaborator.area_leader?.full_name || "—"}</p>
-              </div>
-              <div className="rounded-lg border border-dashed p-4 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Gerente Responsable</p>
-                <p className="font-semibold">
-                  {collaborator.manager ? `${collaborator.manager.first_name} ${collaborator.manager.last_name}` : "—"}
-                </p>
-              </div>
-            </div>
-          </div>
+
 
           {/* Metadata */}
           <div className="rounded-xl border bg-muted/20 p-4">

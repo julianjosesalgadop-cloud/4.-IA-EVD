@@ -4,6 +4,14 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { logAudit } from "./audit";
+import { createClient } from "@supabase/supabase-js";
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 async function getSupabase() {
   const cookieStore = await cookies();
@@ -167,6 +175,36 @@ export async function updateCollaborator(collaboratorId: string, updates: any) {
     return { data: null, error: error.message };
   }
 
+  // Sync email update with auth user / profile if they exist
+  if (updates.email && data.document_number) {
+    try {
+      const adminClient = getSupabaseAdmin();
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("id, email")
+        .eq("company_id", data.company_id)
+        .eq("document_number", data.document_number)
+        .single();
+
+      if (profile && profile.email?.toLowerCase() !== updates.email.toLowerCase()) {
+        console.log(`Syncing email update to auth and profile for user ${profile.id}: ${updates.email}`);
+        
+        // Update profile
+        await adminClient
+          .from("profiles")
+          .update({ email: updates.email, updated_at: new Date().toISOString() })
+          .eq("id", profile.id);
+
+        // Update auth
+        await adminClient.auth.admin.updateUserById(profile.id, {
+          email: updates.email
+        });
+      }
+    } catch (syncError) {
+      console.error("Error syncing email to auth/profile:", syncError);
+    }
+  }
+
   revalidatePath("/colaboradores");
 
   // Registrar en auditoría
@@ -299,6 +337,41 @@ export async function importCollaborators(rows: any[]) {
     if (error) {
       console.error("Error bulk upserting:", error);
       return { error: error.message };
+    }
+
+    // Sync emails with auth / profiles if they exist
+    try {
+      const adminClient = getSupabaseAdmin();
+      const { data: dbProfiles } = await adminClient
+        .from("profiles")
+        .select("id, email, document_number")
+        .eq("company_id", companyId);
+
+      if (dbProfiles && dbProfiles.length > 0) {
+        const profilesMap = new Map(dbProfiles.map(p => [p.document_number, p]));
+        
+        for (const record of recordsToInsert) {
+          if (record.email && record.document_number) {
+            const profile = profilesMap.get(record.document_number);
+            if (profile && profile.email?.toLowerCase() !== record.email.toLowerCase()) {
+              console.log(`Syncing bulk email update to auth and profile for user ${profile.id}: ${record.email}`);
+              
+              // Update profile
+              await adminClient
+                .from("profiles")
+                .update({ email: record.email, updated_at: new Date().toISOString() })
+                .eq("id", profile.id);
+
+              // Update auth
+              await adminClient.auth.admin.updateUserById(profile.id, {
+                email: record.email
+              });
+            }
+          }
+        }
+      }
+    } catch (syncError) {
+      console.error("Error syncing bulk emails to auth/profiles:", syncError);
     }
   }
 

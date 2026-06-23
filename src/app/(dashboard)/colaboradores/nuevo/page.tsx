@@ -21,13 +21,11 @@ import { DEFAULT_FIELDS } from "@/lib/constants";
 const STEPS = [
   { id: 1, title: "Información Personal", icon: User, description: "Datos de identificación y contacto" },
   { id: 2, title: "Información Laboral", icon: Briefcase, description: "Cargo, área y contrato" },
-  { id: 3, title: "Jerarquía", icon: GitBranch, description: "Jefe inmediato y responsables" },
-  { id: 4, title: "Confirmación", icon: CheckCircle2, description: "Revisión y guardado" },
+  { id: 3, title: "Confirmación", icon: CheckCircle2, description: "Revisión y guardado" },
 ];
 
 type Step1Data = any;
 type Step2Data = any;
-type Step3Data = any;
 
 // ---- Dynamic Schema Generators ----
 function buildStep1Schema(fields: any[]) {
@@ -119,20 +117,7 @@ function buildStep2Schema(fields: any[]) {
   return z.object(shape);
 }
 
-function buildStep3Schema(fields: any[]) {
-  const shape: any = {};
 
-  const bossField = fields.find(f => f.id === "immediate_boss_id");
-  if (bossField && bossField.is_visible) {
-    shape.immediate_boss_id = bossField.is_required
-      ? z.string().min(1, "Selecciona el jefe inmediato")
-      : z.string().optional();
-  } else {
-    shape.immediate_boss_id = z.string().optional();
-  }
-
-  return z.object(shape);
-}
 
 // ---- Step Components ----
 function StepPersonal({ form, fieldsConfig }: { form: ReturnType<typeof useForm<Step1Data>>; fieldsConfig: any[] }) {
@@ -363,135 +348,7 @@ function StepLaboral({
   );
 }
 
-function StepJerarquia({
-  form,
-  collaborators,
-  fieldsConfig,
-}: {
-  form: ReturnType<typeof useForm<Step3Data>>;
-  collaborators: any[];
-  fieldsConfig: any[];
-}) {
-  const { setValue, watch, formState: { errors } } = form;
-  const selectedBossId = watch("immediate_boss_id");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
 
-  const isVisible = (id: string) => fieldsConfig.find(f => f.id === id)?.is_visible !== false;
-  const isRequired = (id: string) => fieldsConfig.find(f => f.id === id)?.is_required === true;
-  const getLabel = (id: string, fallback: string) => fieldsConfig.find(f => f.id === id)?.label || fallback;
-
-  if (!isVisible("immediate_boss_id")) {
-    return (
-      <div className="p-4 rounded-xl border border-dashed bg-muted/20 text-center">
-        <p className="text-sm text-muted-foreground">
-          No hay configuraciones jerárquicas activas en este paso del formulario.
-        </p>
-      </div>
-    );
-  }
-
-  // Find currently selected boss
-  const selectedBoss = collaborators.find(c => c.id === selectedBossId);
-
-  // Filter collaborators by name, document number, or position
-  const filtered = collaborators.filter((c) => {
-    const term = searchTerm.toLowerCase();
-    const fullName = (c.full_name || "").toLowerCase();
-    const docNumber = (c.document_number || "").toLowerCase();
-    const positionName = (c.positions?.name || "").toLowerCase();
-    return fullName.includes(term) || docNumber.includes(term) || positionName.includes(term);
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-xl border border-dashed bg-muted/20 space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Configura la estructura jerárquica del colaborador para el proceso de evaluación.
-          El jefe inmediato será quien realice la evaluación directa del colaborador.
-        </p>
-      </div>
-
-      <div className="space-y-1.5 relative">
-        <label className="text-sm font-medium">
-          {getLabel("immediate_boss_id", "Jefe Inmediato")} {isRequired("immediate_boss_id") ? "*" : ""}
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={showDropdown ? searchTerm : (selectedBoss ? `${selectedBoss.full_name} — ${selectedBoss.positions?.name || 'N/A'}` : "")}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setShowDropdown(true);
-            }}
-            onFocus={() => {
-              setSearchTerm("");
-              setShowDropdown(true);
-            }}
-            placeholder="Buscar por nombre, documento o cargo..."
-            className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          {selectedBoss && !showDropdown && (
-            <button
-              type="button"
-              onClick={() => {
-                setValue("immediate_boss_id", "");
-                setSearchTerm("");
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Limpiar
-            </button>
-          )}
-          {showDropdown && (
-            <>
-              <div
-                className="fixed inset-0 z-40 cursor-default"
-                onClick={() => setShowDropdown(false)}
-              />
-              <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl z-50 max-h-56 overflow-y-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setValue("immediate_boss_id", "");
-                    setShowDropdown(false);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground font-medium text-xs text-muted-foreground border-b border-border/40"
-                >
-                  -- Seleccionar jefe inmediato... (Ninguno) --
-                </button>
-                {filtered.length === 0 ? (
-                  <div className="px-3 py-3 text-xs text-muted-foreground text-center">
-                    No se encontraron colaboradores
-                  </div>
-                ) : (
-                  filtered.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setValue("immediate_boss_id", c.id);
-                        setShowDropdown(false);
-                      }}
-                      className="w-full text-left px-3 py-2.5 hover:bg-accent hover:text-accent-foreground transition-colors border-b border-border/30 last:border-b-0 text-xs flex flex-col gap-0.5"
-                    >
-                      <span className="font-semibold text-foreground">{c.full_name}</span>
-                      <span className="text-[10px] text-muted-foreground/85">
-                        Documento: {c.document_number} · Cargo: {c.positions?.name || "N/A"}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            </>
-          )}
-        </div>
-        {errors.immediate_boss_id?.message && <p className="text-danger-500 text-xs">{errors.immediate_boss_id.message.toString()}</p>}
-        <p className="text-xs text-muted-foreground">Quien realizará la evaluación directa del colaborador</p>
-      </div>
-    </div>
-  );
-}
 
 // ---- Main Wizard ----
 export default function NuevoColaboradorPage() {
@@ -542,13 +399,6 @@ export default function NuevoColaboradorPage() {
     defaultValues: { status: "activo" },
   });
 
-  const form3 = useForm<Step3Data>({
-    resolver: (values, context, options) => {
-      const dynamicSchema = buildStep3Schema(fieldsConfig);
-      return zodResolver(dynamicSchema)(values, context, options);
-    },
-  });
-
   const handleNext = async () => {
     let valid = false;
     if (currentStep === 1) {
@@ -557,13 +407,10 @@ export default function NuevoColaboradorPage() {
     } else if (currentStep === 2) {
       valid = await form2.trigger();
       if (valid) setFormData((prev) => ({ ...prev, ...form2.getValues() }));
-    } else if (currentStep === 3) {
-      valid = await form3.trigger();
-      if (valid) setFormData((prev) => ({ ...prev, ...form3.getValues() }));
     } else {
       valid = true;
     }
-    if (valid && currentStep < 4) setCurrentStep((s) => s + 1);
+    if (valid && currentStep < 3) setCurrentStep((s) => s + 1);
   };
 
   const handleSubmit = async () => {
@@ -599,7 +446,7 @@ export default function NuevoColaboradorPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Nuevo Colaborador</h1>
-        <p className="text-muted-foreground text-sm mt-1">Completa los datos del colaborador en 4 pasos</p>
+        <p className="text-muted-foreground text-sm mt-1">Completa los datos del colaborador en 3 pasos</p>
       </div>
 
       {/* Step Indicator */}
@@ -672,8 +519,7 @@ export default function NuevoColaboradorPage() {
         <AnimatePresence mode="wait">
           {currentStep === 1 && <StepPersonal form={form1} fieldsConfig={fieldsConfig} />}
           {currentStep === 2 && <StepLaboral form={form2} areas={areas} positions={positions} fieldsConfig={fieldsConfig} />}
-          {currentStep === 3 && <StepJerarquia form={form3} collaborators={collaborators} fieldsConfig={fieldsConfig} />}
-          {currentStep === 4 && (
+          {currentStep === 3 && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
@@ -750,14 +596,6 @@ export default function NuevoColaboradorPage() {
                         <span className="font-medium">{formData.hire_date || "—"}</span>
                       </div>
                     )}
-                    {isVisible("immediate_boss_id") && (
-                      <div className="flex justify-between border-t border-border/40 pt-1.5 mt-1">
-                        <span className="text-muted-foreground">{getLabel("immediate_boss_id", "Jefe Inmediato")}:</span>
-                        <span className="font-medium text-xs truncate max-w-[120px]">
-                          {collaborators.find(c => c.id === formData.immediate_boss_id)?.full_name || "—"}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -786,7 +624,7 @@ export default function NuevoColaboradorPage() {
           </button>
 
           <div className="flex items-center gap-2">
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <button
                 onClick={handleNext}
                 className="flex items-center gap-2 px-6 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md"

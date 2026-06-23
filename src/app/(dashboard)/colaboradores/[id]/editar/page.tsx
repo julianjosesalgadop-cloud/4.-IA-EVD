@@ -377,42 +377,7 @@ export default function CollaboratorEditPage() {
             </div>
           </div>
 
-          {/* Jerarquía */}
-          <div className="rounded-xl border bg-card p-6 space-y-4">
-            <h2 className="text-lg font-semibold">Estructura Jerárquica</h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Jefe Inmediato</label>
-                <select
-                  value={form.immediate_boss_id}
-                  onChange={(e) => handleChange("immediate_boss_id", e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 bg-background"
-                >
-                  <option value="">Seleccionar...</option>
-                  {collaborators.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Líder de Área</label>
-                <select
-                  value={form.area_leader_id}
-                  onChange={(e) => handleChange("area_leader_id", e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 bg-background"
-                >
-                  <option value="">Seleccionar...</option>
-                  {collaborators.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
+
 
           {/* Actions */}
           <div className="rounded-xl border bg-card p-6">

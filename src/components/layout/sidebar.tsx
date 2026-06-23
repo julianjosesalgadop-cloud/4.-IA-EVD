@@ -101,9 +101,10 @@ const navGroups: NavGroup[] = [
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  userRole?: string;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, userRole }: SidebarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -112,6 +113,32 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Filtrar dinámicamente navGroups basado en el rol del usuario
+  const filteredNavGroups = navGroups.map(group => {
+    const filteredItems = group.items.filter(item => {
+      // Si el rol es lider, ocultar: Configuración, Administración, Auditoría
+      if (userRole === "lider") {
+        if (item.title === "Configuración" || item.title === "Administración" || item.title === "Auditoría") {
+          return false;
+        }
+      }
+      // Si el rol es colaborador, ocultar: Configuración, Administración, Auditoría, Evaluaciones, Colaboradores
+      if (userRole === "colaborador") {
+        if (
+          item.title === "Configuración" ||
+          item.title === "Administración" ||
+          item.title === "Auditoría" ||
+          item.title === "Evaluaciones" ||
+          item.title === "Colaboradores"
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+    return { ...group, items: filteredItems };
+  }).filter(group => group.items.length > 0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -267,7 +294,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5 sidebar-scrollbar">
-        {navGroups.map((group, groupIdx) => (
+        {filteredNavGroups.map((group, groupIdx) => (
           <div key={group.groupTitle} className="space-y-1">
             {/* Divider / Group Title */}
             {collapsed ? (
