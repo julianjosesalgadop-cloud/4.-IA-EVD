@@ -201,12 +201,14 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-gradient-to-r from-[#022a75] to-[#000d2a] transition-all duration-300 ease-in-out text-white border-[#012169]/30 overflow-hidden",
+        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-gradient-to-r from-[#012169] to-[#000a22] transition-all duration-300 ease-in-out text-white border-[#012169]/30",
         collapsed ? "md:pl-[96px]" : "md:pl-[284px]"
       )}
     >
-      {/* Particle Background */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-20" />
+      {/* Particle Background - contained to avoid clipping absolute child components */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+        <canvas ref={canvasRef} className="w-full h-full opacity-20" />
+      </div>
       
       {/* Menu Toggle */}
       <button
@@ -324,7 +326,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
                       setShowDropdown(false);
                       await logoutAction();
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-danger-400 hover:bg-danger-950/20 hover:text-danger-300 transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-950/20 hover:text-red-400 transition-colors cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Cerrar sesión</span>

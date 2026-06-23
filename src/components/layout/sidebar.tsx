@@ -227,7 +227,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
         "fixed left-0 top-0 h-screen z-50 flex flex-col overflow-hidden border-r",
-        "transition-transform md:translate-x-0 bg-gradient-to-b from-[#022a75] via-[#011a4d] to-[#000d2a] border-[#012169]/30",
+        "transition-transform md:translate-x-0 bg-gradient-to-b from-[#012169] via-[#001647] to-[#000a22] border-[#012169]/30",
         collapsed ? "-translate-x-full md:translate-x-0" : "translate-x-0"
       )}
     >
@@ -258,16 +258,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <button
-          onClick={onToggle}
-          className={cn(
-            "p-1 rounded-lg hover:bg-slate-800/40 transition-colors text-slate-400 hover:text-white",
-            collapsed ? "mx-auto w-8 h-8 flex items-center justify-center" : "ml-auto flex-shrink-0"
-          )}
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
       </div>
 
       {/* Navigation */}
@@ -404,7 +394,23 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[#012169]/30 p-3 space-y-1">
+      <div className="border-t border-[#012169]/30 p-3 space-y-1 z-10">
+        {/* Collapse Toggle */}
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800/30 hover:text-white w-full transition-all cursor-pointer"
+          title={collapsed ? "Expandir menú" : "Colapsar menú"}
+        >
+          {collapsed ? (
+            <ChevronRight className="w-5 h-5 flex-shrink-0 mx-auto" />
+          ) : (
+            <>
+              <ChevronLeft className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm truncate">Colapsar</span>
+            </>
+          )}
+        </button>
+
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -412,9 +418,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           title={collapsed ? "Cambiar tema" : undefined}
         >
           {theme === "dark" ? (
-            <Sun className="w-5 h-5 flex-shrink-0" />
+            <Sun className="w-5 h-5 flex-shrink-0 mx-auto" />
           ) : (
-            <Moon className="w-5 h-5 flex-shrink-0" />
+            <Moon className="w-5 h-5 flex-shrink-0 mx-auto" />
           )}
           <AnimatePresence>
             {!collapsed && (
@@ -435,9 +441,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick={async () => {
             await logoutAction();
           }}
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-danger-400 hover:bg-danger-950/20 hover:text-danger-300 w-full transition-all cursor-pointer"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-950/20 hover:text-red-400 w-full transition-all cursor-pointer"
+          title={collapsed ? "Cerrar sesión" : undefined}
         >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
+          <LogOut className="w-5 h-5 flex-shrink-0 mx-auto" />
           <AnimatePresence>
             {!collapsed && (
               <motion.span
