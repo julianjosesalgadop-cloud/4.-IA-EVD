@@ -6,13 +6,12 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, ClipboardList, Settings, TrendingUp,
-  FileBarChart2, Bell, Shield, ChevronLeft, ChevronRight,
-  Building2, BookOpen, MessageSquare, Target, LogOut,
-  GraduationCap, ChevronDown, ChevronUp, User
+  FileBarChart2, Shield, ChevronLeft, ChevronRight,
+  Building2, BookOpen, LogOut, ChevronDown, ChevronUp, User,
+  Sun, Moon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
-import { Sun, Moon } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 
 interface NavItem {
@@ -53,8 +52,6 @@ const navGroups: NavGroup[] = [
           { title: "Resultados Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
         ],
       },
-      // Plan de Mejoramiento oculto temporalmente
-      // { title: "Plan de Mejoramiento", href: "/pmi", icon: Target },
       {
         title: "Reportes",
         href: "/reportes",
@@ -145,25 +142,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
         "fixed left-0 top-0 h-screen z-50 flex flex-col overflow-hidden border-r",
-        "transition-transform md:translate-x-0",
+        "transition-transform md:translate-x-0 bg-gradient-to-b from-[#011133] to-[#00071a] border-[#012169]/30",
         collapsed ? "-translate-x-full md:translate-x-0" : "translate-x-0"
       )}
-      style={{
-        background: "hsl(var(--sidebar-background))",
-        borderColor: "hsl(var(--sidebar-border))",
-      }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border min-h-[72px]">
+      <div className="flex items-center gap-3 px-4 py-5 border-b border-[#012169]/30 min-h-[72px]">
         {/* Logo Icon */}
-        {!collapsed && (
-          <div className="relative flex-shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden border shadow-lg shadow-brand-500/10">
-              <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-0.5" />
-            </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success-500 border-2 border-sidebar-background" />
+        <div className="relative flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden border border-slate-100 shadow-md">
+            <img src="/logo.png" alt="Logo Flota Sugamuxi" className="w-full h-full object-contain p-0.5" />
           </div>
-        )}
+          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success-500 border-2 border-[#011133]" />
+        </div>
 
         <AnimatePresence>
           {!collapsed && (
@@ -174,8 +165,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <p className="text-sm font-bold text-foreground leading-tight">Flota Sugamuxi</p>
-              <p className="text-[11px] text-muted-foreground font-medium">EVD · Gestión Humana</p>
+              <p className="text-sm font-bold text-white leading-tight">Flota Sugamuxi</p>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-wide">EVD · Gestión Humana</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -183,7 +174,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button
           onClick={onToggle}
           className={cn(
-            "p-1 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground",
+            "p-1 rounded-lg hover:bg-slate-800/40 transition-colors text-slate-400 hover:text-white",
             collapsed ? "mx-auto w-8 h-8 flex items-center justify-center" : "ml-auto flex-shrink-0"
           )}
         >
@@ -192,14 +183,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
         {navGroups.map((group, groupIdx) => (
           <div key={group.groupTitle} className="space-y-1">
             {/* Divider / Group Title */}
             {collapsed ? (
-              groupIdx > 0 && <div className="my-2 border-t border-sidebar-border/40" />
+              groupIdx > 0 && <div className="my-2 border-t border-[#012169]/20" />
             ) : (
-              <div className="px-3 py-1 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider select-none">
+              <div className="px-3 py-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-wider select-none">
                 {group.groupTitle}
               </div>
             )}
@@ -215,12 +206,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <button
                         onClick={() => toggleGroup(item.title)}
                         className={cn(
-                          "sidebar-link w-full",
-                          active && !collapsed && "active"
+                          "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full cursor-pointer",
+                          active && !collapsed
+                            ? "text-white bg-[#012169]/40"
+                            : "text-slate-400 hover:bg-slate-800/30 hover:text-white"
                         )}
                         title={collapsed ? item.title : undefined}
                       >
-                        <item.icon className={cn("w-5 h-5 flex-shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                        <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-colors", active ? "text-brand-400" : "text-slate-400")} />
                         <AnimatePresence>
                           {!collapsed && (
                             <motion.div
@@ -230,7 +223,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                               className="flex items-center justify-between flex-1 overflow-hidden"
                             >
                               <span className="truncate">{item.title}</span>
-                              {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                              {isOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -251,13 +244,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                   key={child.href}
                                   href={child.href!}
                                   className={cn(
-                                    "sidebar-link text-xs",
-                                    isActive(child.href) && "active"
+                                    "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all w-full pl-9",
+                                    isActive(child.href)
+                                      ? "text-brand-300 font-bold bg-brand-500/10"
+                                      : "text-slate-400 hover:text-white hover:bg-slate-800/20"
                                   )}
                                 >
                                   <div className={cn(
-                                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                                    isActive(child.href) ? "bg-primary" : "bg-muted-foreground/40"
+                                    "w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors",
+                                    isActive(child.href) ? "bg-brand-400" : "bg-slate-600"
                                   )} />
                                   <span className="truncate">{child.title}</span>
                                 </Link>
@@ -274,13 +269,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href!}
-                    className={cn("sidebar-link relative", isActive(item.href) && "active")}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full relative",
+                      isActive(item.href)
+                        ? "bg-gradient-to-r from-brand-600 to-brand-400 text-white font-semibold shadow-lg shadow-brand-500/10"
+                        : "text-slate-400 hover:bg-slate-800/30 hover:text-white"
+                    )}
                     title={collapsed ? item.title : undefined}
                   >
-                    <item.icon className={cn(
-                      "w-5 h-5 flex-shrink-0",
-                      isActive(item.href) ? "text-primary" : "text-muted-foreground"
-                    )} />
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
 
                     <AnimatePresence>
                       {!collapsed && (
@@ -300,8 +297,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         className={cn(
                           "rounded-full text-[10px] font-bold",
                           collapsed
-                            ? "absolute top-1 right-1 w-4 h-4 flex items-center justify-center bg-primary text-primary-foreground"
-                            : "ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-primary text-primary-foreground text-xs"
+                            ? "absolute top-1 right-1 w-4 h-4 flex items-center justify-center bg-brand-500 text-white"
+                            : "ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-brand-500 text-white text-xs"
                         )}
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -319,17 +316,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-3 space-y-1">
+      <div className="border-t border-[#012169]/30 p-3 space-y-1">
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="sidebar-link w-full"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800/30 hover:text-white w-full transition-all cursor-pointer"
           title={collapsed ? "Cambiar tema" : undefined}
         >
           {theme === "dark" ? (
-            <Sun className="w-5 h-5 flex-shrink-0 text-muted-foreground" />
+            <Sun className="w-5 h-5 flex-shrink-0" />
           ) : (
-            <Moon className="w-5 h-5 flex-shrink-0 text-muted-foreground" />
+            <Moon className="w-5 h-5 flex-shrink-0" />
           )}
           <AnimatePresence>
             {!collapsed && (
@@ -350,7 +347,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick={async () => {
             await logoutAction();
           }}
-          className="sidebar-link w-full text-danger-600 hover:bg-danger-50 hover:text-danger-700 dark:hover:bg-danger-950 transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-danger-400 hover:bg-danger-950/20 hover:text-danger-300 w-full transition-all cursor-pointer"
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
           <AnimatePresence>

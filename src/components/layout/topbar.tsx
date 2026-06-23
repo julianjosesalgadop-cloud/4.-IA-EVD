@@ -14,7 +14,6 @@ interface TopbarProps {
   title?: string;
 }
 
-// Mock user data as fallback
 const defaultUser = {
   name: "Admin Sistema",
   role: "Administrador",
@@ -80,16 +79,15 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-background/80 backdrop-blur-md transition-all duration-300 ease-in-out",
+        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-[#011133] transition-all duration-300 ease-in-out text-white border-[#012169]/30",
         collapsed ? "md:pl-[96px]" : "md:pl-[284px]"
       )}
-      style={{ borderColor: "hsl(var(--border))" }}
     >
-      {/* Menu Toggle - visible in mobile always, and in desktop when collapsed */}
+      {/* Menu Toggle */}
       <button
         onClick={onMenuToggle}
         className={cn(
-          "p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer",
+          "p-2 rounded-lg hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white",
           collapsed ? "flex" : "md:hidden flex"
         )}
         title={collapsed ? "Expandir menú" : "Colapsar menú"}
@@ -97,50 +95,53 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Page title */}
+      {/* Page title with EVD Subtitle */}
       {title && (
-        <div className="hidden md:flex items-center gap-2">
-          <h1 className="text-base font-semibold text-foreground">{title}</h1>
+        <div className="hidden md:flex flex-col justify-center leading-tight">
+          <h1 className="text-sm md:text-base font-bold text-white">{title}</h1>
+          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+            EVD — Sistema de Evaluación de Desempeño
+          </p>
         </div>
       )}
 
       {/* Search */}
       <div className="flex-1 max-w-sm hidden md:block">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="search"
             placeholder="Buscar colaboradores, evaluaciones..."
-            className="w-full h-9 pl-9 pr-4 text-sm rounded-lg border bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
+            className="w-full h-9 pl-9 pr-4 text-xs rounded-lg border border-[#012169]/40 bg-slate-900/40 text-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 transition-all placeholder:text-slate-400 font-medium"
           />
         </div>
       </div>
 
       <div className="ml-auto flex items-center gap-2">
         {/* Notifications */}
-        <button className="relative p-2.5 rounded-xl hover:bg-accent transition-colors cursor-pointer">
-          <Bell className="w-5 h-5 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
+        <button className="relative p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white">
+          <Bell className="w-5 h-5" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-500" />
         </button>
 
         {/* User Dropdown */}
-        <div className="relative pl-2 border-l border-border flex items-center">
+        <div className="relative pl-2 border-l border-[#012169]/30 flex items-center">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
           >
-            <div className="hidden md:block text-right select-none">
-              <p className="text-sm font-semibold leading-tight text-foreground">
+            <div className="hidden md:block text-right select-none leading-tight">
+              <p className="text-xs font-bold text-white">
                 {currentUser?.name || defaultUser.name}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-slate-400 font-semibold tracking-wide">
                 {currentUser?.role || defaultUser.role}
               </p>
             </div>
-            <div className="w-9 h-9 rounded-full gradient-brand flex items-center justify-center text-white text-sm font-bold shadow-md">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-600 to-brand-400 flex items-center justify-center text-white text-xs font-bold shadow-md">
               {currentUser?.initials || defaultUser.initials}
             </div>
-            <ChevronDown className="w-4 h-4 text-muted-foreground hidden md:block" />
+            <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
           </button>
 
           {/* Click outside overlay */}
@@ -159,16 +160,15 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="absolute right-0 top-full mt-2 w-56 rounded-xl border bg-popover text-popover-foreground shadow-lg z-50 overflow-hidden"
-                style={{ borderColor: "hsl(var(--border))" }}
+                className="absolute right-0 top-full mt-2 w-56 rounded-xl border bg-[#011133] border-[#012169]/40 text-white shadow-xl z-50 overflow-hidden"
               >
                 {/* Header */}
-                <div className="p-3 border-b border-border/60 select-none">
-                  <p className="text-xs text-muted-foreground font-medium">Sesión iniciada como</p>
-                  <p className="text-sm font-bold text-foreground truncate mt-0.5">
+                <div className="p-3 border-b border-[#012169]/20 select-none">
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Sesión iniciada como</p>
+                  <p className="text-xs font-bold text-white truncate mt-0.5">
                     {currentUser?.name || defaultUser.name}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[10px] text-slate-400 truncate">
                     {currentUser?.email || defaultUser.email}
                   </p>
                 </div>
@@ -178,37 +178,37 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
                   <Link
                     href="/perfil"
                     onClick={() => setShowDropdown(false)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-accent transition-colors text-foreground"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
                   >
-                    <User className="w-4 h-4 text-muted-foreground" />
+                    <User className="w-4 h-4 text-slate-400" />
                     <span>Mi Perfil</span>
                   </Link>
                   <Link
                     href="/configuracion/empresa"
                     onClick={() => setShowDropdown(false)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-accent transition-colors text-foreground"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
                   >
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <Building2 className="w-4 h-4 text-slate-400" />
                     <span>Empresa</span>
                   </Link>
                   <Link
                     href="/configuracion/preguntas"
                     onClick={() => setShowDropdown(false)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-accent transition-colors text-foreground"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
                   >
-                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    <Settings className="w-4 h-4 text-slate-400" />
                     <span>Configuración</span>
                   </Link>
                 </div>
 
                 {/* Logout Button */}
-                <div className="p-1.5 border-t border-border/60 bg-muted/30">
+                <div className="p-1.5 border-t border-[#012169]/20 bg-slate-950/20">
                   <button
                     onClick={async () => {
                       setShowDropdown(false);
                       await logoutAction();
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-danger-600 hover:bg-danger-50 hover:text-danger-700 dark:hover:bg-danger-950/40 transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-danger-400 hover:bg-danger-950/20 hover:text-danger-300 transition-colors cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Cerrar sesión</span>
