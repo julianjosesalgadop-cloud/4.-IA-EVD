@@ -225,7 +225,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
       {/* Page Title & Subtitle */}
       <div className="hidden md:flex flex-col justify-center leading-tight z-10">
         <h1 className="text-sm md:text-base font-bold text-white">{displayTitle}</h1>
-        <p className="text-[9px] text-slate-350 font-semibold uppercase tracking-wider mt-0.5">
+        <p className="text-[9px] text-slate-300 font-semibold uppercase tracking-wider mt-0.5">
           EVD — Sistema de Evaluación de Desempeño
         </p>
       </div>
@@ -252,7 +252,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
               <p className="text-xs font-bold text-white">
                 {currentUser?.name || defaultUser.name}
               </p>
-              <p className="text-[10px] text-slate-305 font-semibold tracking-wide">
+              <p className="text-[10px] text-slate-300 font-semibold tracking-wide">
                 {currentUser?.role || defaultUser.role}
               </p>
             </div>

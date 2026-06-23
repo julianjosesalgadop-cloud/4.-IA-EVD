@@ -330,7 +330,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                       "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all w-full pl-9",
                                       isActive(child.href)
                                         ? "text-brand-300 font-bold bg-brand-500/10"
-                                        : "text-slate-250 hover:text-white hover:bg-white/5"
+                                        : "text-slate-300 hover:text-white hover:bg-white/5"
                                     )}
                                 >
                                   <div className={cn(
