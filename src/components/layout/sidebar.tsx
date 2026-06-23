@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -111,6 +111,91 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     Colaboradores: true,
   });
 
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let particles: Array<{
+      x: number;
+      y: number;
+      radius: number;
+      speed: number;
+      opacity: number;
+    }> = [];
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.parentElement?.clientWidth || 260;
+      canvas.height = window.innerHeight;
+      initParticles();
+    };
+
+    const initParticles = () => {
+      particles = [];
+      const count = Math.floor((canvas.width * canvas.height) / 8000);
+      for (let i = 0; i < Math.min(count, 40); i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height + canvas.height,
+          radius: Math.random() * 1.2 + 0.3,
+          speed: Math.random() * 0.2 + 0.05,
+          opacity: Math.random() * 0.5 + 0.1,
+        });
+      }
+    };
+
+    const initParticlesFull = () => {
+      particles = [];
+      const count = Math.floor((canvas.width * canvas.height) / 8000);
+      for (let i = 0; i < Math.min(count, 40); i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.2 + 0.3,
+          speed: Math.random() * 0.2 + 0.05,
+          opacity: Math.random() * 0.5 + 0.1,
+        });
+      }
+    };
+
+    window.addEventListener("resize", resizeCanvas);
+    canvas.width = canvas.parentElement?.clientWidth || 260;
+    canvas.height = window.innerHeight;
+    initParticlesFull();
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      particles.forEach((p) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.fill();
+
+        p.y -= p.speed;
+
+        if (p.y < 0) {
+          p.y = canvas.height;
+          p.x = Math.random() * canvas.width;
+        }
+      });
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [collapsed]);
+
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
   };
@@ -142,10 +227,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
         "fixed left-0 top-0 h-screen z-50 flex flex-col overflow-hidden border-r",
-        "transition-transform md:translate-x-0 bg-gradient-to-b from-[#011133] to-[#00071a] border-[#012169]/30",
+        "transition-transform md:translate-x-0 bg-gradient-to-b from-[#022a75] via-[#011a4d] to-[#000d2a] border-[#012169]/30",
         collapsed ? "-translate-x-full md:translate-x-0" : "translate-x-0"
       )}
     >
+      {/* Particle Background */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-30" />
+
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-[#012169]/30 min-h-[72px]">
         {/* Logo Icon */}

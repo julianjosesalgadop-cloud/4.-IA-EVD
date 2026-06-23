@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, Search, Menu, LogOut, User, Settings, ChevronDown, Building2 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { logoutAction } from "@/app/actions/auth";
@@ -29,6 +30,127 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
     email: string;
     initials: string;
   } | null>(null);
+
+  const pathname = usePathname();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const getPageTitle = (path: string) => {
+    if (title) return title;
+
+    if (path === "/dashboard") return "Dashboard Ejecutivo";
+    if (path === "/colaboradores/nuevo") return "Nuevo Colaborador";
+    if (path === "/colaboradores") return "Listado de Colaboradores";
+    if (path.startsWith("/colaboradores/") && path.endsWith("/editar")) return "Editar Colaborador";
+    if (path.startsWith("/colaboradores/")) return "Detalle de Colaborador";
+    
+    if (path === "/evaluaciones/nueva") return "Nueva Evaluación";
+    if (path === "/evaluaciones") return "Listado de Evaluaciones";
+    if (path.startsWith("/evaluaciones/") && path.endsWith("/editar")) return "Editar Evaluación";
+    if (path.startsWith("/evaluaciones/")) return "Detalle de Evaluación";
+
+    if (path === "/reportes") return "Reportes y Estadísticas";
+    if (path === "/perfil") return "Mi Perfil de Usuario";
+    
+    if (path === "/configuracion/categorias") return "Configuración de Categorías";
+    if (path === "/configuracion/preguntas") return "Configuración de Preguntas";
+    if (path === "/configuracion/versiones") return "Versiones de Evaluaciones";
+    if (path === "/configuracion/campos") return "Campos de Colaborador";
+    if (path === "/configuracion/empresa") return "Configuración de Empresa";
+    
+    if (path === "/administracion/usuarios") return "Administración de Usuarios";
+    if (path === "/administracion/roles") return "Administración de Roles";
+    if (path === "/administracion/areas") return "Administración de Áreas";
+    if (path === "/administracion/cargos") return "Administración de Cargos";
+    if (path === "/administracion/importar") return "Importar Datos del Sistema";
+    if (path === "/auditoria") return "Registro de Auditoría";
+
+    return "Sistema EVD";
+  };
+
+  const displayTitle = getPageTitle(pathname);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let particles: Array<{
+      x: number;
+      y: number;
+      radius: number;
+      speed: number;
+      opacity: number;
+    }> = [];
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
+      canvas.height = 64;
+      initParticles();
+    };
+
+    const initParticles = () => {
+      particles = [];
+      const count = Math.floor((canvas.width * canvas.height) / 8000);
+      for (let i = 0; i < Math.min(count, 30); i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height + canvas.height,
+          radius: Math.random() * 1.0 + 0.3,
+          speed: Math.random() * 0.1 + 0.02,
+          opacity: Math.random() * 0.4 + 0.1,
+        });
+      }
+    };
+
+    const initParticlesFull = () => {
+      particles = [];
+      const count = Math.floor((canvas.width * canvas.height) / 8000);
+      for (let i = 0; i < Math.min(count, 30); i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 1.0 + 0.3,
+          speed: Math.random() * 0.1 + 0.02,
+          opacity: Math.random() * 0.4 + 0.1,
+        });
+      }
+    };
+
+    window.addEventListener("resize", resizeCanvas);
+    canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
+    canvas.height = 64;
+    initParticlesFull();
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      particles.forEach((p) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.fill();
+
+        p.y -= p.speed;
+
+        if (p.y < 0) {
+          p.y = canvas.height;
+          p.x = Math.random() * canvas.width;
+        }
+      });
+
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [collapsed]);
 
   useEffect(() => {
     async function loadUser() {
@@ -79,15 +201,18 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-[#011133] transition-all duration-300 ease-in-out text-white border-[#012169]/30",
+        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-gradient-to-r from-[#022a75] to-[#000d2a] transition-all duration-300 ease-in-out text-white border-[#012169]/30 overflow-hidden",
         collapsed ? "md:pl-[96px]" : "md:pl-[284px]"
       )}
     >
+      {/* Particle Background */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-20" />
+      
       {/* Menu Toggle */}
       <button
         onClick={onMenuToggle}
         className={cn(
-          "p-2 rounded-lg hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white",
+          "p-2 rounded-lg hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white z-10",
           collapsed ? "flex" : "md:hidden flex"
         )}
         title={collapsed ? "Expandir menú" : "Colapsar menú"}
@@ -95,29 +220,20 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Page title with EVD Subtitle */}
-      {title && (
-        <div className="hidden md:flex flex-col justify-center leading-tight">
-          <h1 className="text-sm md:text-base font-bold text-white">{title}</h1>
-          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-            EVD — Sistema de Evaluación de Desempeño
-          </p>
-        </div>
-      )}
-
-      {/* Search */}
-      <div className="flex-1 max-w-sm hidden md:block">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="search"
-            placeholder="Buscar colaboradores, evaluaciones..."
-            className="w-full h-9 pl-9 pr-4 text-xs rounded-lg border border-[#012169]/40 bg-slate-900/40 text-white focus:outline-none focus:ring-2 focus:ring-brand-500/25 transition-all placeholder:text-slate-400 font-medium"
-          />
-        </div>
+      {/* Page Title & Subtitle */}
+      <div className="hidden md:flex flex-col justify-center leading-tight z-10">
+        <h1 className="text-sm md:text-base font-bold text-white">{displayTitle}</h1>
+        <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+          EVD — Sistema de Evaluación de Desempeño
+        </p>
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2 z-10">
+        {/* Search Icon Button */}
+        <button className="p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white">
+          <Search className="w-5 h-5" />
+        </button>
+
         {/* Notifications */}
         <button className="relative p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white">
           <Bell className="w-5 h-5" />
@@ -147,7 +263,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
           {/* Click outside overlay */}
           {showDropdown && (
             <div
-              className="fixed inset-0 z-40 cursor-default"
+              className="fixed inset-0 z-45 cursor-default"
               onClick={() => setShowDropdown(false)}
             />
           )}

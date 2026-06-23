@@ -105,7 +105,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }, [setTheme]);
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_center,_#01265c_0%,_#000f2e_60%,_#00061a_100%)] p-4 md:p-8">
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-gradient-to-r from-[#02379c] via-[#011a4d] to-[#000a22] p-4 md:p-8">
       {/* Particle Background */}
       <ParticleBackground />
       
