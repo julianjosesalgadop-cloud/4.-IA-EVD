@@ -261,7 +261,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5 sidebar-scrollbar">
         {navGroups.map((group, groupIdx) => (
           <div key={group.groupTitle} className="space-y-1">
             {/* Divider / Group Title */}
@@ -287,7 +287,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                           "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full cursor-pointer",
                           active && !collapsed
                             ? "text-white bg-[#012169]/40"
-                            : "text-slate-400 hover:bg-slate-800/30 hover:text-white"
+                            : "text-slate-400 hover:bg-white/10 hover:text-white"
                         )}
                         title={collapsed ? item.title : undefined}
                       >
@@ -321,12 +321,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                 <Link
                                   key={child.href}
                                   href={child.href!}
-                                  className={cn(
-                                    "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all w-full pl-9",
-                                    isActive(child.href)
-                                      ? "text-brand-300 font-bold bg-brand-500/10"
-                                      : "text-slate-400 hover:text-white hover:bg-slate-800/20"
-                                  )}
+                                    className={cn(
+                                      "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all w-full pl-9",
+                                      isActive(child.href)
+                                        ? "text-brand-300 font-bold bg-brand-500/10"
+                                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                                    )}
                                 >
                                   <div className={cn(
                                     "w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors",
@@ -351,7 +351,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full relative",
                       isActive(item.href)
                         ? "bg-gradient-to-r from-brand-600 to-brand-400 text-white font-semibold shadow-lg shadow-brand-500/10"
-                        : "text-slate-400 hover:bg-slate-800/30 hover:text-white"
+                        : "text-slate-400 hover:bg-white/10 hover:text-white"
                     )}
                     title={collapsed ? item.title : undefined}
                   >
@@ -394,15 +394,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[#012169]/30 p-3 space-y-1 z-10">
+      <div className="border-t border-[#012169]/30 p-4 pb-5 space-y-1.5 z-10">
         {/* Collapse Toggle */}
         <button
           onClick={onToggle}
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800/30 hover:text-white w-full transition-all cursor-pointer"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white w-full transition-all cursor-pointer",
+            collapsed ? "justify-center" : "justify-start"
+          )}
           title={collapsed ? "Expandir menú" : "Colapsar menú"}
         >
           {collapsed ? (
-            <ChevronRight className="w-5 h-5 flex-shrink-0 mx-auto" />
+            <ChevronRight className="w-5 h-5 flex-shrink-0" />
           ) : (
             <>
               <ChevronLeft className="w-5 h-5 flex-shrink-0" />
@@ -414,13 +417,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Theme Toggle */}
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800/30 hover:text-white w-full transition-all cursor-pointer"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white w-full transition-all cursor-pointer",
+            collapsed ? "justify-center" : "justify-start"
+          )}
           title={collapsed ? "Cambiar tema" : undefined}
         >
           {theme === "dark" ? (
-            <Sun className="w-5 h-5 flex-shrink-0 mx-auto" />
+            <Sun className="w-5 h-5 flex-shrink-0" />
           ) : (
-            <Moon className="w-5 h-5 flex-shrink-0 mx-auto" />
+            <Moon className="w-5 h-5 flex-shrink-0" />
           )}
           <AnimatePresence>
             {!collapsed && (
@@ -441,10 +447,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick={async () => {
             await logoutAction();
           }}
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-950/20 hover:text-red-400 w-full transition-all cursor-pointer"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 hover:text-red-400 w-full transition-all cursor-pointer",
+            collapsed ? "justify-center" : "justify-start"
+          )}
           title={collapsed ? "Cerrar sesión" : undefined}
         >
-          <LogOut className="w-5 h-5 flex-shrink-0 mx-auto" />
+          <LogOut className="w-5 h-5 flex-shrink-0" />
           <AnimatePresence>
             {!collapsed && (
               <motion.span
