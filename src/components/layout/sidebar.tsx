@@ -142,9 +142,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height + canvas.height,
-          radius: Math.random() * 1.2 + 0.3,
+          radius: Math.random() * 1.8 + 0.6,
           speed: Math.random() * 0.2 + 0.05,
-          opacity: Math.random() * 0.5 + 0.1,
+          opacity: Math.random() * 0.5 + 0.15,
         });
       }
     };
@@ -156,9 +156,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          radius: Math.random() * 1.2 + 0.3,
+          radius: Math.random() * 1.8 + 0.6,
           speed: Math.random() * 0.2 + 0.05,
-          opacity: Math.random() * 0.5 + 0.1,
+          opacity: Math.random() * 0.5 + 0.15,
         });
       }
     };
@@ -237,7 +237,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       {/* Particle Background */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-30" />
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none opacity-55" />
 
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-[#012169]/30 min-h-[72px]">
@@ -334,8 +334,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                     )}
                                 >
                                   <div className={cn(
-                                    "w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors",
-                                    isActive(child.href) ? "bg-brand-400" : "bg-slate-400"
+                                    "w-2 h-2 rounded-full flex-shrink-0 transition-colors",
+                                    isActive(child.href) ? "bg-brand-400" : "bg-white/40"
                                   )} />
                                   <span className="truncate">{child.title}</span>
                                 </Link>

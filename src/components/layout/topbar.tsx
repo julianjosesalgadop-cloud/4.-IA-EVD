@@ -98,9 +98,9 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height + canvas.height,
-          radius: Math.random() * 1.0 + 0.3,
+          radius: Math.random() * 1.5 + 0.6,
           speed: Math.random() * 0.1 + 0.02,
-          opacity: Math.random() * 0.4 + 0.1,
+          opacity: Math.random() * 0.4 + 0.15,
         });
       }
     };
@@ -112,9 +112,9 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          radius: Math.random() * 1.0 + 0.3,
+          radius: Math.random() * 1.5 + 0.6,
           speed: Math.random() * 0.1 + 0.02,
-          opacity: Math.random() * 0.4 + 0.1,
+          opacity: Math.random() * 0.4 + 0.15,
         });
       }
     };
@@ -207,7 +207,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
     >
       {/* Particle Background - contained to avoid clipping absolute child components */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-        <canvas ref={canvasRef} className="w-full h-full opacity-20" />
+        <canvas ref={canvasRef} className="w-full h-full opacity-45" />
       </div>
       
       {/* Menu Toggle */}
