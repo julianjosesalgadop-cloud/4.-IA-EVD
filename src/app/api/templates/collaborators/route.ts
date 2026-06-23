@@ -3,15 +3,33 @@ import * as XLSX from 'xlsx';
 
 export async function GET() {
   try {
-    // Definir las columnas de la plantilla
+    // Definir las columnas de la plantilla bajo la nueva configuración
     const templateData = [
       {
-        "Tipo Documento": "CC",
-        "Numero Documento": "100100200",
-        "Nombres Completos": "Juan Perez",
-        "Email": "juan.perez@flotasugamuxi.com",
-        "Area": "Operaciones",
+        "Tipo Contrato": "TERMINO INDEFINIDO",
+        "Tipo Nomina": "ADMINISTRATIVOS",
+        "Cargo": "Auxiliar de Ventas",
+        "Fecha Desde": "2024-01-15",
+        "Fecha Hasta": "",
+        "Fecha Nacimiento": "1995-10-24",
+        "Número de Documento": "100100200",
+        "Persona": "Juan Perez",
+        "Estado": "ACTIVO",
+        "Correo": "juan.perez@flotasugamuxi.com",
+        "Celular": "3001234567"
+      },
+      {
+        "Tipo Contrato": "TERMINO FIJO",
+        "Tipo Nomina": "CONDUCTORES",
         "Cargo": "Conductor",
+        "Fecha Desde": "2024-03-01",
+        "Fecha Hasta": "2024-09-01",
+        "Fecha Nacimiento": "1990-05-12",
+        "Número de Documento": "100300400",
+        "Persona": "Carlos Martinez",
+        "Estado": "ACTIVO",
+        "Correo": "carlos.martinez@flotasugamuxi.com",
+        "Celular": "3109876543"
       }
     ];
 
@@ -20,12 +38,17 @@ export async function GET() {
 
     // Configurar ancho de columnas
     ws['!cols'] = [
-      { wch: 15 }, // Tipo Documento
-      { wch: 20 }, // Numero
-      { wch: 35 }, // Nombres
-      { wch: 35 }, // Email
-      { wch: 25 }, // Area
+      { wch: 25 }, // Tipo Contrato
+      { wch: 20 }, // Tipo Nomina
       { wch: 25 }, // Cargo
+      { wch: 15 }, // Fecha Desde
+      { wch: 15 }, // Fecha Hasta
+      { wch: 18 }, // Fecha Nacimiento
+      { wch: 22 }, // Número de Documento
+      { wch: 35 }, // Persona
+      { wch: 12 }, // Estado
+      { wch: 35 }, // Correo
+      { wch: 15 }, // Celular
     ];
 
     // Crear libro

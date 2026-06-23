@@ -23,48 +23,135 @@ interface CollaboratorRow {
   cargo: string;
   tipo_contrato?: string;
   fecha_ingreso: string;
+  fecha_nacimiento?: string;
+  fecha_retiro?: string;
   estado?: string;
   errors?: string[];
   isValid?: boolean;
 }
 
 const REQUIRED_COLUMNS = [
-  "tipo_documento", "numero_documento", "nombres", "apellidos",
-  "area", "cargo", "fecha_ingreso"
+  "numero_documento", "nombres", "apellidos", "cargo", "fecha_ingreso"
 ];
 
 const TEMPLATE_DATA = [
   {
-    tipo_documento: "CC",
-    numero_documento: "19234567",
-    nombres: "Carlos Alberto",
-    apellidos: "Martínez Rojas",
-    correo: "c.martinez@sugamuxi.com",
-    celular: "3001234567",
-    area: "Operaciones",
-    cargo: "Conductor",
-    tipo_contrato: "indefinido",
-    fecha_ingreso: "2024-01-15",
-    estado: "activo",
+    "Tipo Contrato": "TERMINO INDEFINIDO",
+    "Tipo Nomina": "ADMINISTRATIVOS",
+    "Cargo": "Auxiliar de Ventas",
+    "Fecha Desde": "2024-01-15",
+    "Fecha Hasta": "",
+    "Fecha Nacimiento": "1995-10-24",
+    "Número de Documento": "100100200",
+    "Persona": "Juan Perez",
+    "Estado": "ACTIVO",
+    "Correo": "juan.perez@flotasugamuxi.com",
+    "Celular": "3001234567"
   },
   {
-    tipo_documento: "CC",
-    numero_documento: "52345678",
-    nombres: "Ana María",
-    apellidos: "Gómez Pérez",
-    correo: "a.gomez@sugamuxi.com",
-    celular: "3109876543",
-    area: "Operaciones",
-    cargo: "Despachadora",
-    tipo_contrato: "fijo",
-    fecha_ingreso: "2024-03-01",
-    estado: "activo",
-  },
+    "Tipo Contrato": "TERMINO FIJO",
+    "Tipo Nomina": "CONDUCTORES",
+    "Cargo": "Conductor",
+    "Fecha Desde": "2024-03-01",
+    "Fecha Hasta": "2024-09-01",
+    "Fecha Nacimiento": "1990-05-12",
+    "Número de Documento": "100300400",
+    "Persona": "Carlos Martinez",
+    "Estado": "ACTIVO",
+    "Correo": "carlos.martinez@flotasugamuxi.com",
+    "Celular": "3109876543"
+  }
 ];
+
+function excelDateToDate(excelDate: number) {
+  if (!excelDate) return null;
+  const date = new Date((excelDate - 25569) * 86400 * 1000);
+  const timezoneOffset = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() + timezoneOffset);
+}
+
+function parseExcelDate(val: any) {
+  if (val === undefined || val === null || val === '') return '';
+  if (typeof val === 'number') {
+    const d = excelDateToDate(val);
+    return d ? d.toISOString().split('T')[0] : '';
+  }
+  if (val instanceof Date) {
+    return val.toISOString().split('T')[0];
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const dmy = trimmed.split('/');
+    if (dmy.length === 3) {
+      const day = dmy[0].padStart(2, '0');
+      const month = dmy[1].padStart(2, '0');
+      const year = dmy[2];
+      return `${year}-${month}-${day}`;
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+  }
+  return '';
+}
+
+function splitName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length <= 2) {
+    return {
+      firstName: parts[0] || '',
+      lastName: parts[1] || ''
+    };
+  }
+  if (parts.length === 3) {
+    return {
+      firstName: parts[0],
+      lastName: parts.slice(1).join(' ')
+    };
+  }
+  return {
+    firstName: parts.slice(0, 2).join(' '),
+    lastName: parts.slice(2).join(' ')
+  };
+}
+
+function getAreaNameByCargo(cargo: string) {
+  const c = cargo.toUpperCase();
+  if (c.includes('CONDUCTOR') || c.includes('OPERATIVO') || c.includes('RODAMIENTO') || c.includes('SUPERVISOR') || c.includes('RUTAS') || c.includes('DESPACHADOR') || c.includes('GPS')) {
+    return 'Operaciones';
+  }
+  if (c.includes('MANTENIMIENTO') || c.includes('MECANICO') || c.includes('PARQUE AUTOMOTOR')) {
+    return 'Mantenimiento';
+  }
+  if (c.includes('TALENTO HUMANO') || c.includes('PSICOLOGO') || c.includes('BIENESTAR')) {
+    return 'Gestión Humana';
+  }
+  if (c.includes('VENTAS') || c.includes('COMERCIAL') || c.includes('CARGA')) {
+    return 'Comercial';
+  }
+  if (c.includes('CONTABILIDAD') || c.includes('IMPUESTOS') || c.includes('TESORER') || c.includes('CARTERA') || c.includes('BANCOS') || c.includes('FINANCIERO') || c.includes('FACTURACION')) {
+    return 'Financiera';
+  }
+  if (c.includes('SISTEMAS') || c.includes('TECNOLOGIA') || c.includes('COMUNICACIONES')) {
+    return 'Tecnología';
+  }
+  return 'Administrativa';
+}
+
+function getContractType(type: string) {
+  if (!type) return 'indefinido';
+  const t = type.trim().toUpperCase();
+  if (t.includes('FIJO')) return 'fijo';
+  if (t.includes('INDEFINIDO')) return 'indefinido';
+  if (t.includes('APRENDIZAJE') || t.includes('SENA')) return 'aprendizaje';
+  return 'indefinido';
+}
 
 function downloadTemplate() {
   const ws = XLSX.utils.json_to_sheet(TEMPLATE_DATA);
-  // Style header row
   const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
   for (let col = range.s.c; col <= range.e.c; col++) {
     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
@@ -75,20 +162,16 @@ function downloadTemplate() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Colaboradores");
 
-  // Add instructions sheet
   const wsInst = XLSX.utils.aoa_to_sheet([
     ["INSTRUCCIONES DE IMPORTACIÓN — EVD FLOTA SUGAMUXI"],
     [""],
-    ["COLUMNAS REQUERIDAS:", "tipo_documento, numero_documento, nombres, apellidos, area, cargo, fecha_ingreso"],
-    ["COLUMNAS OPCIONALES:", "correo, celular, tipo_contrato, estado"],
+    ["COLUMNAS REQUERIDAS:", "Cargo, Fecha Desde, Número de Documento, Persona, Estado"],
+    ["COLUMNAS OPCIONALES:", "Tipo Contrato, Tipo Nomina, Fecha Hasta, Fecha Nacimiento, Correo, Celular"],
     [""],
     ["VALORES VÁLIDOS:"],
-    ["tipo_documento:", "CC, CE, TI, PP, NIT, RUT"],
-    ["tipo_contrato:", "indefinido, fijo, obra_labor, aprendizaje, prestacion_servicios, temporal"],
-    ["estado:", "activo, inactivo, vacaciones, incapacidad"],
-    ["fecha_ingreso:", "Formato YYYY-MM-DD (Ej: 2024-01-15)"],
-    [""],
-    ["ÁREAS VÁLIDAS:", "Operaciones, Mantenimiento, Gestión Humana, Comercial, Financiera, Tecnología"],
+    ["Tipo Contrato:", "TERMINO FIJO, TERMINO INDEFINIDO, APRENDIZAJE"],
+    ["Estado:", "ACTIVO, INACTIVO"],
+    ["Fecha Desde / Hasta / Nacimiento:", "Formato YYYY-MM-DD (Ej: 2024-01-15)"],
     [""],
     ["NOTAS:"],
     ["- No modifiques los nombres de las columnas"],
@@ -142,17 +225,48 @@ export default function ImportarPage() {
         const wb = XLSX.read(data, { type: "array" });
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
-        const jsonData = XLSX.utils.sheet_to_json<CollaboratorRow>(ws);
+        const jsonData = XLSX.utils.sheet_to_json<any>(ws);
 
-        const validated = jsonData.map(validateRow);
+        const mapped = jsonData.map(row => {
+          const cargo = (row["Cargo"] || "").toString().trim();
+          const persona = (row["Persona"] || "").toString().trim();
+          const names = splitName(persona);
+          const docNum = (row["Número de Documento"] || row["Numero Documento"] || "").toString().trim();
+          const email = (row["Correo"] || row["correo"] || "").toString().trim();
+          const phone = (row["Celular"] || row["celular"] || "").toString().trim();
+          const hireDate = parseExcelDate(row["Fecha Desde"] || row["fecha_ingreso"]);
+          const birthDate = parseExcelDate(row["Fecha Nacimiento"]);
+          const terminationDate = parseExcelDate(row["Fecha Hasta"]);
+          const contractType = (row["Tipo Contrato"] || "indefinido").toString().trim();
+          const status = (row["Estado"] || "activo").toString().trim().toLowerCase();
+
+          return {
+            tipo_documento: "CC",
+            numero_documento: docNum,
+            nombres: names.firstName,
+            apellidos: names.lastName,
+            correo: email,
+            celular: phone,
+            area: getAreaNameByCargo(cargo),
+            cargo: cargo,
+            tipo_contrato: getContractType(contractType),
+            fecha_ingreso: hireDate,
+            fecha_nacimiento: birthDate,
+            fecha_retiro: terminationDate,
+            estado: status === "activo" ? "activo" : "inactivo"
+          };
+        });
+
+        const validated = mapped.map(validateRow);
         setRows(validated);
         setStep("preview");
-      } catch {
+      } catch (err) {
         toast.error("Error al leer el archivo. Verifica que sea un archivo Excel válido.");
       }
     };
     reader.readAsArrayBuffer(f);
   }, []);
+
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

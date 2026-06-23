@@ -267,6 +267,8 @@ export async function importCollaborators(rows: any[]) {
     const email = row["correo"] || row["email"] || row["Email"] ? String(row["correo"] || row["email"] || row["Email"]).trim() : null;
     const phone = row["celular"] || row["phone"] || row["Celular"] ? String(row["celular"] || row["phone"] || row["Celular"]).trim() : null;
     const hireDate = row["fecha_ingreso"] || row["hire_date"] || row["Fecha Ingreso"] ? String(row["fecha_ingreso"] || row["hire_date"] || row["Fecha Ingreso"]).trim() : null;
+    const birthDate = row["fecha_nacimiento"] || row["birth_date"] ? String(row["fecha_nacimiento"] || row["birth_date"]).trim() : null;
+    const terminationDate = row["fecha_retiro"] || row["termination_date"] ? String(row["fecha_retiro"] || row["termination_date"]).trim() : null;
     const contractType = row["tipo_contrato"] || row["contract_type"] || row["Tipo Contrato"] ? String(row["tipo_contrato"] || row["contract_type"] || row["Tipo Contrato"]).trim().toLowerCase() : null;
     const statusVal = row["estado"] || row["status"] || row["Estado"] ? String(row["estado"] || row["status"] || row["Estado"]).trim().toLowerCase() : "activo";
 
@@ -281,19 +283,21 @@ export async function importCollaborators(rows: any[]) {
       area_id: areaId,
       position_id: posId,
       hire_date: hireDate,
+      birth_date: birthDate,
+      termination_date: terminationDate,
       contract_type: contractType,
       status: statusVal
     });
   }
 
-  // Bulk insert
+  // Bulk upsert
   if (recordsToInsert.length > 0) {
     const { error } = await supabase
       .from("collaborators")
-      .insert(recordsToInsert);
+      .upsert(recordsToInsert, { onConflict: 'company_id,document_number' });
 
     if (error) {
-      console.error("Error bulk inserting:", error);
+      console.error("Error bulk upserting:", error);
       return { error: error.message };
     }
   }
