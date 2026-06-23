@@ -197,7 +197,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }, [collapsed]);
 
   const toggleGroup = (title: string) => {
-    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+    if (collapsed) {
+      onToggle();
+      setOpenGroups((prev) => ({ ...prev, [title]: true }));
+    } else {
+      setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+    }
   };
 
   const isActive = (href?: string) => {
