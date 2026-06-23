@@ -168,7 +168,7 @@ export default function EvaluacionesPage() {
         : `Fecha de Registro: ${formatDateTime(evalData.created_at)}`;
       const evalYear = evalData.evaluation_year || new Date().getFullYear();
       doc.text(`${dateText}  |  Año de Evaluación: ${evalYear}`, marginX, posY);
-      posY += 15;
+      posY += 10;
       
       // SECTION: COLLABORATOR INFO (EVALUATED)
       doc.setFont("helvetica", "bold");
@@ -199,7 +199,7 @@ export default function EvaluacionesPage() {
         margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 12;
+      posY = (doc as any).lastAutoTable.finalY + 8;
       
       // SECTION: EVALUATOR INFO
       doc.setFont("helvetica", "bold");
@@ -228,7 +228,7 @@ export default function EvaluacionesPage() {
         margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
       });
       
-      posY = (doc as any).lastAutoTable.finalY + 12;
+      posY = (doc as any).lastAutoTable.finalY + 8;
       
       // SECTION: SUMMARY OF RESULTS
       doc.setFont("helvetica", "bold");
@@ -259,7 +259,7 @@ export default function EvaluacionesPage() {
         head: [],
         body: summaryInfo,
         theme: "grid",
-        styles: { fontSize: 9, cellPadding: 3, textColor: textColorDark as any },
+        styles: { fontSize: 9, cellPadding: 2, textColor: textColorDark as any },
         columnStyles: {
           0: { fontStyle: "bold", cellWidth: 60, fillColor: [248, 250, 252] as any },
           1: { cellWidth: 120 }
@@ -298,16 +298,16 @@ export default function EvaluacionesPage() {
           },
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
-        posY = (doc as any).lastAutoTable.finalY + 12;
+        posY = (doc as any).lastAutoTable.finalY + 8;
       } else {
-        posY = (doc as any).lastAutoTable.finalY + 12;
+        posY = (doc as any).lastAutoTable.finalY + 8;
       }
 
       // SECTION: CATEGORY SCORES
       const categoryScores = resultObj?.category_scores || {};
       if (categoryScores && Object.keys(categoryScores).length > 0) {
         // Prevent signatures from being on a page by themselves for colaborador
-        if (pdfType === "colaborador" && posY > 220) {
+        if (pdfType === "colaborador" && posY > 230) {
           doc.addPage();
           posY = 28;
         }
@@ -338,7 +338,7 @@ export default function EvaluacionesPage() {
           margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
         });
         
-        posY = (doc as any).lastAutoTable.finalY + 12;
+        posY = (doc as any).lastAutoTable.finalY + 8;
       }
       
       if (pdfType === "evaluador") {
@@ -468,7 +468,7 @@ export default function EvaluacionesPage() {
         posY = (doc as any).lastAutoTable.finalY + 15;
       }
       
-      if (posY > 245) {
+      if (posY > 250) {
         doc.addPage();
         posY = 28;
       }
