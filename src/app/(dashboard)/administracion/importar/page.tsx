@@ -37,7 +37,7 @@ const REQUIRED_COLUMNS = [
 const TEMPLATE_DATA = [
   {
     "Tipo Contrato": "TERMINO INDEFINIDO",
-    "Tipo Nomina": "ADMINISTRATIVOS",
+    "Area": "ADMINISTRATIVOS",
     "Cargo": "Auxiliar de Ventas",
     "Fecha Desde": "2024-01-15",
     "Fecha Hasta": "",
@@ -50,7 +50,7 @@ const TEMPLATE_DATA = [
   },
   {
     "Tipo Contrato": "TERMINO FIJO",
-    "Tipo Nomina": "CONDUCTORES",
+    "Area": "CONDUCTORES",
     "Cargo": "Conductor",
     "Fecha Desde": "2024-03-01",
     "Fecha Hasta": "2024-09-01",
@@ -166,7 +166,7 @@ function downloadTemplate() {
     ["INSTRUCCIONES DE IMPORTACIÓN — EVD FLOTA SUGAMUXI"],
     [""],
     ["COLUMNAS REQUERIDAS:", "Cargo, Fecha Desde, Número de Documento, Persona, Estado"],
-    ["COLUMNAS OPCIONALES:", "Tipo Contrato, Tipo Nomina, Fecha Hasta, Fecha Nacimiento, Correo, Celular"],
+    ["COLUMNAS OPCIONALES:", "Tipo Contrato, Area, Fecha Hasta, Fecha Nacimiento, Correo, Celular"],
     [""],
     ["VALORES VÁLIDOS:"],
     ["Tipo Contrato:", "TERMINO FIJO, TERMINO INDEFINIDO, APRENDIZAJE"],
@@ -240,6 +240,8 @@ export default function ImportarPage() {
           const contractType = (row["Tipo Contrato"] || "indefinido").toString().trim();
           const status = (row["Estado"] || "activo").toString().trim().toLowerCase();
 
+          const area = (row["Area"] || row["Área"] || row["Tipo Nomina"] || row["tipo_nomina"] || getAreaNameByCargo(cargo)).toString().trim();
+
           return {
             tipo_documento: "CC",
             numero_documento: docNum,
@@ -247,7 +249,7 @@ export default function ImportarPage() {
             apellidos: names.lastName,
             correo: email,
             celular: phone,
-            area: getAreaNameByCargo(cargo),
+            area: area,
             cargo: cargo,
             tipo_contrato: getContractType(contractType),
             fecha_ingreso: hireDate,

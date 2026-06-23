@@ -7,7 +7,7 @@ export async function GET() {
     const templateData = [
       {
         "Tipo Contrato": "TERMINO INDEFINIDO",
-        "Tipo Nomina": "ADMINISTRATIVOS",
+        "Area": "ADMINISTRATIVOS",
         "Cargo": "Auxiliar de Ventas",
         "Fecha Desde": "2024-01-15",
         "Fecha Hasta": "",
@@ -20,7 +20,7 @@ export async function GET() {
       },
       {
         "Tipo Contrato": "TERMINO FIJO",
-        "Tipo Nomina": "CONDUCTORES",
+        "Area": "CONDUCTORES",
         "Cargo": "Conductor",
         "Fecha Desde": "2024-03-01",
         "Fecha Hasta": "2024-09-01",
@@ -39,7 +39,7 @@ export async function GET() {
     // Configurar ancho de columnas
     ws['!cols'] = [
       { wch: 25 }, // Tipo Contrato
-      { wch: 20 }, // Tipo Nomina
+      { wch: 20 }, // Area
       { wch: 25 }, // Cargo
       { wch: 15 }, // Fecha Desde
       { wch: 15 }, // Fecha Hasta

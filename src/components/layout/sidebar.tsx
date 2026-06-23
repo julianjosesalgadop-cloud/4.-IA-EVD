@@ -292,11 +292,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                           "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full cursor-pointer",
                           active && !collapsed
                             ? "text-white bg-[#012169]/40"
-                            : "text-slate-400 hover:bg-white/10 hover:text-white"
+                            : "text-slate-200 hover:bg-white/10 hover:text-white"
                         )}
                         title={collapsed ? item.title : undefined}
                       >
-                        <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-colors", active ? "text-brand-400" : "text-slate-400")} />
+                        <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-colors", active ? "text-brand-400" : "text-slate-200")} />
                         <AnimatePresence>
                           {!collapsed && (
                             <motion.div
@@ -330,12 +330,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                       "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all w-full pl-9",
                                       isActive(child.href)
                                         ? "text-brand-300 font-bold bg-brand-500/10"
-                                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                                        : "text-slate-250 hover:text-white hover:bg-white/5"
                                     )}
                                 >
                                   <div className={cn(
                                     "w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors",
-                                    isActive(child.href) ? "bg-brand-400" : "bg-slate-600"
+                                    isActive(child.href) ? "bg-brand-400" : "bg-slate-400"
                                   )} />
                                   <span className="truncate">{child.title}</span>
                                 </Link>
@@ -356,7 +356,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full relative",
                       isActive(item.href)
                         ? "bg-gradient-to-r from-brand-600 to-brand-400 text-white font-semibold shadow-lg shadow-brand-500/10"
-                        : "text-slate-400 hover:bg-white/10 hover:text-white"
+                        : "text-slate-200 hover:bg-white/10 hover:text-white"
                     )}
                     title={collapsed ? item.title : undefined}
                   >
@@ -404,7 +404,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button
           onClick={onToggle}
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white w-full transition-all cursor-pointer",
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white w-full transition-all cursor-pointer",
             collapsed ? "justify-center" : "justify-start"
           )}
           title={collapsed ? "Expandir menú" : "Colapsar menú"}
@@ -423,7 +423,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <button
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/10 hover:text-white w-full transition-all cursor-pointer",
+            "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-200 hover:bg-white/10 hover:text-white w-full transition-all cursor-pointer",
             collapsed ? "justify-center" : "justify-start"
           )}
           title={collapsed ? "Cambiar tema" : undefined}

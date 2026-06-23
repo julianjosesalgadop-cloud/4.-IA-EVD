@@ -87,7 +87,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
 
     const resizeCanvas = () => {
       canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      canvas.height = 64;
+      canvas.height = 56;
       initParticles();
     };
 
@@ -121,7 +121,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
 
     window.addEventListener("resize", resizeCanvas);
     canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-    canvas.height = 64;
+    canvas.height = 56;
     initParticlesFull();
 
     const draw = () => {
@@ -201,7 +201,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 left-0 z-40 h-16 px-4 md:pr-6 flex items-center gap-4 border-b bg-gradient-to-r from-[#012169] to-[#000a22] transition-all duration-300 ease-in-out text-white border-[#012169]/30",
+        "fixed top-0 right-0 left-0 z-40 h-14 px-4 md:pr-6 flex items-center gap-4 border-b bg-gradient-to-r from-[#012169] to-[#000a22] transition-all duration-300 ease-in-out text-white border-[#012169]/30",
         collapsed ? "md:pl-[96px]" : "md:pl-[284px]"
       )}
     >
@@ -214,7 +214,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
       <button
         onClick={onMenuToggle}
         className={cn(
-          "p-2 rounded-lg hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white z-10",
+          "p-2 rounded-lg hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-200 hover:text-white z-10",
           collapsed ? "flex" : "md:hidden flex"
         )}
         title={collapsed ? "Expandir menú" : "Colapsar menú"}
@@ -225,19 +225,19 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
       {/* Page Title & Subtitle */}
       <div className="hidden md:flex flex-col justify-center leading-tight z-10">
         <h1 className="text-sm md:text-base font-bold text-white">{displayTitle}</h1>
-        <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+        <p className="text-[9px] text-slate-350 font-semibold uppercase tracking-wider mt-0.5">
           EVD — Sistema de Evaluación de Desempeño
         </p>
       </div>
 
       <div className="ml-auto flex items-center gap-2 z-10">
         {/* Search Icon Button */}
-        <button className="p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white">
+        <button className="p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-200 hover:text-white">
           <Search className="w-5 h-5" />
         </button>
 
         {/* Notifications */}
-        <button className="relative p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-400 hover:text-white">
+        <button className="relative p-2 rounded-xl hover:bg-slate-800/40 transition-colors cursor-pointer text-slate-200 hover:text-white">
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-500" />
         </button>
@@ -252,14 +252,14 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
               <p className="text-xs font-bold text-white">
                 {currentUser?.name || defaultUser.name}
               </p>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-wide">
+              <p className="text-[10px] text-slate-305 font-semibold tracking-wide">
                 {currentUser?.role || defaultUser.role}
               </p>
             </div>
             <div className="w-8 h-8 rounded-full bg-gradient-to-r from-brand-600 to-brand-400 flex items-center justify-center text-white text-xs font-bold shadow-md">
               {currentUser?.initials || defaultUser.initials}
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
+            <ChevronDown className="w-4 h-4 text-slate-200 hidden md:block" />
           </button>
 
           {/* Click outside overlay */}
