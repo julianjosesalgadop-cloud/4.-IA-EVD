@@ -559,6 +559,7 @@ export default function EvaluacionesPage() {
           return {
             id: e.id,
             collaborator: e.collaborator?.full_name || "Desconocido",
+            collaborator_document: e.collaborator?.document_number || "—",
             area: e.collaborator?.areas?.name || "—",
             position: e.collaborator?.position?.name || "—",
             evaluator: e.evaluator ? `${e.evaluator.first_name} ${e.evaluator.last_name}` : "—",
@@ -651,6 +652,51 @@ export default function EvaluacionesPage() {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
+  const handleExportExcel = async () => {
+    if (filtered.length === 0) {
+      toast.error("No hay evaluaciones para exportar");
+      return;
+    }
+
+    const toastId = toast.loading("Generando archivo Excel...");
+    try {
+      const XLSX = await import("xlsx");
+      const excelRows = filtered.map((e) => ({
+        "ID Evaluación": e.id,
+        "Evaluador": e.evaluator,
+        "Colaborador": e.collaborator,
+        "Documento Colaborador": e.collaborator_document || "—",
+        "Área": e.area,
+        "Cargo": e.position,
+        "Año": e.year,
+        "Estado": getStatusLabel(e.status),
+        "Puntaje (Promedio)": e.score > 0 ? Number(formatScore(e.score)) : 0,
+        "Resultado": getResultLabel(e.result),
+        "Fecha Registro": formatDateTime(e.date),
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Evaluaciones");
+
+      // Auto-fit column widths
+      const maxColWidth = excelRows.reduce((acc, row) => {
+        Object.keys(row).forEach((key, i) => {
+          const val = String((row as any)[key]);
+          acc[i] = Math.max(acc[i] || 10, val.length + 2, key.length + 2);
+        });
+        return acc;
+      }, [] as number[]);
+      worksheet["!cols"] = maxColWidth.map(w => ({ wch: w }));
+
+      XLSX.writeFile(workbook, `Evaluaciones_Desempeno_${new Date().getFullYear()}.xlsx`);
+      toast.success("Excel descargado exitosamente", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al exportar a Excel", { id: toastId });
+    }
+  };
+
   // Summary stats
   const total = evaluations.length;
   const aprobados = evaluations.filter(e => e.result === "aprobado").length;
@@ -666,7 +712,10 @@ export default function EvaluacionesPage() {
           <p className="text-muted-foreground text-sm mt-1">Año 2026 · Flota Sugamuxi S.A.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-accent transition-colors">
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-accent transition-colors"
+          >
             <FileDown className="w-4 h-4" />
             Exportar
           </button>
@@ -756,6 +805,16 @@ export default function EvaluacionesPage() {
           <table className="w-full text-sm data-table">
             <thead className="border-b bg-muted/30">
               <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase cursor-pointer select-none" onClick={() => handleSort("evaluator")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Evaluador
+                    {sortField === "evaluator" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase cursor-pointer select-none" onClick={() => handleSort("collaborator")}>
                   <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
                     Colaborador
@@ -770,16 +829,6 @@ export default function EvaluacionesPage() {
                   <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
                     Área / Cargo
                     {sortField === "position" ? (
-                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
-                    ) : (
-                      <ArrowUpDown className="w-3 h-3 opacity-55" />
-                    )}
-                  </div>
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort("evaluator")}>
-                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
-                    Evaluador
-                    {sortField === "evaluator" ? (
                       sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
                     ) : (
                       <ArrowUpDown className="w-3 h-3 opacity-55" />
@@ -863,21 +912,26 @@ export default function EvaluacionesPage() {
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {getInitials(ev.evaluator === "—" ? "Sin Evaluador" : ev.evaluator)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">{ev.evaluator}</p>
+                        <p className="text-xs text-muted-foreground">Año {ev.year}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full gradient-brand flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         {getInitials(ev.collaborator)}
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">{ev.collaborator}</p>
-                        <p className="text-xs text-muted-foreground">Año {ev.year}</p>
-                      </div>
+                      <p className="font-semibold text-sm">{ev.collaborator}</p>
                     </div>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <p className="text-sm font-medium">{ev.position}</p>
                     <p className="text-xs text-muted-foreground">{ev.area}</p>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <p className="text-sm font-medium">{ev.evaluator}</p>
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border", STATUS_STYLE[ev.status])}>
