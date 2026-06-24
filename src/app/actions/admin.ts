@@ -85,6 +85,7 @@ export async function getProfiles() {
 }
 
 export async function updateProfile(userId: string, updates: {
+  email?: string;
   first_name?: string;
   last_name?: string;
   phone?: string;
@@ -100,6 +101,19 @@ export async function updateProfile(userId: string, updates: {
   if (!userData.user) return { error: "No autenticado" };
 
   const adminClient = getSupabaseAdmin();
+
+  // If email is provided, update it in auth
+  if (updates.email) {
+    const { error: authError } = await adminClient.auth.admin.updateUserById(userId, {
+      email: updates.email,
+      email_confirm: true,
+    });
+    if (authError) {
+      console.error("Error updating auth email:", authError);
+      return { error: `No se pudo actualizar el correo de autenticación: ${authError.message}` };
+    }
+  }
+
   const { error } = await adminClient
     .from("profiles")
     .update({ ...updates, updated_at: new Date().toISOString() })

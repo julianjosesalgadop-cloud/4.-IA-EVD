@@ -116,10 +116,22 @@ export function Sidebar({ collapsed, onToggle, userRole }: SidebarProps) {
 
   // Filtrar dinámicamente navGroups basado en el rol del usuario
   const filteredNavGroups = navGroups.map(group => {
-    const filteredItems = group.items.filter(item => {
-      // Si el rol es lider, ocultar: Configuración, Administración, Auditoría
+    const processedItems = group.items.map(item => {
+      if (userRole === "lider" && item.title === "Administración") {
+        return {
+          ...item,
+          children: item.children
+            ?.filter(child => child.title === "Usuarios")
+            .map(child => ({ ...child, href: "/perfil" }))
+        };
+      }
+      return item;
+    });
+
+    const filteredItems = processedItems.filter(item => {
+      // Si el rol es lider, ocultar: Configuración, Auditoría
       if (userRole === "lider") {
-        if (item.title === "Configuración" || item.title === "Administración" || item.title === "Auditoría") {
+        if (item.title === "Configuración" || item.title === "Auditoría") {
           return false;
         }
       }

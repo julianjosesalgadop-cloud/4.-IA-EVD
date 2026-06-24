@@ -98,10 +98,11 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
   const roleInfo = userProfile?.role_id ? ROLE_MAP[userProfile.role_id] : null;
   const userRole = roleInfo?.name || userProfile?.roles?.name;
-  const isRestrictedPath = pathname.startsWith("/administracion") || 
-                           pathname.startsWith("/configuracion") || 
-                           pathname.startsWith("/auditoria") ||
-                           (userRole === "colaborador" && (pathname.startsWith("/colaboradores") || pathname.startsWith("/evaluaciones")));
+  const isRestrictedPath = 
+    (pathname.startsWith("/administracion") && !(userRole === "lider" && pathname.startsWith("/administracion/usuarios"))) || 
+    pathname.startsWith("/configuracion") || 
+    pathname.startsWith("/auditoria") ||
+    (userRole === "colaborador" && (pathname.startsWith("/colaboradores") || pathname.startsWith("/evaluaciones")));
 
   if (isLoading) {
     return (

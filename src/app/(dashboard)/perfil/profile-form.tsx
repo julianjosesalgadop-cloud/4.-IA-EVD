@@ -9,6 +9,15 @@ import { motion } from "framer-motion";
 import { Save, User, Mail, Phone, Building2, Shield, Loader2 } from "lucide-react";
 import { updateMyProfile } from "@/app/actions/profile";
 import { cn } from "@/lib/utils";
+import { SignatureInput } from "@/components/ui/signature-input";
+
+const ROLE_MAP: Record<string, { name: string; display_name: string }> = {
+  "22222222-0000-0000-0000-000000000001": { name: "admin", display_name: "Administrador" },
+  "22222222-0000-0000-0000-000000000002": { name: "rrhh", display_name: "Gestión Humana" },
+  "22222222-0000-0000-0000-000000000003": { name: "gerencia", display_name: "Gerencia" },
+  "22222222-0000-0000-0000-000000000004": { name: "lider", display_name: "Líder / Jefe" },
+  "22222222-0000-0000-0000-000000000005": { name: "colaborador", display_name: "Colaborador" }
+};
 
 const profileSchema = z.object({
   first_name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -24,6 +33,7 @@ interface ProfileFormProps {
 
 export function ProfileForm({ initialData }: ProfileFormProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(initialData.avatar_url || "");
 
   const {
     register,
@@ -38,6 +48,10 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
     },
   });
 
+  const resolvedRole = initialData.roles || (initialData.role_id ? ROLE_MAP[initialData.role_id] : null);
+  const roleDisplayName = resolvedRole?.display_name || "Usuario";
+  const roleName = resolvedRole?.name || "Sin rol";
+
   const onSubmit = async (data: ProfileData) => {
     setIsSaving(true);
     try {
@@ -47,6 +61,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
       if (data.phone) {
         formData.append("phone", data.phone);
       }
+      formData.append("avatar_url", avatarUrl);
 
       const result = await updateMyProfile(formData);
 
@@ -81,7 +96,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
               <h2 className="text-lg font-bold">
                 {initialData.first_name} {initialData.last_name}
               </h2>
-              <p className="text-sm text-muted-foreground">{initialData.roles?.display_name || "Usuario"}</p>
+              <p className="text-sm text-muted-foreground">{roleDisplayName}</p>
             </div>
             <div className="px-3 py-1 bg-success-50 text-success-700 rounded-full text-xs font-semibold border border-success-200">
               Cuenta Activa
@@ -101,7 +116,7 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
             )}
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Shield className="w-4 h-4" />
-              <span className="truncate capitalize">{initialData.roles?.name || "Sin rol"}</span>
+              <span className="truncate capitalize">{roleDisplayName}</span>
             </div>
           </div>
         </motion.div>
@@ -188,6 +203,17 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
               />
             </div>
           </div>
+
+          {roleName !== "colaborador" && (
+            <div className="space-y-2 pt-4 border-t">
+              <label className="text-sm font-semibold text-foreground">Firma del Evaluador</label>
+              <SignatureInput
+                value={avatarUrl || null}
+                onChange={(val) => setAvatarUrl(val || "")}
+                placeholder="Firme con su mouse/pantalla táctil o cargue una imagen"
+              />
+            </div>
+          )}
 
           <div className="pt-4 border-t flex justify-end">
             <button

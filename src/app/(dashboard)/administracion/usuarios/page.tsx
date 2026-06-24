@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Plus, Search, Edit2, Shield, Mail, Phone,
   X, Save, Loader2, UserCheck, UserX, Eye, EyeOff, Briefcase, KeyRound
 } from "lucide-react";
-import { getProfiles, updateProfile, inviteUser, getRoles, resetUserPassword, getCurrentUserRole } from "@/app/actions/admin";
+import { getProfiles, updateProfile, inviteUser, getRoles, resetUserPassword, getCurrentUserProfile } from "@/app/actions/admin";
 import { getPositions } from "@/app/actions/config";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ function UserModal({
   roles,
   positions,
   isAdmin,
+  currentUserRole,
   onClose,
   onSave,
 }: {
@@ -55,10 +57,12 @@ function UserModal({
   roles: Role[];
   positions: any[];
   isAdmin: boolean;
+  currentUserRole: string;
   onClose: () => void;
   onSave: () => void;
 }) {
   const isEdit = !!user;
+  const isLider = currentUserRole === "lider";
   const [formData, setFormData] = useState({
     first_name: user?.first_name || "",
     last_name: user?.last_name || "",
@@ -93,6 +97,7 @@ function UserModal({
     try {
       if (isEdit && user) {
         const result = await updateProfile(user.id, {
+          email: formData.email.trim() || undefined,
           first_name: formData.first_name.trim(),
           last_name: formData.last_name.trim(),
           phone: formData.phone.trim() || undefined,
@@ -176,9 +181,13 @@ function UserModal({
               <label className="text-sm font-medium">Nombres *</label>
               <input
                 required
+                disabled={isLider}
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className={cn(
+                  "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  isLider && "opacity-60 cursor-not-allowed"
+                )}
                 placeholder="Carlos Alberto"
               />
             </div>
@@ -186,9 +195,13 @@ function UserModal({
               <label className="text-sm font-medium">Apellidos *</label>
               <input
                 required
+                disabled={isLider}
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className={cn(
+                  "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  isLider && "opacity-60 cursor-not-allowed"
+                )}
                 placeholder="Martínez Rojas"
               />
             </div>
@@ -199,9 +212,13 @@ function UserModal({
             <div className="space-y-1.5 col-span-1">
               <label className="text-sm font-medium">Tipo Doc.</label>
               <select
+                disabled={isLider}
                 value={formData.document_type}
                 onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
-                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className={cn(
+                  "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  isLider && "opacity-60 cursor-not-allowed"
+                )}
               >
                 <option value="">Ninguno</option>
                 <option value="CC">Cédula Ciudadanía</option>
@@ -215,9 +232,13 @@ function UserModal({
             <div className="space-y-1.5 col-span-2">
               <label className="text-sm font-medium">Número de Documento</label>
               <input
+                disabled={isLider}
                 value={formData.document_number}
                 onChange={(e) => setFormData({ ...formData, document_number: e.target.value })}
-                className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className={cn(
+                  "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  isLider && "opacity-60 cursor-not-allowed"
+                )}
                 placeholder="Ej: 1012345678"
               />
             </div>
@@ -234,20 +255,20 @@ function UserModal({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                disabled={isEdit}
+                disabled={isLider || (isEdit && !isAdmin)}
                 className={cn(
                   "w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
-                  isEdit && "opacity-60 cursor-not-allowed"
+                  (isLider || (isEdit && !isAdmin)) && "opacity-60 cursor-not-allowed"
                 )}
                 placeholder="usuario@empresa.com"
               />
             </div>
-            {isEdit && (
+            {isEdit && !isAdmin && (
               <p className="text-xs text-muted-foreground">El correo no puede modificarse</p>
             )}
           </div>
 
-          {(!isEdit || isAdmin) && (
+          {(!isEdit || isAdmin) && !isLider && (
             <>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">
@@ -290,9 +311,13 @@ function UserModal({
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="tel"
+                disabled={isLider}
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className={cn(
+                  "w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                  isLider && "opacity-60 cursor-not-allowed"
+                )}
                 placeholder="3001234567"
               />
             </div>
@@ -302,9 +327,13 @@ function UserModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Rol del Sistema</label>
             <select
+              disabled={isLider}
               value={formData.role_id}
               onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className={cn(
+                "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                isLider && "opacity-60 cursor-not-allowed"
+              )}
             >
               <option value="">Sin rol asignado</option>
               {roles.map((r) => (
@@ -319,9 +348,13 @@ function UserModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Cargo de la Empresa</label>
             <select
+              disabled={isLider}
               value={formData.position_id}
               onChange={(e) => setFormData({ ...formData, position_id: e.target.value })}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className={cn(
+                "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
+                isLider && "opacity-60 cursor-not-allowed"
+              )}
             >
               <option value="">Sin cargo asignado</option>
               {positions.map((p) => (
@@ -353,10 +386,12 @@ function UserModal({
               </div>
               <button
                 type="button"
+                disabled={isLider}
                 onClick={() => setFormData({ ...formData, active: !formData.active })}
                 className={cn(
                   "relative w-12 h-6 rounded-full transition-colors",
-                  formData.active ? "bg-success-500" : "bg-muted-foreground/40"
+                  formData.active ? "bg-success-500" : "bg-muted-foreground/40",
+                  isLider && "opacity-50 cursor-not-allowed"
                 )}
               >
                 <span
@@ -398,6 +433,7 @@ function UserModal({
 }
 
 export default function UsuariosPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [positions, setPositions] = useState<any[]>([]);
@@ -405,20 +441,27 @@ export default function UsuariosPage() {
   const [search, setSearch] = useState("");
   const [modalUser, setModalUser] = useState<UserProfile | null | "new">(undefined as any);
   const [showModal, setShowModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
 
   useEffect(() => {
     loadAll();
   }, []);
 
+  useEffect(() => {
+    if (currentUserRole === "lider") {
+      router.push("/perfil");
+    }
+  }, [currentUserRole, router]);
+
   async function loadAll() {
     setIsLoading(true);
     try {
-      const [usersRes, rolesRes, positionsData, roleRes] = await Promise.all([
+      const [usersRes, rolesRes, positionsData, currentUserProfileRes] = await Promise.all([
         getProfiles(),
         getRoles(),
         getPositions(),
-        getCurrentUserRole(),
+        getCurrentUserProfile(),
       ]);
 
       if (usersRes.error) {
@@ -431,8 +474,18 @@ export default function UsuariosPage() {
       setUsers((usersRes.data as UserProfile[]) || []);
       setRoles((rolesRes.data as Role[]) || []);
       setPositions(positionsData || []);
-      if (roleRes?.data) {
-        setCurrentUserRole(roleRes.data);
+      if (currentUserProfileRes?.data) {
+        const profile = currentUserProfileRes.data;
+        setCurrentUser(profile);
+        const ROLE_MAP: Record<string, string> = {
+          "22222222-0000-0000-0000-000000000001": "admin",
+          "22222222-0000-0000-0000-000000000002": "rrhh",
+          "22222222-0000-0000-0000-000000000003": "gerencia",
+          "22222222-0000-0000-0000-000000000004": "lider",
+          "22222222-0000-0000-0000-000000000005": "colaborador"
+        };
+        const resolvedRole = profile.roles?.name || ROLE_MAP[profile.role_id];
+        setCurrentUserRole(resolvedRole || "");
       }
     } catch (err) {
       toast.error("Error al cargar usuarios");
@@ -473,6 +526,12 @@ export default function UsuariosPage() {
   const filtered = users.filter((u) => {
     const term = search.toLowerCase();
     const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
+
+    // If the role is lider, they only see themselves
+    if (currentUserRole === "lider" && currentUser && u.id !== currentUser.id) {
+      return false;
+    }
+
     return (
       fullName.includes(term) ||
       u.email.toLowerCase().includes(term) ||
@@ -668,6 +727,7 @@ export default function UsuariosPage() {
             roles={roles}
             positions={positions}
             isAdmin={isAdmin}
+            currentUserRole={currentUserRole}
             onClose={closeModal}
             onSave={loadAll}
           />

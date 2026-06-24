@@ -22,6 +22,7 @@ export async function updateMyProfile(formData: FormData) {
     const first_name = formData.get("first_name")?.toString();
     const last_name = formData.get("last_name")?.toString();
     const phone = formData.get("phone")?.toString();
+    const avatar_url = formData.get("avatar_url")?.toString();
 
     const result = profileSchema.safeParse({ first_name, last_name, phone });
 
@@ -38,6 +39,7 @@ export async function updateMyProfile(formData: FormData) {
         first_name: result.data.first_name,
         last_name: result.data.last_name,
         phone: result.data.phone,
+        avatar_url: avatar_url || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userData.user.id);
