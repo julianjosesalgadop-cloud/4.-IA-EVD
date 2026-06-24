@@ -76,6 +76,9 @@ export default function ReportesPage() {
       const resB = b.result && !Array.isArray(b.result) ? b.result : b.result?.[0] || null;
       valA = resA ? (resA.result || "").toLowerCase() : "";
       valB = resB ? (resB.result || "").toLowerCase() : "";
+    } else if (sortField === "evaluator") {
+      valA = a.evaluator ? `${a.evaluator.first_name} ${a.evaluator.last_name}`.toLowerCase() : "";
+      valB = b.evaluator ? `${b.evaluator.first_name} ${b.evaluator.last_name}`.toLowerCase() : "";
     } else if (sortField === "date") {
       valA = a.finalized_at ? new Date(a.finalized_at).getTime() : a.created_at ? new Date(a.created_at).getTime() : 0;
       valB = b.finalized_at ? new Date(b.finalized_at).getTime() : b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -551,6 +554,7 @@ export default function ReportesPage() {
           "Documento": item.collaborator?.document_number || "N/A",
           "Área": item.collaborator?.areas?.name || "N/A",
           "Cargo": item.collaborator?.position?.name || "N/A",
+          "Evaluador": item.evaluator ? `${item.evaluator.first_name} ${item.evaluator.last_name}` : "N/A",
           "Fecha Evaluación": item.finalized_at ? new Date(item.finalized_at).toLocaleDateString("es-ES") : new Date(item.created_at).toLocaleDateString("es-ES"),
           "Puntaje": resObj ? Number(formatScore(resObj.overall_average)) : 0,
           "Resultado": resObj ? getResultLabel(resObj.result) : "Pendiente",
@@ -781,6 +785,16 @@ export default function ReportesPage() {
                         )}
                       </div>
                     </th>
+                    <th className="p-3 cursor-pointer select-none" onClick={() => handleSort("evaluator")}>
+                      <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                        Evaluador
+                        {sortField === "evaluator" ? (
+                          sortOrder === "asc" ? <ChevronUp className="w-3 h-3 text-primary" /> : <ChevronDown className="w-3 h-3 text-primary" />
+                        ) : (
+                          <ArrowUpDown className="w-2.5 h-2.5 opacity-55" />
+                        )}
+                      </div>
+                    </th>
                     <th className="p-3 text-center cursor-pointer select-none" onClick={() => handleSort("score")}>
                       <div className="flex items-center justify-center gap-1 hover:text-foreground transition-colors font-semibold">
                         Calificación
@@ -823,6 +837,9 @@ export default function ReportesPage() {
                         <td className="p-3 font-medium">{item.collaborator?.full_name || "Desconocido"}</td>
                         <td className="p-3 text-muted-foreground">{item.collaborator?.position?.name || "—"}</td>
                         <td className="p-3 text-muted-foreground">{item.collaborator?.areas?.name || "—"}</td>
+                        <td className="p-3 text-muted-foreground">
+                          {item.evaluator ? `${item.evaluator.first_name} ${item.evaluator.last_name}` : "—"}
+                        </td>
                         <td className="p-3 text-center font-bold text-sm">
                           {resObj ? formatScore(resObj.overall_average) : "—"}
                         </td>

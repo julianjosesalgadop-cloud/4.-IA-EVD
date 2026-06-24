@@ -629,6 +629,9 @@ export default function EvaluacionesPage() {
     } else if (sortField === "result") {
       valA = (a.result || "").toLowerCase();
       valB = (b.result || "").toLowerCase();
+    } else if (sortField === "evaluator") {
+      valA = (a.evaluator || "").toLowerCase();
+      valB = (b.evaluator || "").toLowerCase();
     } else if (sortField === "score") {
       valA = Number(a.score) || 0;
       valB = Number(b.score) || 0;
@@ -773,6 +776,16 @@ export default function EvaluacionesPage() {
                     )}
                   </div>
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort("evaluator")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    Evaluador
+                    {sortField === "evaluator" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase cursor-pointer select-none" onClick={() => handleSort("status")}>
                   <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
                     Estado
@@ -819,7 +832,7 @@ export default function EvaluacionesPage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center">
+                  <td colSpan={8} className="px-4 py-12 text-center">
                     <div className="flex justify-center items-center gap-3">
                       <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                       <p className="font-medium text-muted-foreground">Cargando evaluaciones...</p>
@@ -828,7 +841,7 @@ export default function EvaluacionesPage() {
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                     No se encontraron evaluaciones.
                   </td>
                 </tr>
@@ -862,6 +875,9 @@ export default function EvaluacionesPage() {
                   <td className="px-4 py-3 hidden md:table-cell">
                     <p className="text-sm font-medium">{ev.position}</p>
                     <p className="text-xs text-muted-foreground">{ev.area}</p>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <p className="text-sm font-medium">{ev.evaluator}</p>
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn("inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border", STATUS_STYLE[ev.status])}>

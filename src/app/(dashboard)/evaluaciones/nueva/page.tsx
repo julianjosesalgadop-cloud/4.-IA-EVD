@@ -916,12 +916,28 @@ function NuevaEvaluacionContent() {
                 value={selectedCollaborator ? `${selectedCollaborator.full_name} (${selectedCollaborator.document_number})` : searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
+                  if (selectedCollaboratorId) {
+                    setSelectedCollaboratorId(null);
+                  }
                   setShowDropdown(true);
                 }}
                 onFocus={() => setShowDropdown(true)}
                 placeholder="Buscar por nombre o documento..."
-                className="w-full rounded-lg sm:rounded-xl border bg-background px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-lg sm:rounded-xl border bg-background pl-3 pr-10 py-2 sm:pl-4 sm:pr-12 sm:py-2.5 text-xs sm:text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+              {selectedCollaborator && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCollaboratorId(null);
+                    setSearchTerm("");
+                    setShowDropdown(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
               {showDropdown && filteredCollaborators.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 rounded-lg sm:rounded-xl border border-border bg-popover text-popover-foreground shadow-xl z-50 max-h-40 sm:max-h-56 overflow-y-auto">
                   {filteredCollaborators.map((collab) => (
