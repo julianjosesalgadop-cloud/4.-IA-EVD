@@ -64,6 +64,7 @@ function UserModal({
     last_name: user?.last_name || "",
     email: user?.email || "",
     password: "",
+    confirmPassword: "",
     phone: user?.phone || "",
     role_id: user?.role_id || user?.roles?.id || "",
     position_id: user?.position_id || user?.positions?.id || "",
@@ -81,6 +82,13 @@ function UserModal({
       return;
     }
 
+    if (formData.password) {
+      if (formData.password !== formData.confirmPassword) {
+        toast.error("Las contraseñas no coinciden");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       if (isEdit && user) {
@@ -96,6 +104,14 @@ function UserModal({
           document_number: formData.document_number.trim() || null,
         });
         if (result.error) throw new Error(result.error);
+
+        if (formData.password) {
+          const resetRes = await resetUserPassword(user.id, formData.password.trim());
+          if (resetRes?.error) {
+            throw new Error(`Perfil actualizado, pero no se pudo cambiar la contraseña: ${resetRes.error}`);
+          }
+        }
+
         toast.success("Usuario actualizado correctamente");
       } else {
         if (!formData.email.trim()) {
@@ -232,21 +248,39 @@ function UserModal({
           </div>
 
           {(!isEdit || isAdmin) && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">
-                {isEdit ? "Nueva Contraseña (Opcional)" : "Contraseña (Opcional)"}
-              </label>
-              <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder={isEdit ? "Dejar en blanco para no cambiar" : "Si no se ingresa, se usará Sugamuxi2026*"}
-                />
+            <>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  {isEdit ? "Nueva Contraseña (Opcional)" : "Contraseña (Opcional)"}
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder={isEdit ? "Dejar en blanco para no cambiar" : "Si no se ingresa, se usará Sugamuxi2026*"}
+                  />
+                </div>
               </div>
-            </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Confirmación de la contraseña
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full h-10 rounded-lg border bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder={isEdit ? "Confirmar nueva contraseña" : "Confirmar contraseña"}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {/* Phone */}
@@ -432,18 +466,7 @@ export default function UsuariosPage() {
     }
   }
 
-  async function handleResetPassword(user: UserProfile) {
-    if (currentUserRole !== "admin") return;
-    if (!window.confirm(`¿Estás seguro de que deseas restablecer la contraseña de ${user.first_name} ${user.last_name}? La contraseña se cambiará a la predeterminada.`)) return;
-
-    try {
-      const result = await resetUserPassword(user.id);
-      if (result?.error) throw new Error(result.error);
-      toast.success(`La contraseña de ${user.first_name} ha sido restablecida.`);
-    } catch (err: any) {
-      toast.error(err.message || "Error al intentar restablecer la contraseña");
-    }
-  }
+  // handleResetPassword removed, password updates are done inside Edit modal
 
   const isAdmin = currentUserRole === "admin";
 
@@ -482,13 +505,15 @@ export default function UsuariosPage() {
               className="w-full h-10 pl-9 pr-4 text-sm rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
-          <button
-            onClick={openNew}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Usuario
-          </button>
+          {isAdmin && (
+            <button
+              onClick={openNew}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-md whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Usuario
+            </button>
+          )}
         </div>
       </div>
 
@@ -570,15 +595,7 @@ export default function UsuariosPage() {
                       )}
                     </div>
                   </div>
-              {isAdmin && (
-                <button
-                  onClick={() => handleResetPassword(user)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors opacity-0 group-hover:opacity-100"
-                  title="Restablecer contraseña"
-                >
-                  <KeyRound className="w-4 h-4" />
-                </button>
-              )}
+              {/* Reset password button removed from card list */}
                   <button
                     onClick={() => openEdit(user)}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors opacity-0 group-hover:opacity-100"

@@ -161,13 +161,22 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
         if (authUser) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("first_name, last_name, email, roles(display_name, name)")
+            .select("first_name, last_name, email, role_id, roles(display_name, name)")
             .eq("id", authUser.id)
             .single();
 
           if (profile) {
-            const roleDisplayName = (profile.roles as any)?.display_name || (profile.roles as any)?.name || "Colaborador";
-            const roleName = (profile.roles as any)?.name || "colaborador";
+            const ROLE_MAP: Record<string, { name: string; display_name: string }> = {
+              "22222222-0000-0000-0000-000000000001": { name: "admin", display_name: "Administrador" },
+              "22222222-0000-0000-0000-000000000002": { name: "rrhh", display_name: "Gestión Humana" },
+              "22222222-0000-0000-0000-000000000003": { name: "gerencia", display_name: "Gerencia" },
+              "22222222-0000-0000-0000-000000000004": { name: "lider", display_name: "Líder / Jefe" },
+              "22222222-0000-0000-0000-000000000005": { name: "colaborador", display_name: "Colaborador" }
+            };
+
+            const roleInfo = profile.role_id ? ROLE_MAP[profile.role_id] : null;
+            const roleDisplayName = roleInfo?.display_name || (profile.roles as any)?.display_name || (profile.roles as any)?.name || "Colaborador";
+            const roleName = roleInfo?.name || (profile.roles as any)?.name || "colaborador";
             const name = profile.first_name && profile.last_name 
               ? `${profile.first_name} ${profile.last_name}`
               : profile.first_name || profile.last_name || authUser.email?.split("@")[0] || "Usuario";

@@ -88,7 +88,16 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
     checkRole();
   }, []);
 
-  const userRole = userProfile?.roles?.name;
+  const ROLE_MAP: Record<string, { name: string; display_name: string }> = {
+    "22222222-0000-0000-0000-000000000001": { name: "admin", display_name: "Administrador" },
+    "22222222-0000-0000-0000-000000000002": { name: "rrhh", display_name: "Gestión Humana" },
+    "22222222-0000-0000-0000-000000000003": { name: "gerencia", display_name: "Gerencia" },
+    "22222222-0000-0000-0000-000000000004": { name: "lider", display_name: "Líder / Jefe" },
+    "22222222-0000-0000-0000-000000000005": { name: "colaborador", display_name: "Colaborador" }
+  };
+
+  const roleInfo = userProfile?.role_id ? ROLE_MAP[userProfile.role_id] : null;
+  const userRole = roleInfo?.name || userProfile?.roles?.name;
   const isRestrictedPath = pathname.startsWith("/administracion") || 
                            pathname.startsWith("/configuracion") || 
                            pathname.startsWith("/auditoria") ||
