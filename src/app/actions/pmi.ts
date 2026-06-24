@@ -40,6 +40,7 @@ export async function getPMIs() {
       evaluation:evaluations(
         id,
         created_at,
+        evaluator_id,
         collaborator:collaborators(id, full_name, positions(name), areas(name))
       )
     `)
@@ -59,6 +60,7 @@ export async function getPMIs() {
       evaluation:evaluations(
         id,
         created_at,
+        evaluator_id,
         collaborator:collaborators(id, full_name, positions(name), areas(name))
       )
     `)
@@ -75,6 +77,7 @@ export async function getPMIs() {
         evaluation:evaluations(
           id,
           created_at,
+          evaluator_id,
           collaborator:collaborators(id, full_name, positions(name), areas(name))
         )
       `)

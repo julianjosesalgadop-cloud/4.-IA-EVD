@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { cn } from "@/lib/utils";
-import { getCurrentUserProfile } from "@/app/actions/admin";
+import { createClient } from "@/lib/supabase/client";
 import { usePathname, useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 
@@ -21,12 +21,63 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Inactivity timeout: 15 minutes
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        try {
+          console.log("Inactividad detectada. Cerrando sesión...");
+          const { logoutAction } = await import("@/app/actions/auth");
+          await logoutAction();
+          // Force client-side redirect to login
+          window.location.href = "/login";
+        } catch (err) {
+          console.error("Error al cerrar sesión por inactividad:", err);
+        }
+      }, 15 * 60 * 1000); // 15 minutes
+    };
+
+    // Events to track user activity
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+
+    // Initialize timer
+    resetTimer();
+
+    // Add event listeners
+    events.forEach((event) => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    // Cleanup
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, []);
+
   useEffect(() => {
     async function checkRole() {
       try {
-        const res = await getCurrentUserProfile();
-        if (res?.data) {
-          setUserProfile(res.data);
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select(`
+              *,
+              roles(id, name, display_name)
+            `)
+            .eq("id", user.id)
+            .single();
+
+          if (profile) {
+            setUserProfile(profile);
+          }
         }
       } catch (err) {
         console.error("Error checking role in layout:", err);

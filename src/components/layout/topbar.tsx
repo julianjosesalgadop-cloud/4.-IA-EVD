@@ -27,6 +27,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
   const [currentUser, setCurrentUser] = useState<{
     name: string;
     role: string;
+    roleName: string;
     email: string;
     initials: string;
   } | null>(null);
@@ -160,13 +161,16 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
         if (authUser) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("full_name, email, roles(display_name, name)")
+            .select("first_name, last_name, email, roles(display_name, name)")
             .eq("id", authUser.id)
             .single();
 
           if (profile) {
             const roleDisplayName = (profile.roles as any)?.display_name || (profile.roles as any)?.name || "Colaborador";
-            const name = profile.full_name || authUser.email?.split("@")[0] || "Usuario";
+            const roleName = (profile.roles as any)?.name || "colaborador";
+            const name = profile.first_name && profile.last_name 
+              ? `${profile.first_name} ${profile.last_name}`
+              : profile.first_name || profile.last_name || authUser.email?.split("@")[0] || "Usuario";
             const initials = name
               .split(" ")
               .filter(Boolean)
@@ -178,6 +182,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
             setCurrentUser({
               name,
               role: roleDisplayName,
+              roleName,
               email: profile.email || authUser.email || "",
               initials: initials || "US",
             });
@@ -186,6 +191,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
             setCurrentUser({
               name,
               role: "Usuario",
+              roleName: "colaborador",
               email: authUser.email || "",
               initials: name.slice(0, 2).toUpperCase() || "US",
             });
@@ -301,22 +307,26 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
                     <User className="w-4 h-4 text-slate-400" />
                     <span>Mi Perfil</span>
                   </Link>
-                  <Link
-                    href="/configuracion/empresa"
-                    onClick={() => setShowDropdown(false)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
-                  >
-                    <Building2 className="w-4 h-4 text-slate-400" />
-                    <span>Empresa</span>
-                  </Link>
-                  <Link
-                    href="/configuracion/preguntas"
-                    onClick={() => setShowDropdown(false)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
-                  >
-                    <Settings className="w-4 h-4 text-slate-400" />
-                    <span>Configuración</span>
-                  </Link>
+                  {currentUser?.roleName !== "lider" && currentUser?.roleName !== "colaborador" && (
+                    <>
+                      <Link
+                        href="/configuracion/empresa"
+                        onClick={() => setShowDropdown(false)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
+                      >
+                        <Building2 className="w-4 h-4 text-slate-400" />
+                        <span>Empresa</span>
+                      </Link>
+                      <Link
+                        href="/configuracion/preguntas"
+                        onClick={() => setShowDropdown(false)}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800/40 hover:text-white transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-slate-400" />
+                        <span>Configuración</span>
+                      </Link>
+                    </>
+                  )}
                 </div>
 
                 {/* Logout Button */}

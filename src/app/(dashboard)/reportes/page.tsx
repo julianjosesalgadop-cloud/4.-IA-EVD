@@ -8,6 +8,7 @@ import { getEvaluations } from "@/app/actions/evaluations";
 import { getPMIs } from "@/app/actions/pmi";
 import { formatScore, getResultLabel, getResultColor, compressImageIfNeeded } from "@/lib/utils";
 import * as XLSX from "xlsx";
+import { createClient } from "@/lib/supabase/client";
 
 interface AreaData {
   id: string;
@@ -37,6 +38,8 @@ export default function ReportesPage() {
   const [filteredEvaluations, setFilteredEvaluations] = useState<EvaluationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   const [sortField, setSortField] = useState<string>("collaborator");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -94,6 +97,25 @@ export default function ReportesPage() {
   useEffect(() => {
     async function loadData() {
       try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        let roleName = "";
+        let uid = "";
+        
+        if (user) {
+          uid = user.id;
+          setCurrentUserId(user.id);
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("roles(name)")
+            .eq("id", user.id)
+            .single();
+          if (profile) {
+            roleName = (profile.roles as any)?.name || "";
+            setCurrentUserRole(roleName);
+          }
+        }
+
         const [areasData, evalsRes] = await Promise.all([
           getAreas(),
           getEvaluations()
@@ -101,8 +123,12 @@ export default function ReportesPage() {
         
         setAreas(areasData || []);
         if (evalsRes.data) {
-          setEvaluations(evalsRes.data as any[]);
-          setFilteredEvaluations(evalsRes.data as any[]);
+          let loadedEvals = evalsRes.data as any[];
+          if (roleName === "lider") {
+            loadedEvals = loadedEvals.filter(item => item.evaluator_id === uid);
+          }
+          setEvaluations(loadedEvals);
+          setFilteredEvaluations(loadedEvals);
         }
       } catch (error) {
         console.error("Error loading data:", error);
@@ -212,7 +238,17 @@ export default function ReportesPage() {
         return;
       }
 
-      const excelRows = res.data.map((pmi: any) => {
+      let pmiData = res.data || [];
+      if (currentUserRole === "lider" && currentUserId) {
+        pmiData = pmiData.filter((pmi: any) => pmi.evaluation?.evaluator_id === currentUserId);
+      }
+
+      if (pmiData.length === 0) {
+        toast.error("No tienes planes de mejoramiento (PMI) asociados a tus evaluaciones", { id: toastId });
+        return;
+      }
+
+      const excelRows = pmiData.map((pmi: any) => {
         const collab = pmi.evaluation?.collaborator;
         return {
           "ID PMI": pmi.id,
