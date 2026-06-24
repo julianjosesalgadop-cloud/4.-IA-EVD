@@ -361,7 +361,9 @@ export async function saveEvaluation(payload: any) {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new Error("No autenticado");
 
-  const { data: profile } = await supabase
+  const adminClient = await getSupabaseAdmin();
+
+  const { data: profile } = await adminClient
     .from("profiles")
     .select("company_id")
     .eq("id", userData.user.id)
@@ -370,14 +372,14 @@ export async function saveEvaluation(payload: any) {
   if (!profile?.company_id) throw new Error("Compañía no encontrada");
 
   // Obtener datos del evaluado
-  const { data: evaluatee } = await supabase
+  const { data: evaluatee } = await adminClient
     .from("collaborators")
     .select("document_type, document_number, email")
     .eq("id", payload.evaluatee_id)
     .single();
 
   // Obtener datos del evaluador y su rol
-  const { data: evaluator } = await supabase
+  const { data: evaluator } = await adminClient
     .from("profiles")
     .select("document_type, document_number, email, roles(name)")
     .eq("id", userData.user.id)
