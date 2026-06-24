@@ -17,6 +17,7 @@ interface AreaData {
 
 interface EvaluationItem {
   id: string;
+  code?: string;
   collaborator: {
     full_name: string;
     document_number: string;
@@ -192,7 +193,7 @@ export default function ReportesPage() {
           ? item.result
           : item.result?.[0] || null;
         return {
-          "ID Evaluación": item.id,
+          "ID Evaluación": item.code || "—",
           "Colaborador": item.collaborator?.full_name || "N/A",
           "Documento": item.collaborator?.document_number || "N/A",
           "Área": item.collaborator?.areas?.name || "N/A",

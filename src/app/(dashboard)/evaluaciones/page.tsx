@@ -558,6 +558,7 @@ export default function EvaluacionesPage() {
           const resObj = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
           return {
             id: e.id,
+            code: e.code || "—",
             collaborator: e.collaborator?.full_name || "Desconocido",
             collaborator_document: e.collaborator?.document_number || "—",
             area: e.collaborator?.areas?.name || "—",
@@ -662,7 +663,7 @@ export default function EvaluacionesPage() {
     try {
       const XLSX = await import("xlsx");
       const excelRows = filtered.map((e) => ({
-        "ID Evaluación": e.id,
+        "ID Evaluación": e.code || "—",
         "Evaluador": e.evaluator,
         "Colaborador": e.collaborator,
         "Documento Colaborador": e.collaborator_document || "—",
@@ -917,7 +918,7 @@ export default function EvaluacionesPage() {
                       </div>
                       <div>
                         <p className="font-semibold text-sm">{ev.evaluator}</p>
-                        <p className="text-xs text-muted-foreground">Año {ev.year}</p>
+                        <p className="text-xs text-muted-foreground">Año {ev.year} · {ev.code}</p>
                       </div>
                     </div>
                   </td>
@@ -1040,12 +1041,13 @@ export default function EvaluacionesPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            navigator.clipboard.writeText(ev.id);
+                            navigator.clipboard.writeText(ev.code || ev.id);
                             setOpenMenuId(null);
+                            toast.success("Código copiado al portapapeles");
                           }}
                           className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted"
                         >
-                          Copiar ID
+                          Copiar Código
                         </button>
                       </div>
                     )}

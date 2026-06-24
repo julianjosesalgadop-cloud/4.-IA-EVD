@@ -581,7 +581,9 @@ export default function EvaluationDetailPage() {
             <span className="hidden sm:inline">Volver a Evaluaciones</span>
             <span className="sm:hidden">Atrás</span>
           </Link>
-          <h1 className="text-xl sm:text-2xl font-bold mt-2 sm:mt-4">Detalle de Evaluación</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mt-2 sm:mt-4">
+            Evaluación {evaluation?.code || ""}
+          </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {evaluation && (
