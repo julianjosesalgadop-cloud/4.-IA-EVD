@@ -188,11 +188,29 @@ export default function ReportesPage() {
 
     const toastId = toast.loading("Generando Excel consolidado...");
     try {
-      const excelRows = evaluations.map((item) => {
+      // 1. Get all unique category names dynamically
+      const uniqueCategories = new Set<string>();
+      evaluations.forEach((item) => {
         const resObj = item.result && !Array.isArray(item.result)
           ? item.result
           : item.result?.[0] || null;
-        return {
+        if (resObj && resObj.category_scores) {
+          Object.values(resObj.category_scores).forEach((cat: any) => {
+            if (cat?.name) {
+              uniqueCategories.add(cat.name);
+            }
+          });
+        }
+      });
+      const categoriesList = Array.from(uniqueCategories).sort();
+
+      // 2. Generate rows for Collaborator tab
+      const collaboratorRows = evaluations.map((item) => {
+        const resObj = item.result && !Array.isArray(item.result)
+          ? item.result
+          : item.result?.[0] || null;
+        
+        const row: Record<string, any> = {
           "ID Evaluación": item.code || "—",
           "Colaborador": item.collaborator?.full_name || "N/A",
           "Documento": item.collaborator?.document_number || "N/A",
@@ -200,26 +218,123 @@ export default function ReportesPage() {
           "Cargo": item.collaborator?.position?.name || "N/A",
           "Evaluador": item.evaluator ? `${item.evaluator.first_name} ${item.evaluator.last_name}` : "N/A",
           "Fecha de Finalización": item.finalized_at ? new Date(item.finalized_at).toLocaleDateString("es-ES") : "Pendiente",
-          "Puntaje (Promedio)": resObj ? Number(formatScore(resObj.overall_average)) : 0,
-          "Resultado EVD": resObj ? getResultLabel(resObj.result) : "Pendiente",
         };
+
+        // Add dynamic category averages
+        categoriesList.forEach((catName) => {
+          let scoreVal: any = "—";
+          if (resObj && resObj.category_scores) {
+            const catMatch = Object.values(resObj.category_scores).find((c: any) => c.name === catName) as any;
+            if (catMatch && catMatch.average !== undefined) {
+              scoreVal = Number(formatScore(catMatch.average));
+            }
+          }
+          row[`Promedio Cat: ${catName}`] = scoreVal;
+        });
+
+        // Add general overall average and final result status
+        row["Promedio General"] = resObj ? Number(formatScore(resObj.overall_average)) : "Pendiente";
+        row["Resultado EVD"] = resObj ? getResultLabel(resObj.result) : "Pendiente";
+
+        return row;
       });
 
-      const worksheet = XLSX.utils.json_to_sheet(excelRows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Consolidado");
-      
-      // Auto-fit column widths
-      const maxColWidth = excelRows.reduce((acc, row) => {
-        Object.keys(row).forEach((key, i) => {
-          const val = String((row as any)[key]);
-          acc[i] = Math.max(acc[i] || 10, val.length + 2, key.length + 2);
-        });
-        return acc;
-      }, [] as number[]);
-      worksheet["!cols"] = maxColWidth.map(w => ({ wch: w }));
+      // 3. Generate rows for Area tab
+      const areaDataMap: Record<string, {
+        name: string;
+        totalEvaluated: number;
+        categorySums: Record<string, number>;
+        categoryCounts: Record<string, number>;
+        overallSum: number;
+        overallCount: number;
+      }> = {};
 
-      XLSX.writeFile(workbook, `Consolidado_General_EVD_${new Date().getFullYear()}.xlsx`);
+      evaluations.forEach((item) => {
+        const resObj = item.result && !Array.isArray(item.result)
+          ? item.result
+          : item.result?.[0] || null;
+        
+        const areaName = item.collaborator?.areas?.name || "Sin Área";
+        
+        if (!areaDataMap[areaName]) {
+          areaDataMap[areaName] = {
+            name: areaName,
+            totalEvaluated: 0,
+            categorySums: {},
+            categoryCounts: {},
+            overallSum: 0,
+            overallCount: 0
+          };
+        }
+
+        const areaStat = areaDataMap[areaName];
+
+        if (resObj) {
+          areaStat.totalEvaluated++;
+          areaStat.overallSum += Number(resObj.overall_average) || 0;
+          areaStat.overallCount++;
+
+          if (resObj.category_scores) {
+            Object.values(resObj.category_scores).forEach((cat: any) => {
+              if (cat?.name && cat.average !== undefined) {
+                const catName = cat.name;
+                if (!areaStat.categorySums[catName]) {
+                  areaStat.categorySums[catName] = 0;
+                  areaStat.categoryCounts[catName] = 0;
+                }
+                areaStat.categorySums[catName] += Number(cat.average) || 0;
+                areaStat.categoryCounts[catName]++;
+              }
+            });
+          }
+        }
+      });
+
+      const areaRows = Object.values(areaDataMap).map((areaStat) => {
+        const row: Record<string, any> = {
+          "Área": areaStat.name,
+          "Colaboradores Evaluados": areaStat.totalEvaluated,
+        };
+
+        // Add average score per category in this area
+        categoriesList.forEach((catName) => {
+          const sum = areaStat.categorySums[catName] || 0;
+          const count = areaStat.categoryCounts[catName] || 0;
+          row[`Promedio Cat: ${catName}`] = count > 0 ? Number(formatScore(sum / count)) : "—";
+        });
+
+        // Add overall area general average score
+        row["Promedio General Área"] = areaStat.overallCount > 0 ? Number(formatScore(areaStat.overallSum / areaStat.overallCount)) : 0;
+
+        return row;
+      });
+
+      // 4. Create workbook and add sheets
+      const workbook = XLSX.utils.book_new();
+
+      const worksheetCollab = XLSX.utils.json_to_sheet(collaboratorRows);
+      XLSX.utils.book_append_sheet(workbook, worksheetCollab, "Resultados por Colaborador");
+
+      const worksheetArea = XLSX.utils.json_to_sheet(areaRows);
+      XLSX.utils.book_append_sheet(workbook, worksheetArea, "Resultados por Área");
+
+      // Auto-fit column widths for both sheets
+      const setColWidths = (ws: XLSX.WorkSheet, rows: any[]) => {
+        if (rows.length === 0) return;
+        const maxColWidth = rows.reduce((acc, row) => {
+          Object.keys(row).forEach((key, i) => {
+            const val = String((row as any)[key]);
+            acc[i] = Math.max(acc[i] || 10, val.length + 2, key.length + 2);
+          });
+          return acc;
+        }, [] as number[]);
+        ws["!cols"] = maxColWidth.map((w: number) => ({ wch: w }));
+      };
+
+      setColWidths(worksheetCollab, collaboratorRows);
+      setColWidths(worksheetArea, areaRows);
+
+      XLSX.writeFile(workbook, `Reporte_Consolidado_EVD_${new Date().getFullYear()}.xlsx`);
       toast.success("Excel Consolidado descargado exitosamente", { id: toastId });
     } catch (error) {
       console.error(error);
@@ -621,7 +736,7 @@ export default function ReportesPage() {
           </div>
           <h3 className="font-bold text-lg mb-2 text-foreground">Consolidado General (Excel)</h3>
           <p className="text-sm text-muted-foreground mb-6">
-            Descarga la matriz completa con todos los colaboradores, calificaciones por pregunta y promedios finales.
+            Descarga el reporte detallado con resultados por colaborador y por área, incluyendo desgloses por categoría de competencia y promedio general.
           </p>
           <button className="flex items-center gap-2 text-sm font-semibold text-success-600 hover:text-success-700">
             <Download className="w-4 h-4" />
