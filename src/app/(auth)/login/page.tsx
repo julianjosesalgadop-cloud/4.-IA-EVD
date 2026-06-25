@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { loginAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
 
 const loginSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
@@ -122,9 +121,6 @@ export default function LoginPage() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contraseña</label>
-            <Link href="/auth/reset-password" className="text-xs font-semibold text-brand-500 hover:text-brand-600 transition-colors">
-              ¿Olvidaste tu contraseña?
-            </Link>
           </div>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
