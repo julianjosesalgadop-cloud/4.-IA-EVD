@@ -99,6 +99,7 @@ function NuevaEvaluacionContent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [collaboratorSignature, setCollaboratorSignature] = useState<string | null>(null);
+  const [acceptedCollaboratorDataPolicy, setAcceptedCollaboratorDataPolicy] = useState(false);
   
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
@@ -1583,6 +1584,30 @@ function NuevaEvaluacionContent() {
                   onChange={(val) => setCollaboratorSignature(val)}
                   placeholder="Dibuje su firma aquí o suba una imagen de su firma"
                 />
+                
+                {collaboratorSignature && (
+                  <div className="flex items-start gap-2.5 pt-2">
+                    <input
+                      type="checkbox"
+                      id="collab-data-treatment-policy"
+                      checked={acceptedCollaboratorDataPolicy}
+                      onChange={(e) => setAcceptedCollaboratorDataPolicy(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                    />
+                    <label htmlFor="collab-data-treatment-policy" className="text-xs text-muted-foreground leading-normal select-none cursor-pointer">
+                      Acepto la{" "}
+                      <a
+                        href="https://flotasugamuxisa.com.co/privacidad/#habeas-data"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-600 hover:text-brand-700 font-semibold underline"
+                      >
+                        política de tratamiento de datos personales (Habeas Data)
+                      </a>{" "}
+                      para el registro, almacenamiento y uso de mi firma digital en esta evaluación de desempeño. <span className="text-danger-500">*</span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-3 border-t">
@@ -1596,7 +1621,7 @@ function NuevaEvaluacionContent() {
                 <button
                   type="button"
                   onClick={() => handleFinalizeConfirm(collaboratorSignature)}
-                  disabled={!collaboratorSignature}
+                  disabled={!collaboratorSignature || !acceptedCollaboratorDataPolicy}
                   className="flex-1 px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   Confirmar y Guardar

@@ -78,11 +78,17 @@ function UserModal({
     document_number: user?.document_number || "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedDataPolicy, setAcceptedDataPolicy] = useState(!!user?.avatar_url);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
       toast.error("El nombre y apellido son obligatorios");
+      return;
+    }
+
+    if (formData.avatar_url && !acceptedDataPolicy) {
+      toast.error("Debes aceptar la política de tratamiento de datos personales (Habeas Data) para poder guardar la firma.");
       return;
     }
 
@@ -373,6 +379,29 @@ function UserModal({
               onChange={(val) => setFormData({ ...formData, avatar_url: val || "" })}
               placeholder="Firme con su mouse/pantalla táctil o cargue una imagen"
             />
+            {formData.avatar_url && (
+              <div className="flex items-start gap-2.5 pt-2">
+                <input
+                  type="checkbox"
+                  id="data-treatment-policy"
+                  checked={acceptedDataPolicy}
+                  onChange={(e) => setAcceptedDataPolicy(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                />
+                <label htmlFor="data-treatment-policy" className="text-xs text-muted-foreground leading-normal select-none cursor-pointer">
+                  Acepto la{" "}
+                  <a
+                    href="https://flotasugamuxisa.com.co/privacidad/#habeas-data"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-600 hover:text-brand-700 font-semibold underline"
+                  >
+                    política de tratamiento de datos personales (Habeas Data)
+                  </a>{" "}
+                  para el registro, almacenamiento y uso de esta firma digital. <span className="text-danger-500">*</span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Active toggle */}
