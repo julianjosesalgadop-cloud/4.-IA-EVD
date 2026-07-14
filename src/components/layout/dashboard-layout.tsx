@@ -159,6 +159,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onItemClick={() => setSidebarCollapsed(true)}
         userRole={userRole}
       />
       <Topbar
@@ -168,13 +169,18 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       />
       <main
         className={cn(
-          "pt-14 min-h-screen transition-all duration-300 ease-in-out",
+          "pt-14 min-h-screen transition-all duration-300 ease-in-out flex flex-col justify-between",
           sidebarCollapsed ? "md:pl-[72px]" : "md:pl-[260px]"
         )}
       >
-        <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
+        <div className="p-4 md:p-6 max-w-[1600px] mx-auto w-full">
           {children}
         </div>
+        <footer className="py-4 text-center border-t border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-card/10">
+          <p className="text-[11px] text-muted-foreground font-bold tracking-wide uppercase">
+            Desarrollado Por Flota Sugamuxi S.A.
+          </p>
+        </footer>
       </main>
     </div>
   );

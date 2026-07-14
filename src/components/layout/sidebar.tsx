@@ -101,10 +101,11 @@ const navGroups: NavGroup[] = [
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  onItemClick?: () => void;
   userRole?: string;
 }
 
-export function Sidebar({ collapsed, onToggle, userRole }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, onItemClick, userRole }: SidebarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -113,6 +114,12 @@ export function Sidebar({ collapsed, onToggle, userRole }: SidebarProps) {
   });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const handleItemClick = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onItemClick?.();
+    }
+  };
 
   // Filtrar dinámicamente navGroups basado en el rol del usuario
   const filteredNavGroups = navGroups.map(group => {
@@ -365,6 +372,7 @@ export function Sidebar({ collapsed, onToggle, userRole }: SidebarProps) {
                                 <Link
                                   key={child.href}
                                   href={child.href!}
+                                  onClick={handleItemClick}
                                     className={cn(
                                       "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all w-full pl-9",
                                       isActive(child.href)
@@ -391,6 +399,7 @@ export function Sidebar({ collapsed, onToggle, userRole }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href!}
+                    onClick={handleItemClick}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all w-full relative",
                       isActive(item.href)
