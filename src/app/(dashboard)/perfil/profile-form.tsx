@@ -34,6 +34,7 @@ interface ProfileFormProps {
 export function ProfileForm({ initialData }: ProfileFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(initialData.avatar_url || "");
+  const [acceptedDataPolicy, setAcceptedDataPolicy] = useState(!!initialData.avatar_url);
 
   const {
     register,
@@ -53,6 +54,10 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
   const roleName = resolvedRole?.name || "Sin rol";
 
   const onSubmit = async (data: ProfileData) => {
+    if (avatarUrl && !acceptedDataPolicy) {
+      toast.error("Debes aceptar la política de tratamiento de datos personales (Habeas Data) para poder guardar tu firma.");
+      return;
+    }
     setIsSaving(true);
     try {
       const formData = new FormData();
@@ -205,13 +210,36 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
           </div>
 
           {roleName !== "colaborador" && (
-            <div className="space-y-2 pt-4 border-t">
+            <div className="space-y-4 pt-4 border-t">
               <label className="text-sm font-semibold text-foreground">Firma del Evaluador</label>
               <SignatureInput
                 value={avatarUrl || null}
                 onChange={(val) => setAvatarUrl(val || "")}
                 placeholder="Firme con su mouse/pantalla táctil o cargue una imagen"
               />
+              {avatarUrl && (
+                <div className="flex items-start gap-2.5 pt-2">
+                  <input
+                    type="checkbox"
+                    id="data-treatment-policy"
+                    checked={acceptedDataPolicy}
+                    onChange={(e) => setAcceptedDataPolicy(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                  />
+                  <label htmlFor="data-treatment-policy" className="text-xs text-muted-foreground leading-normal select-none cursor-pointer">
+                    Acepto la{" "}
+                    <a
+                      href="https://flotasugamuxisa.com.co/privacidad/#habeas-data"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-600 hover:text-brand-700 font-semibold underline"
+                    >
+                      política de tratamiento de datos personales (Habeas Data)
+                    </a>{" "}
+                    para el registro, almacenamiento y uso de mi firma digital en las evaluaciones de desempeño. <span className="text-danger-500">*</span>
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
