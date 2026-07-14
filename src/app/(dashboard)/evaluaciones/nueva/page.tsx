@@ -290,6 +290,7 @@ function NuevaEvaluacionContent() {
 
     // Open signature modal first
     setCollaboratorSignature(null);
+    setAcceptedCollaboratorDataPolicy(false);
     setShowSignatureModal(true);
   };
 

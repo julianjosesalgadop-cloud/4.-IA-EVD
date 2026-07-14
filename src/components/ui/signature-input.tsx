@@ -18,33 +18,54 @@ export function SignatureInput({ value, onChange, placeholder = "Firme aquí", c
   const [hasDrawn, setHasDrawn] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
-  // Initialize canvas drawing settings
+  // Initialize canvas drawing settings with ResizeObserver to prevent coordinate scaling offset inside dynamic/animated layouts
   useEffect(() => {
     if (activeTab !== "draw" || value || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Adjust canvas for high DPI screens
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    // Canvas styles
-    ctx.strokeStyle = "#0f172a"; // Zinc 900 in light mode. Handled dynamically on redraw if needed.
-    // Check if in dark mode
-    if (document.documentElement.classList.contains("dark")) {
-      ctx.strokeStyle = "#f8fafc"; // Slate 50
-    }
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
     
-    // Clear canvas
-    ctx.clearRect(0, 0, rect.width, rect.height);
-    setHasDrawn(false);
+    let lastWidth = 0;
+    let lastHeight = 0;
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      if (rect.width === lastWidth && rect.height === lastHeight) return;
+
+      lastWidth = rect.width;
+      lastHeight = rect.height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Adjust canvas for high DPI screens
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      // Canvas styles
+      ctx.strokeStyle = document.documentElement.classList.contains("dark") ? "#f8fafc" : "#0f172a";
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      setHasDrawn(false);
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        resizeCanvas();
+      });
+    });
+
+    resizeObserver.observe(canvas);
+    resizeCanvas();
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [activeTab, value]);
 
   // Drawing event handlers
