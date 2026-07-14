@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Search, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Search } from "lucide-react";
 
 interface Option {
-  id: string;
-  name: string;
+  value: string;
+  label: string;
 }
 
 interface SearchableSelectProps {
@@ -14,10 +14,8 @@ interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  searchPlaceholder?: string;
-  emptyMessage?: string;
-  disabled?: boolean;
   className?: string;
+  disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -25,18 +23,17 @@ export function SearchableSelect({
   value,
   onChange,
   placeholder = "Seleccionar...",
-  searchPlaceholder = "Buscar...",
-  emptyMessage = "No se encontraron resultados",
-  disabled = false,
   className,
+  disabled = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
@@ -44,68 +41,83 @@ export function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedOption = options.find((opt) => opt.id === value);
+  const selectedOption = options.find((opt) => opt.value === value);
 
-  const filtered = options.filter((opt) =>
-    (opt.name || "").toLowerCase().includes((search || "").toLowerCase())
+  const filteredOptions = options.filter((opt) =>
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleSelect = (val: string) => {
+    onChange(val);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange("");
+    setSearchTerm("");
+  };
+
   return (
-    <div className={cn("relative w-full", className)} ref={dropdownRef}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen(!isOpen);
-            setSearch("");
-          }
-        }}
+    <div ref={containerRef} className={cn("relative w-full", className)}>
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
-          "w-full h-10 rounded-lg border bg-background px-3 text-left text-sm flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all",
-          disabled ? "opacity-60 cursor-not-allowed bg-muted/30" : "hover:border-brand-300"
+          "flex h-10 w-full items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer select-none",
+          isOpen && "ring-2 ring-primary/30 border-primary"
         )}
       >
-        <span className={cn("truncate block mr-2", !selectedOption && "text-muted-foreground")}>
-          {selectedOption ? selectedOption.name : placeholder}
+        <span className={cn("truncate", !selectedOption && "text-muted-foreground")}>
+          {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <span className="text-[10px] text-muted-foreground/80 flex-shrink-0">▼</span>
-      </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {value && !disabled && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-0.5 rounded-full hover:bg-muted text-muted-foreground/80 hover:text-foreground transition-colors"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
+        </div>
+      </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1.5 rounded-xl border bg-card p-1.5 shadow-xl max-h-60 overflow-y-auto flex flex-col gap-1 animate-in fade-in-50 slide-in-from-top-1 duration-150">
-          <div className="relative flex items-center">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+        <div className="absolute z-50 mt-1.5 max-h-60 w-full overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95 duration-100 flex flex-col">
+          {/* Search Input */}
+          <div className="flex items-center border-b px-3 py-2 bg-muted/20">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground" />
             <input
               type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full h-9 pl-8 pr-2.5 rounded-lg border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex h-7 w-full rounded-md bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               autoFocus
             />
           </div>
-          <div className="flex flex-col max-h-40 overflow-y-auto mt-1 divide-y divide-border/20">
-            {filtered.length === 0 ? (
-              <div className="px-2.5 py-3 text-xs text-center text-muted-foreground">
-                {emptyMessage}
+
+          {/* Options List */}
+          <div className="overflow-y-auto flex-1 max-h-48 py-1">
+            {filteredOptions.length === 0 ? (
+              <div className="relative flex select-none items-center justify-center rounded-sm px-2 py-3 text-xs text-muted-foreground">
+                No se encontraron resultados.
               </div>
             ) : (
-              filtered.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.id);
-                    setIsOpen(false);
-                  }}
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt.value}
+                  onClick={() => handleSelect(opt.value)}
                   className={cn(
-                    "w-full text-left px-2.5 py-2 text-xs transition-colors hover:bg-accent hover:text-accent-foreground rounded-lg font-medium",
-                    opt.id === value ? "bg-primary/10 text-primary" : "text-foreground/90"
+                    "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
+                    opt.value === value && "bg-primary/10 text-primary font-semibold"
                   )}
                 >
-                  {opt.name}
-                </button>
+                  <span className="truncate">{opt.label}</span>
+                </div>
               ))
             )}
           </div>

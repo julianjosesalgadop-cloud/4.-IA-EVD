@@ -9,6 +9,7 @@ import { getCollaboratorById, updateCollaborator } from "@/app/actions/collabora
 import { getAreas, getPositions } from "@/app/actions/config";
 import { getCollaborators } from "@/app/actions/collaborators";
 import { formatDate, getStatusLabel } from "@/lib/utils";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 const statusOptions = [
   { value: "activo", label: "Activo" },
@@ -313,19 +314,15 @@ export default function CollaboratorEditPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Cargo *</label>
-                <select
+                <SearchableSelect
+                  options={positions.map((p) => ({
+                    value: p.id,
+                    label: p.name
+                  }))}
                   value={form.position_id}
-                  onChange={(e) => handleChange("position_id", e.target.value)}
-                  required
-                  className="w-full rounded-lg border px-3 py-2 bg-background"
-                >
-                  <option value="">Seleccionar cargo...</option>
-                  {positions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleChange("position_id", val)}
+                  placeholder="Seleccionar cargo..."
+                />
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">

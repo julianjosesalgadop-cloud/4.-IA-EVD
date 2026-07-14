@@ -12,6 +12,7 @@ import { getPositions } from "@/app/actions/config";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SignatureInput } from "@/components/ui/signature-input";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface UserProfile {
   id: string;
@@ -353,22 +354,16 @@ function UserModal({
           {/* Cargo */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Cargo de la Empresa</label>
-            <select
-              disabled={isLider}
+            <SearchableSelect
+              options={positions.map((p) => ({
+                value: p.id,
+                label: `${p.name}${p.areas?.name ? ` (${p.areas.name})` : ""}`
+              }))}
               value={formData.position_id}
-              onChange={(e) => setFormData({ ...formData, position_id: e.target.value })}
-              className={cn(
-                "w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30",
-                isLider && "opacity-60 cursor-not-allowed"
-              )}
-            >
-              <option value="">Sin cargo asignado</option>
-              {positions.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {p.areas?.name ? `(${p.areas.name})` : ""}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, position_id: val })}
+              placeholder="Sin cargo asignado"
+              disabled={isLider}
+            />
           </div>
 
           {/* Signature */}

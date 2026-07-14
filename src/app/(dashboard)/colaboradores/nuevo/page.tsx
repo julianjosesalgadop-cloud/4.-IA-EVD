@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -16,6 +16,7 @@ import { getAreas, getPositions } from "@/app/actions/config";
 import { getProfiles } from "@/app/actions/admin";
 import { getCollaboratorFieldsConfig } from "@/app/actions/fields";
 import { DEFAULT_FIELDS } from "@/lib/constants";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 // ---- Wizard Steps ----
 const STEPS = [
@@ -253,7 +254,7 @@ function StepLaboral({
   positions: any[];
   fieldsConfig: any[];
 }) {
-  const { register, formState: { errors } } = form;
+  const { register, control, formState: { errors } } = form;
 
   const isVisible = (id: string) => fieldsConfig.find(f => f.id === id)?.is_visible !== false;
   const isRequired = (id: string) => fieldsConfig.find(f => f.id === id)?.is_required === true;
@@ -284,15 +285,21 @@ function StepLaboral({
             <label className="text-sm font-medium">
               {getLabel("position_id", "Cargo")} {isRequired("position_id") ? "*" : ""}
             </label>
-            <select
-              {...register("position_id")}
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Seleccionar cargo...</option>
-              {positions.map((pos) => (
-                <option key={pos.id} value={pos.id}>{pos.name}</option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="position_id"
+              render={({ field }) => (
+                <SearchableSelect
+                  options={positions.map((pos) => ({
+                    value: pos.id,
+                    label: pos.name
+                  }))}
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Seleccionar cargo..."
+                />
+              )}
+            />
             {errors.position_id?.message && <p className="text-danger-500 text-xs">{errors.position_id.message.toString()}</p>}
           </div>
         )}
