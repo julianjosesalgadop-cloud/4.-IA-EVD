@@ -366,10 +366,16 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isExpanded, expandedChart]);
 
+  // Extract unique positions dynamically from database evaluations
+  const dynamicPositions = stats?.allEvaluations
+    ? (Array.from(new Set(stats.allEvaluations.map((e: any) => e.position).filter((p: any) => p && p !== "N/A"))) as string[]).sort()
+    : [];
+
   // Extract unique areas dynamically from database evaluations
   const dynamicAreas = stats?.allEvaluations
     ? (Array.from(new Set(stats.allEvaluations.map((e: any) => e.area).filter((a: any) => a && a !== "N/A"))) as string[]).sort()
     : [];
+  const displayAreasList = dynamicAreas.length > 0 ? dynamicAreas : ["Operaciones", "Mantenimiento", "Gestión Humana", "Comercial", "Financiera", "Tecnología"];
 
   // Filter evaluations based on user selections
   const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
@@ -409,17 +415,17 @@ export default function DashboardPage() {
     { name: "No Aprobados", value: reprobados, color: "#ef4444" },
   ];
 
-  // Recalculate dynamic area average data
-  const displayAreasList = dynamicAreas.length > 0 ? dynamicAreas : ["Operaciones", "Mantenimiento", "Gestión Humana", "Comercial", "Financiera", "Tecnología"];
-  const areaAverageData = displayAreasList.map(area => {
-    const evs = filteredEvals.filter((e: any) => e.area === area && e.score > 0);
+  // Recalculate dynamic position average data
+  const displayPositionsList = dynamicPositions.length > 0 ? dynamicPositions : ["Conductor", "Coordinador de Agencia", "Supervisor"];
+  const positionAverageData = displayPositionsList.map(position => {
+    const evs = filteredEvals.filter((e: any) => e.position === position && e.score > 0);
     const avg = evs.length > 0 ? evs.reduce((sum: number, e: any) => sum + e.score, 0) / evs.length : 0;
     return {
-      area,
+      position,
       promedio: Number(avg.toFixed(2)),
       evaluados: evs.length
     };
-  });
+  }).sort((a, b) => b.promedio - a.promedio).slice(0, 10);
   
   // Recalculate dynamic monthly trend
   const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -443,12 +449,35 @@ export default function DashboardPage() {
     { mes: "Mar", evaluaciones: 0, promedio: 0 }
   ];
   
-  const radarData = [
-    { category: "Funciones", actual: 3.95, anterior: 3.72 },
-    { category: "SST", actual: 4.12, anterior: 3.89 },
-    { category: "Seg. Vial", actual: 3.78, anterior: 3.65 },
-    { category: "Servicio", actual: 3.91, anterior: 3.80 },
-    { category: "Equipo", actual: 3.85, anterior: 3.70 },
+  // Recalculate dynamic question categories average data
+  const categoryAverages: Record<string, { sum: number; count: number }> = {};
+  filteredEvals.forEach((e: any) => {
+    if (e.category_scores) {
+      Object.values(e.category_scores).forEach((cat: any) => {
+        if (cat && cat.name && typeof cat.average === "number") {
+          const catName = cat.name.trim();
+          if (!categoryAverages[catName]) {
+            categoryAverages[catName] = { sum: 0, count: 0 };
+          }
+          categoryAverages[catName].sum += cat.average;
+          categoryAverages[catName].count += 1;
+        }
+      });
+    }
+  });
+
+  const categoriesChartData = Object.entries(categoryAverages).map(([category, data]) => ({
+    category,
+    promedio: Number((data.sum / data.count).toFixed(2)),
+    evaluaciones: data.count
+  })).sort((a, b) => b.promedio - a.promedio);
+
+  const displayCategoriesData = categoriesChartData.length > 0 ? categoriesChartData : [
+    { category: "Funciones del Cargo", promedio: 3.95, evaluaciones: 0 },
+    { category: "Seguridad Vial", promedio: 4.12, evaluaciones: 0 },
+    { category: "Servicio al Cliente", promedio: 3.78, evaluaciones: 0 },
+    { category: "Trabajo en Equipo", promedio: 3.91, evaluaciones: 0 },
+    { category: "SST", promedio: 3.85, evaluaciones: 0 }
   ];
 
   // 1. Niveles de Desempeño
@@ -608,7 +637,7 @@ export default function DashboardPage() {
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Area Averages Bar Chart */}
+        {/* Cargo Averages Bar Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -617,12 +646,12 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold">Promedio por Área</h3>
-              <p className="text-xs text-muted-foreground">Evaluaciones finalizadas</p>
+              <h3 className="font-semibold">Promedio por Cargo</h3>
+              <p className="text-xs text-muted-foreground">Evaluaciones finalizadas (Top 10)</p>
             </div>
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setExpandedChart("area")}
+                onClick={() => setExpandedChart("cargo")}
                 className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                 title="Expandir gráfico"
               >
@@ -632,14 +661,14 @@ export default function DashboardPage() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart data={areaAverageData} barSize={32}>
+            <BarChart data={positionAverageData} barSize={32}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="area" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="position" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
                 <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                {areaAverageData.map((entry, index) => (
+                {positionAverageData.map((entry, index) => (
                   <Cell
                     key={index}
                     fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"}
@@ -757,7 +786,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Radar Chart */}
+        {/* Question Categories Radar Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -766,8 +795,8 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold">Competencias</h3>
-              <p className="text-xs text-muted-foreground">Actual vs Anterior</p>
+              <h3 className="font-semibold">Categorías de Preguntas</h3>
+              <p className="text-xs text-muted-foreground">Promedio de calificación</p>
             </div>
             <button
               onClick={() => setExpandedChart("radar")}
@@ -778,14 +807,13 @@ export default function DashboardPage() {
             </button>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <RadarChart data={radarData}>
+            <RadarChart data={displayCategoriesData}>
               <PolarGrid stroke="hsl(var(--border))" />
-              <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+              <PolarAngleAxis dataKey="category" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
               <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-              <Radar name="Actual" dataKey="actual" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2}>
-                <LabelList dataKey="actual" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+              <Radar name="Promedio" dataKey="promedio" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2}>
+                <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
               </Radar>
-              <Radar name="Anterior" dataKey="anterior" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} strokeDasharray="4 4" />
               <Legend wrapperStyle={{ fontSize: "11px" }} />
             </RadarChart>
           </ResponsiveContainer>
@@ -845,105 +873,125 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Gráfico 2: Desempeño por Ciudad / Sede */}
+        {/* Colaboradores Destacados Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75 }}
-          className="rounded-xl border bg-card p-5"
+          className="rounded-xl border bg-card p-5 space-y-4"
         >
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="font-semibold">Promedio por Sede</h3>
-              <p className="text-xs text-muted-foreground">Rendimiento por ciudad</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setExpandedChart("sede")}
-                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title="Expandir gráfico"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-              <Activity className="w-5 h-5 text-muted-foreground" />
-            </div>
+          <div>
+            <h3 className="font-semibold">Colaboradores Destacados</h3>
+            <p className="text-xs text-muted-foreground">Top 5 mejores promedios en EVD</p>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart data={performanceByCityData} barSize={24}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="city" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 5]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
-                <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                {performanceByCityData.map((entry, index) => (
-                  <Cell
-                    key={index}
-                    fill={entry.promedio >= 4.5 ? "#10b981" : entry.promedio >= 4.0 ? "#3b82f6" : entry.promedio >= 3.0 ? "#71717a" : "#ef4444"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-3">
+            {filteredEvals
+              .filter((e: any) => e.score > 0)
+              .sort((a: any, b: any) => b.score - a.score)
+              .slice(0, 5)
+              .map((e: any, idx: number) => {
+                const colors = [
+                  "bg-yellow-500/20 text-yellow-600 border-yellow-500/30",
+                  "bg-slate-300/40 text-slate-600 border-slate-300/50",
+                  "bg-amber-600/20 text-amber-700 border-amber-600/30",
+                  "bg-brand-500/10 text-brand-600 border-brand-500/20",
+                  "bg-brand-500/10 text-brand-600 border-brand-500/20"
+                ];
+                const badges = ["🥇", "🥈", "🥉", "4.", "5."];
+                return (
+                  <div key={e.id} className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/10">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border", colors[idx] || "bg-muted text-muted-foreground")}>
+                        {badges[idx]}
+                      </span>
+                      <div className="overflow-hidden">
+                        <p className="font-semibold text-xs truncate text-foreground leading-normal">{e.collaborator}</p>
+                        <p className="text-[10px] text-muted-foreground truncate leading-normal">{e.position}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-brand-600 px-2 py-0.5 bg-brand-500/10 rounded-lg">
+                      {e.score.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            {filteredEvals.filter((e: any) => e.score > 0).length === 0 && (
+              <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">
+                No hay evaluaciones registradas.
+              </div>
+            )}
+          </div>
         </motion.div>
 
-        {/* Gráfico 3: Estado de Planes de Mejoramiento (PMI) */}
+        {/* Datos de Interes Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="rounded-xl border bg-card p-5"
+          className="rounded-xl border bg-card p-5 space-y-4"
         >
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="font-semibold">Estado de PMI</h3>
-              <p className="text-xs text-muted-foreground">Planes de mejoramiento requeridos</p>
+          <div>
+            <h3 className="font-semibold">Datos de Interés</h3>
+            <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl border bg-success-50/5 dark:bg-success-950/5 border-success-200/50 dark:border-success-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-success-700 dark:text-success-400 uppercase tracking-wider">Aprobación</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-success-600 dark:text-success-400 leading-none">
+                  {completedEvals > 0 ? ((aprobados / completedEvals) * 100).toFixed(0) : 0}%
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">Colaboradores aprobados</p>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setExpandedChart("pmi")}
-                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title="Expandir gráfico"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-              <Target className="w-5 h-5 text-muted-foreground" />
+
+            <div className="p-3 rounded-xl border bg-warning-50/5 dark:bg-warning-950/5 border-warning-200/50 dark:border-warning-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-warning-700 dark:text-warning-400 uppercase tracking-wider">Planes de Mejora</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-warning-600 dark:text-warning-400 leading-none">
+                  {completedEvals > 0 ? ((conPMI / completedEvals) * 100).toFixed(0) : 0}%
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">Requirieron PMI</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border bg-brand-50/5 dark:bg-brand-950/5 border-brand-200/50 dark:border-brand-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider">Promedio General</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-brand-600 dark:text-brand-400 leading-none">
+                  {avgScore.toFixed(2)}
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">Calificación promedio</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border bg-primary-50/5 dark:bg-primary-950/5 border-primary-200/50 dark:border-primary-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">Tasa Crítica</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-primary-600 dark:text-primary-400 leading-none">
+                  {completedEvals > 0 ? ((reprobados / completedEvals) * 100).toFixed(0) : 0}%
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">No aprobados</p>
+              </div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 220 : 160}>
-            <PieChart>
-              <Pie
-                data={pmiStatusDistribution}
-                cx="50%"
-                cy="50%"
-                innerRadius={40}
-                outerRadius={65}
-                paddingAngle={3}
-                dataKey="value"
-                label={({ name, value }) => value > 0 ? `${String(name || "").split(" ")[0]}: ${value}` : ""}
-              >
-                {pmiStatusDistribution.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} stroke="transparent" />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => [`${value} planes`, ""]} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 mt-2">
-            {pmiStatusDistribution.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                  <span className="text-muted-foreground text-xs">{item.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-xs">{item.value}</span>
-                  <span className="text-muted-foreground text-xs">
-                    ({pmiRequiredEvals.length > 0 ? ((item.value / pmiRequiredEvals.length) * 100).toFixed(0) : 0}%)
-                  </span>
-                </div>
-              </div>
-            ))}
+
+          <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Datos del Proceso</h4>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Total colaboradores:</span>
+              <span className="font-semibold text-foreground">{totalCollabs}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Evaluaciones realizadas:</span>
+              <span className="font-semibold text-foreground">{completedEvals}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Participación:</span>
+              <span className="font-semibold text-foreground">
+                {totalCollabs > 0 ? ((completedEvals / totalCollabs) * 100).toFixed(0) : 0}%
+              </span>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -968,36 +1016,32 @@ export default function DashboardPage() {
 
               <div>
                 <h3 className="text-lg font-bold text-foreground">
-                  {expandedChart === "area" && "Promedio por Área"}
+                  {expandedChart === "cargo" && "Promedio por Cargo"}
                   {expandedChart === "dist" && "Distribución de Resultados"}
                   {expandedChart === "trend" && "Tendencia Temporal"}
-                  {expandedChart === "radar" && "Desempeño de Competencias"}
+                  {expandedChart === "radar" && "Promedio por Categorías de Preguntas"}
                   {expandedChart === "desempeno" && "Niveles de Desempeño"}
-                  {expandedChart === "sede" && "Promedio por Sede / Ciudad"}
-                  {expandedChart === "pmi" && "Estado de Planes de Mejoramiento (PMI)"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {expandedChart === "area" && "Puntaje promedio obtenido agrupado por área organizativa"}
+                  {expandedChart === "cargo" && "Puntaje promedio obtenido agrupado por cargo de la empresa (Top 10)"}
                   {expandedChart === "dist" && `Distribución porcentual de las ${completedEvals} evaluaciones finalizadas`}
                   {expandedChart === "trend" && "Histórico mensual del volumen de evaluaciones y promedio general"}
-                  {expandedChart === "radar" && "Comparativa del promedio de competencias actual frente al periodo anterior"}
+                  {expandedChart === "radar" && "Promedio de calificación agrupado por categoría de pregunta"}
                   {expandedChart === "desempeno" && "Distribución de colaboradores por rango y escala oficial de calificación EVD"}
-                  {expandedChart === "sede" && "Puntaje promedio obtenido agrupado por ciudad de operación"}
-                  {expandedChart === "pmi" && "Porcentaje y estado de ejecución de los planes de mejoramiento requeridos"}
                 </p>
               </div>
 
               <div className="w-full flex items-center justify-center min-h-[300px] md:min-h-[400px]">
-                {expandedChart === "area" && (
+                {expandedChart === "cargo" && (
                   <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={areaAverageData} barSize={36}>
+                    <BarChart data={positionAverageData} barSize={36}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="area" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="position" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
                         <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                        {areaAverageData.map((entry, index) => (
+                        {positionAverageData.map((entry, index) => (
                           <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
                         ))}
                       </Bar>
@@ -1067,14 +1111,13 @@ export default function DashboardPage() {
 
                 {expandedChart === "radar" && (
                   <ResponsiveContainer width="100%" height={400}>
-                    <RadarChart data={radarData}>
+                    <RadarChart data={displayCategoriesData}>
                       <PolarGrid stroke="hsl(var(--border))" />
                       <PolarAngleAxis dataKey="category" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                       <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-                      <Radar name="Actual" dataKey="actual" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} strokeWidth={2.5}>
-                        <LabelList dataKey="actual" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                      <Radar name="Promedio" dataKey="promedio" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} strokeWidth={2.5}>
+                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
                       </Radar>
-                      <Radar name="Anterior" dataKey="anterior" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} strokeWidth={2} strokeDasharray="4 4" />
                       <Legend wrapperStyle={{ fontSize: "12px" }} />
                     </RadarChart>
                   </ResponsiveContainer>
@@ -1107,68 +1150,6 @@ export default function DashboardPage() {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                )}
-
-                {expandedChart === "sede" && (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={performanceByCityData} barSize={32}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="city" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
-                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                        {performanceByCityData.map((entry, index) => (
-                          <Cell
-                            key={index}
-                            fill={entry.promedio >= 4.5 ? "#10b981" : entry.promedio >= 4.0 ? "#3b82f6" : entry.promedio >= 3.0 ? "#71717a" : "#ef4444"}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-
-                {expandedChart === "pmi" && (
-                  <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
-                    <div className="w-full md:w-2/3 h-[280px] md:h-[350px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pmiStatusDistribution}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={95}
-                            paddingAngle={3}
-                            dataKey="value"
-                            label={({ name, value }) => value > 0 ? `${String(name || "").split(" ")[0]}: ${value}` : ""}
-                          >
-                            {pmiStatusDistribution.map((entry, index) => (
-                              <Cell key={index} fill={entry.color} stroke="transparent" />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => [`${value} planes`, ""]} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="w-full md:w-1/3 space-y-2">
-                      {pmiStatusDistribution.map((item) => (
-                        <div key={item.name} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
-                            <span className="text-muted-foreground">{item.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2 font-semibold">
-                            <span>{item.value}</span>
-                            <span className="text-muted-foreground text-xs">
-                              ({pmiRequiredEvals.length > 0 ? ((item.value / pmiRequiredEvals.length) * 100).toFixed(0) : 0}%)
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 )}
               </div>
             </motion.div>

@@ -96,6 +96,7 @@ export async function getDashboardStats() {
         pmi_status: res ? res.pmi_status : null,
         pmi_required: res ? res.pmi_required : false,
         score: Number(res?.overall_average || 0),
+        category_scores: res ? res.category_scores : null,
         date: e.created_at,
         year: e.evaluation_year
       };

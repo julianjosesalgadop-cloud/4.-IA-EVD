@@ -177,7 +177,7 @@ export default function LoginPage() {
           © 2026 Flota Sugamuxi S.A. · EVD v1.0
         </p>
         <p className="text-center text-[10px] text-brand-600 font-bold mt-1 uppercase tracking-wider">
-          Desarrollado Por Flota Sugamuxi S.A.
+          Desarrollado Por Julián Salgado | Flota Sugamuxi S.A.
         </p>
       </div>
     </motion.div>
