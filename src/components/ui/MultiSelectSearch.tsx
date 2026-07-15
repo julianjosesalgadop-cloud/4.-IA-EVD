@@ -60,7 +60,7 @@ export default function MultiSelectSearch({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full space-y-1">
+    <div ref={containerRef} className={cn("relative w-full space-y-1", isOpen && "z-30")}>
       {label && <label className="text-[10px] font-bold text-muted-foreground uppercase">{label}</label>}
       <div
         onClick={() => setIsOpen(!isOpen)}
@@ -73,19 +73,26 @@ export default function MultiSelectSearch({
           {selectedValues.length === 0 ? (
             <span className="text-muted-foreground truncate">{placeholder}</span>
           ) : (
-            selectedValues.map(val => (
-              <span
-                key={val}
-                className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleOption(val);
-                }}
-              >
-                {val}
-                <X className="h-2.5 w-2.5 hover:text-primary-700 transition-colors" />
-              </span>
-            ))
+            <>
+              {selectedValues.slice(0, 2).map(val => (
+                <span
+                  key={val}
+                  className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleOption(val);
+                  }}
+                >
+                  {val}
+                  <X className="h-2.5 w-2.5 hover:text-primary-700 transition-colors" />
+                </span>
+              ))}
+              {selectedValues.length > 2 && (
+                <span className="flex items-center gap-1 rounded-lg bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground border">
+                  y otras ({selectedValues.length - 2})
+                </span>
+              )}
+            </>
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
