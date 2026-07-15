@@ -13,6 +13,8 @@ import { cn, getResultLabel, getStatusLabel, formatDate, formatDateTime, formatS
 import { toast } from "sonner";
 
 import { getEvaluations, getEvaluationById } from "@/app/actions/evaluations";
+import { getAreas, getPositions } from "@/app/actions/config";
+import MultiSelectSearch from "@/components/ui/MultiSelectSearch";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -33,11 +35,13 @@ const RESULT_STYLE: Record<string, string> = {
 export default function EvaluacionesPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [filterArea, setFilterArea] = useState("");
-  const [filterPosition, setFilterPosition] = useState("");
+  const [filterAreas, setFilterAreas] = useState<string[]>([]);
+  const [filterPositions, setFilterPositions] = useState<string[]>([]);
   const [filterResult, setFilterResult] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [dbAreas, setDbAreas] = useState<any[]>([]);
+  const [dbPositions, setDbPositions] = useState<any[]>([]);
   const [sortField, setSortField] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
@@ -577,7 +581,20 @@ export default function EvaluacionesPage() {
       }
       setIsLoading(false);
     }
+    async function loadConfigData() {
+      try {
+        const [areasRes, positionsRes] = await Promise.all([
+          getAreas(),
+          getPositions()
+        ]);
+        if (areasRes) setDbAreas(areasRes);
+        if (positionsRes) setDbPositions(positionsRes);
+      } catch (err) {
+        console.error("Error loading config on evaluations mount:", err);
+      }
+    }
     loadEvaluations();
+    loadConfigData();
   }, []);
 
   const handleSort = (field: string) => {
@@ -591,8 +608,8 @@ export default function EvaluacionesPage() {
 
   const filtered = evaluations.filter((e) => {
     const matchSearch = !search || e.collaborator.toLowerCase().includes(search.toLowerCase());
-    const matchArea = !filterArea || (e.area || "").toLowerCase().includes(filterArea.toLowerCase());
-    const matchPosition = !filterPosition || (e.position || "").toLowerCase().includes(filterPosition.toLowerCase());
+    const matchArea = filterAreas.length === 0 || filterAreas.includes(e.area);
+    const matchPosition = filterPositions.length === 0 || filterPositions.includes(e.position);
     const matchResult = !filterResult || 
       (filterResult === "plan_mejoramiento" 
         ? (e.result === "plan_mejoramiento" || e.has_pmi) 
@@ -769,22 +786,22 @@ export default function EvaluacionesPage() {
             className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            value={filterArea}
-            onChange={(e) => { setFilterArea(e.target.value); setPage(1); }}
-            placeholder="Buscar por área..."
-            className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+        <div className="flex items-end">
+          <MultiSelectSearch
+            options={dbAreas}
+            selectedValues={filterAreas}
+            onChange={(vals) => { setFilterAreas(vals); setPage(1); }}
+            placeholder="Todas las áreas"
+            searchPlaceholder="Buscar área..."
           />
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            value={filterPosition}
-            onChange={(e) => { setFilterPosition(e.target.value); setPage(1); }}
-            placeholder="Buscar por cargo..."
-            className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+        <div className="flex items-end">
+          <MultiSelectSearch
+            options={dbPositions}
+            selectedValues={filterPositions}
+            onChange={(vals) => { setFilterPositions(vals); setPage(1); }}
+            placeholder="Todos los cargos"
+            searchPlaceholder="Buscar cargo..."
           />
         </div>
         <div className="flex items-center gap-2">
@@ -817,8 +834,8 @@ export default function EvaluacionesPage() {
         <button
           onClick={() => {
             setSearch("");
-            setFilterArea("");
-            setFilterPosition("");
+            setFilterAreas([]);
+            setFilterPositions([]);
             setStartDate("");
             setEndDate("");
             setFilterResult("");

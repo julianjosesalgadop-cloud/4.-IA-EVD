@@ -17,6 +17,7 @@ import { cn, formatNumber, formatScore, getResultLabel, formatDate, formatDateTi
 import Link from "next/link";
 import { getDashboardStats } from "@/app/actions/dashboard";
 import { getAreas, getPositions } from "@/app/actions/config";
+import MultiSelectSearch from "@/components/ui/MultiSelectSearch";
 
 // ---- Mock Data ----
 // ---- Helper mapping function for KPIs ----
@@ -343,8 +344,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [selectedArea, setSelectedArea] = useState("");
-  const [selectedPosition, setSelectedPosition] = useState("");
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedResult, setSelectedResult] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
@@ -391,8 +392,8 @@ export default function DashboardPage() {
       limitDate.setHours(23, 59, 59, 999);
       if (new Date(ev.date) > limitDate) return false;
     }
-    if (selectedArea && ev.area !== selectedArea) return false;
-    if (selectedPosition && ev.position !== selectedPosition) return false;
+    if (selectedAreas.length > 0 && !selectedAreas.includes(ev.area)) return false;
+    if (selectedPositions.length > 0 && !selectedPositions.includes(ev.position)) return false;
     if (selectedResult && ev.result !== selectedResult) return false;
     return true;
   }) : [];
@@ -638,38 +639,32 @@ export default function DashboardPage() {
             className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase">Área</label>
-          <select
-            value={selectedArea}
-            onChange={(e) => setSelectedArea(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
-          >
-            <option value="">Todas las áreas</option>
-            {dbAreas.map((area) => (
-              <option key={area.id} value={area.name}>{area.name}</option>
-            ))}
-          </select>
+        <div className="flex items-end">
+          <MultiSelectSearch
+            options={dbAreas}
+            selectedValues={selectedAreas}
+            onChange={setSelectedAreas}
+            placeholder="Todas las áreas"
+            searchPlaceholder="Buscar área..."
+            label="Área"
+          />
         </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase">Cargo</label>
-          <select
-            value={selectedPosition}
-            onChange={(e) => setSelectedPosition(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
-          >
-            <option value="">Todos los cargos</option>
-            {dbPositions.map((pos) => (
-              <option key={pos.id} value={pos.name}>{pos.name}</option>
-            ))}
-          </select>
+        <div className="flex items-end">
+          <MultiSelectSearch
+            options={dbPositions}
+            selectedValues={selectedPositions}
+            onChange={setSelectedPositions}
+            placeholder="Todos los cargos"
+            searchPlaceholder="Buscar cargo..."
+            label="Cargo"
+          />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-muted-foreground uppercase">Resultado</label>
           <select
             value={selectedResult}
             onChange={(e) => setSelectedResult(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px]"
           >
             <option value="">Todos los resultados</option>
             <option value="aprobado">Aprobados</option>
@@ -682,11 +677,11 @@ export default function DashboardPage() {
             onClick={() => {
               setStartDate("");
               setEndDate("");
-              setSelectedArea("");
-              setSelectedPosition("");
+              setSelectedAreas([]);
+              setSelectedPositions([]);
               setSelectedResult("");
             }}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-muted hover:bg-accent transition-colors font-medium text-muted-foreground hover:text-foreground h-9"
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-muted hover:bg-accent transition-colors font-semibold text-muted-foreground hover:text-foreground h-[38px]"
           >
             Limpiar filtros
           </button>

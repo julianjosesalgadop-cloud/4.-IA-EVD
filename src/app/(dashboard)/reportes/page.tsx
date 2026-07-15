@@ -5,6 +5,7 @@ import { FileBarChart2, Download, FileSpreadsheet, FileText, Filter, TrendingUp,
 import { toast } from "sonner";
 import { getAreas, getPositions } from "@/app/actions/config";
 import { getEvaluations } from "@/app/actions/evaluations";
+import MultiSelectSearch from "@/components/ui/MultiSelectSearch";
 import { getPMIs } from "@/app/actions/pmi";
 import { formatScore, getResultLabel, getResultColor, compressImageIfNeeded } from "@/lib/utils";
 import * as XLSX from "xlsx";
@@ -97,8 +98,8 @@ export default function ReportesPage() {
   });
 
   // Filters
-  const [selectedArea, setSelectedArea] = useState("");
-  const [selectedPosition, setSelectedPosition] = useState("");
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedResult, setSelectedResult] = useState("");
   const [startDate, setStartDate] = useState("");
 
@@ -154,19 +155,19 @@ export default function ReportesPage() {
     setIsSearching(true);
     let results = [...evaluations];
 
-    // Filter by Area Name (partial text search)
-    if (selectedArea) {
+    // Filter by Area Name (multiple selections)
+    if (selectedAreas.length > 0) {
       results = results.filter((item) => {
         const areaName = item.collaborator?.areas?.name || item.collaborator?.area?.name || "";
-        return areaName.toLowerCase().includes(selectedArea.toLowerCase());
+        return selectedAreas.includes(areaName);
       });
     }
 
-    // Filter by Cargo Name (partial text search)
-    if (selectedPosition) {
+    // Filter by Cargo Name (multiple selections)
+    if (selectedPositions.length > 0) {
       results = results.filter((item) => {
         const positionName = item.collaborator?.positions?.name || item.collaborator?.position?.name || "";
-        return positionName.toLowerCase().includes(selectedPosition.toLowerCase());
+        return selectedPositions.includes(positionName);
       });
     }
 
@@ -812,25 +813,25 @@ export default function ReportesPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Área</label>
-            <input 
-              type="text"
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
-              placeholder="Buscar por área..."
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          <div className="space-y-1.5 flex items-end">
+            <MultiSelectSearch
+              options={areas}
+              selectedValues={selectedAreas}
+              onChange={setSelectedAreas}
+              placeholder="Todas las áreas"
+              searchPlaceholder="Buscar área..."
+              label="Área"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Cargo</label>
-            <input 
-              type="text"
-              value={selectedPosition}
-              onChange={(e) => setSelectedPosition(e.target.value)}
-              placeholder="Buscar por cargo..."
-              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          <div className="space-y-1.5 flex items-end">
+            <MultiSelectSearch
+              options={positions}
+              selectedValues={selectedPositions}
+              onChange={setSelectedPositions}
+              placeholder="Todos los cargos"
+              searchPlaceholder="Buscar cargo..."
+              label="Cargo"
             />
           </div>
           
