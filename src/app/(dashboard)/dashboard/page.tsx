@@ -639,7 +639,7 @@ export default function DashboardPage() {
             className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
           />
         </div>
-        <div className="flex items-end">
+        <div>
           <MultiSelectSearch
             options={dbAreas}
             selectedValues={selectedAreas}
@@ -649,7 +649,7 @@ export default function DashboardPage() {
             label="Área"
           />
         </div>
-        <div className="flex items-end">
+        <div>
           <MultiSelectSearch
             options={dbPositions}
             selectedValues={selectedPositions}

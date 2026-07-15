@@ -813,7 +813,7 @@ export default function ReportesPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="space-y-1.5 flex items-end">
+          <div className="space-y-1.5">
             <MultiSelectSearch
               options={areas}
               selectedValues={selectedAreas}
@@ -824,7 +824,7 @@ export default function ReportesPage() {
             />
           </div>
 
-          <div className="space-y-1.5 flex items-end">
+          <div className="space-y-1.5">
             <MultiSelectSearch
               options={positions}
               selectedValues={selectedPositions}

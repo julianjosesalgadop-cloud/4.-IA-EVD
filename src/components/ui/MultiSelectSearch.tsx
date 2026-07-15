@@ -65,37 +65,22 @@ export default function MultiSelectSearch({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex min-h-[38px] w-full items-center justify-between rounded-xl border bg-background px-3 py-1.5 text-xs shadow-sm cursor-pointer focus-within:ring-2 focus-within:ring-primary/20",
+          "flex h-[38px] w-full items-center justify-between rounded-xl border bg-background px-3 text-xs shadow-sm cursor-pointer focus-within:ring-2 focus-within:ring-primary/20 overflow-hidden",
           isOpen && "border-primary/50"
         )}
       >
-        <div className="flex flex-wrap gap-1 items-center max-w-[90%] select-none">
+        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden select-none">
           {selectedValues.length === 0 ? (
             <span className="text-muted-foreground truncate">{placeholder}</span>
+          ) : selectedValues.length === 1 ? (
+            <span className="truncate text-[11px] font-medium text-foreground">{selectedValues[0]}</span>
           ) : (
-            <>
-              {selectedValues.slice(0, 2).map(val => (
-                <span
-                  key={val}
-                  className="flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary border border-primary/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleOption(val);
-                  }}
-                >
-                  {val}
-                  <X className="h-2.5 w-2.5 hover:text-primary-700 transition-colors" />
-                </span>
-              ))}
-              {selectedValues.length > 2 && (
-                <span className="flex items-center gap-1 rounded-lg bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground border">
-                  y otras ({selectedValues.length - 2})
-                </span>
-              )}
-            </>
+            <span className="truncate text-[11px] font-medium text-foreground">
+              {selectedValues[0]} <span className="text-muted-foreground font-normal">y {selectedValues.length - 1} más</span>
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
           {selectedValues.length > 0 && (
             <X
               onClick={clearSelection}

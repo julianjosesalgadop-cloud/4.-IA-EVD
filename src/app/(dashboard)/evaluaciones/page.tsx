@@ -786,7 +786,7 @@ export default function EvaluacionesPage() {
             className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
         </div>
-        <div className="flex items-end">
+        <div>
           <MultiSelectSearch
             options={dbAreas}
             selectedValues={filterAreas}
@@ -795,7 +795,7 @@ export default function EvaluacionesPage() {
             searchPlaceholder="Buscar área..."
           />
         </div>
-        <div className="flex items-end">
+        <div>
           <MultiSelectSearch
             options={dbPositions}
             selectedValues={filterPositions}
