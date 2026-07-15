@@ -177,7 +177,6 @@ export default function EvaluationDetailPage() {
       const collabInfo = [
         ["Nombre Completo:", evaluation.collaborator?.full_name || "N/A", "Documento:", `${evaluation.collaborator?.document_type || "CC"} ${evaluation.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", evaluation.collaborator?.positions?.name || evaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", evaluation.collaborator?.areas?.name || evaluation.collaborator?.area?.name || "N/A"],
-        ["Sede / Ciudad:", evaluation.collaborator?.workplace_city || evaluation.collaborator?.workplace || "N/A", "Fecha de Ingreso:", evaluation.collaborator?.hire_date ? new Date(evaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A"],
         ["Estado:", evaluation.collaborator?.status || "N/A", "", ""]
       ];
       
@@ -206,7 +205,7 @@ export default function EvaluationDetailPage() {
       posY += 4;
       
       const evaluatorInfo = [
-        ["Nombre del Evaluador:", evaluation.evaluator ? `${evaluation.evaluator.first_name} ${evaluation.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", evaluation.evaluator?.cargo || evaluation.evaluator?.role?.display_name || evaluation.evaluator?.roles?.display_name || "N/A"],
+        ["Nombre del Evaluador:", evaluation.evaluator ? `${evaluation.evaluator.first_name} ${evaluation.evaluator.last_name}` : "N/A", "Cargo Actual:", evaluation.evaluator?.cargo || evaluation.evaluator?.role?.display_name || evaluation.evaluator?.roles?.display_name || "N/A"],
         ["Correo Electrónico:", evaluation.evaluator?.email || "N/A", "Versión del Proceso EVD:", evaluation.version?.name || "N/A"]
       ];
       

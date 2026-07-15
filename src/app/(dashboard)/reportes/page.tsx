@@ -154,18 +154,20 @@ export default function ReportesPage() {
     setIsSearching(true);
     let results = [...evaluations];
 
-    // Filter by Area Name
+    // Filter by Area Name (partial text search)
     if (selectedArea) {
-      results = results.filter(
-        (item) => item.collaborator?.areas?.name === selectedArea || item.collaborator?.area?.name === selectedArea
-      );
+      results = results.filter((item) => {
+        const areaName = item.collaborator?.areas?.name || item.collaborator?.area?.name || "";
+        return areaName.toLowerCase().includes(selectedArea.toLowerCase());
+      });
     }
 
-    // Filter by Cargo Name
+    // Filter by Cargo Name (partial text search)
     if (selectedPosition) {
-      results = results.filter(
-        (item) => item.collaborator?.positions?.name === selectedPosition || item.collaborator?.position?.name === selectedPosition
-      );
+      results = results.filter((item) => {
+        const positionName = item.collaborator?.positions?.name || item.collaborator?.position?.name || "";
+        return positionName.toLowerCase().includes(selectedPosition.toLowerCase());
+      });
     }
 
     // Filter by Result
@@ -812,30 +814,24 @@ export default function ReportesPage() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Área</label>
-            <select 
+            <input 
+              type="text"
               value={selectedArea}
               onChange={(e) => setSelectedArea(e.target.value)}
+              placeholder="Buscar por área..."
               className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              <option value="">Todas las áreas</option>
-              {areas.map((area) => (
-                <option key={area.id} value={area.name}>{area.name}</option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Cargo</label>
-            <select 
+            <input 
+              type="text"
               value={selectedPosition}
               onChange={(e) => setSelectedPosition(e.target.value)}
+              placeholder="Buscar por cargo..."
               className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              <option value="">Todos los cargos</option>
-              {positions.map((pos) => (
-                <option key={pos.id} value={pos.name}>{pos.name}</option>
-              ))}
-            </select>
+            />
           </div>
           
           <div className="space-y-1.5">

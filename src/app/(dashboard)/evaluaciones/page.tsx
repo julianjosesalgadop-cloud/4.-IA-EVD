@@ -33,6 +33,8 @@ const RESULT_STYLE: Record<string, string> = {
 export default function EvaluacionesPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [filterArea, setFilterArea] = useState("");
+  const [filterPosition, setFilterPosition] = useState("");
   const [filterResult, setFilterResult] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -180,7 +182,6 @@ export default function EvaluacionesPage() {
       const collabInfo = [
         ["Nombre Completo:", evalData.collaborator?.full_name || "N/A", "Documento:", `${evalData.collaborator?.document_type || "CC"} ${evalData.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", evalData.collaborator?.positions?.name || evalData.collaborator?.position?.name || "N/A", "Área / Departamento:", evalData.collaborator?.areas?.name || evalData.collaborator?.area?.name || "N/A"],
-        ["Sede / Ciudad:", evalData.collaborator?.workplace_city || evalData.collaborator?.workplace || "N/A", "Fecha de Ingreso:", formatPDFDate(evalData.collaborator?.hire_date)],
         ["Estado:", evalData.collaborator?.status || "N/A", "", ""]
       ];
       
@@ -209,7 +210,7 @@ export default function EvaluacionesPage() {
       posY += 4;
       
       const evaluatorInfo = [
-        ["Nombre del Evaluador:", evalData.evaluator ? `${evalData.evaluator.first_name} ${evalData.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", evalData.evaluator?.cargo || evalData.evaluator?.role?.display_name || evalData.evaluator?.roles?.display_name || "N/A"],
+        ["Nombre del Evaluador:", evalData.evaluator ? `${evalData.evaluator.first_name} ${evalData.evaluator.last_name}` : "N/A", "Cargo Actual:", evalData.evaluator?.cargo || evalData.evaluator?.role?.display_name || evalData.evaluator?.roles?.display_name || "N/A"],
         ["Correo Electrónico:", evalData.evaluator?.email || "N/A", "Versión del Proceso EVD:", evalData.version?.name || "N/A"]
       ];
       
@@ -590,6 +591,8 @@ export default function EvaluacionesPage() {
 
   const filtered = evaluations.filter((e) => {
     const matchSearch = !search || e.collaborator.toLowerCase().includes(search.toLowerCase());
+    const matchArea = !filterArea || (e.area || "").toLowerCase().includes(filterArea.toLowerCase());
+    const matchPosition = !filterPosition || (e.position || "").toLowerCase().includes(filterPosition.toLowerCase());
     const matchResult = !filterResult || 
       (filterResult === "plan_mejoramiento" 
         ? (e.result === "plan_mejoramiento" || e.has_pmi) 
@@ -609,7 +612,7 @@ export default function EvaluacionesPage() {
       if (evalDate > end) matchDate = false;
     }
     
-    return matchSearch && matchResult && matchDate;
+    return matchSearch && matchResult && matchDate && matchArea && matchPosition;
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -756,8 +759,8 @@ export default function EvaluacionesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search}
@@ -766,12 +769,30 @@ export default function EvaluacionesPage() {
             className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
         </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={filterArea}
+            onChange={(e) => { setFilterArea(e.target.value); setPage(1); }}
+            placeholder="Buscar por área..."
+            className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+          />
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={filterPosition}
+            onChange={(e) => { setFilterPosition(e.target.value); setPage(1); }}
+            placeholder="Buscar por cargo..."
+            className="w-full h-10 pl-10 pr-4 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+          />
+        </div>
         <div className="flex items-center gap-2">
           <input
             type="date"
             value={startDate}
             onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-            className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-muted-foreground"
+            className="w-full h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-muted-foreground"
             title="Fecha Inicio"
           />
           <span className="text-muted-foreground text-xs">a</span>
@@ -779,20 +800,34 @@ export default function EvaluacionesPage() {
             type="date"
             value={endDate}
             onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-            className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-muted-foreground"
+            className="w-full h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-muted-foreground"
             title="Fecha Fin"
           />
         </div>
         <select
           value={filterResult}
           onChange={(e) => { setFilterResult(e.target.value); setPage(1); }}
-          className="h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="w-full h-10 px-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="">Todos los resultados</option>
           <option value="aprobado">Aprobado</option>
           <option value="plan_mejoramiento">Plan de Mejoramiento</option>
           <option value="no_aprobado">No Aprobado</option>
         </select>
+        <button
+          onClick={() => {
+            setSearch("");
+            setFilterArea("");
+            setFilterPosition("");
+            setStartDate("");
+            setEndDate("");
+            setFilterResult("");
+            setPage(1);
+          }}
+          className="w-full h-10 rounded-xl border bg-muted hover:bg-accent font-semibold text-xs text-muted-foreground hover:text-foreground transition-all"
+        >
+          Limpiar filtros
+        </button>
       </div>
 
       {/* Table */}

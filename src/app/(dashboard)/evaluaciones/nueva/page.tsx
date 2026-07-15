@@ -464,7 +464,6 @@ function NuevaEvaluacionContent() {
       const collabInfo = [
         ["Nombre Completo:", savedEvaluation.collaborator?.full_name || "N/A", "Documento:", `${savedEvaluation.collaborator?.document_type || "CC"} ${savedEvaluation.collaborator?.document_number || "N/A"}`],
         ["Cargo Actual:", savedEvaluation.collaborator?.positions?.name || savedEvaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", savedEvaluation.collaborator?.areas?.name || savedEvaluation.collaborator?.area?.name || "N/A"],
-        ["Sede / Ciudad:", savedEvaluation.collaborator?.workplace_city || savedEvaluation.collaborator?.workplace || "N/A", "Fecha de Ingreso:", formatPDFDate(savedEvaluation.collaborator?.hire_date)],
         ["Estado:", savedEvaluation.collaborator?.status || "N/A", "", ""]
       ];
       
@@ -493,7 +492,7 @@ function NuevaEvaluacionContent() {
       posY += 4;
       
       const evaluatorInfo = [
-        ["Nombre del Evaluador:", savedEvaluation.evaluator ? `${savedEvaluation.evaluator.first_name} ${savedEvaluation.evaluator.last_name}` : "N/A", "Cargo/Rol del Evaluador:", savedEvaluation.evaluator?.cargo || savedEvaluation.evaluator?.role?.display_name || savedEvaluation.evaluator?.roles?.display_name || "N/A"],
+        ["Nombre del Evaluador:", savedEvaluation.evaluator ? `${savedEvaluation.evaluator.first_name} ${savedEvaluation.evaluator.last_name}` : "N/A", "Cargo Actual:", savedEvaluation.evaluator?.cargo || savedEvaluation.evaluator?.role?.display_name || savedEvaluation.evaluator?.roles?.display_name || "N/A"],
         ["Correo Electrónico:", savedEvaluation.evaluator?.email || "N/A", "Versión del Proceso EVD:", savedEvaluation.version?.name || "N/A"]
       ];
       
@@ -1418,13 +1417,32 @@ function NuevaEvaluacionContent() {
       {/* Success Modal */}
       <AnimatePresence>
         {showSuccessModal && savedEvaluation && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div 
+            onClick={() => {
+              setShowSuccessModal(false);
+              router.push("/evaluaciones");
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 cursor-pointer"
+          >
             <motion.div
+              onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl space-y-6 text-foreground"
+              className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl space-y-6 text-foreground cursor-default relative"
             >
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/evaluaciones");
+                }}
+                className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
               <div className="text-center space-y-2">
                 <div className="mx-auto w-12 h-12 rounded-full bg-success-100 dark:bg-success-950/30 flex items-center justify-center text-success-600 dark:text-success-400">
                   <CheckCircle2 className="w-8 h-8" />
