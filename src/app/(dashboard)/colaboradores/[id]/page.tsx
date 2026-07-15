@@ -155,6 +155,10 @@ export default function CollaboratorDetailPage() {
                   <p className="font-medium capitalize">{collaborator.contract_type?.replace('_', ' ') || "—"}</p>
                 </div>
                 <div>
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Tipo de Nómina</p>
+                  <p className="font-medium">{collaborator.payroll_type || "—"}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground text-xs uppercase tracking-wide">Fecha de Ingreso</p>
                   <p className="font-medium flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5" />

@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { getAreas, getPositions } from "@/app/actions/config";
 import { getProfiles } from "@/app/actions/admin";
 import { getCollaboratorFieldsConfig } from "@/app/actions/fields";
-import { DEFAULT_FIELDS } from "@/lib/constants";
+import { DEFAULT_FIELDS, PAYROLL_TYPES } from "@/lib/constants";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 // ---- Wizard Steps ----
@@ -114,6 +114,8 @@ function buildStep2Schema(fields: any[]) {
   } else {
     shape.hire_date = z.string().optional().or(z.literal(""));
   }
+
+  shape.payroll_type = z.string().optional().or(z.literal(""));
 
   return z.object(shape);
 }
@@ -334,23 +336,41 @@ function StepLaboral({
         )}
       </div>
 
-      {isVisible("status") && (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {isVisible("status") && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              {getLabel("status", "Estado")} {isRequired("status") ? "*" : ""}
+            </label>
+            <select
+              {...register("status")}
+              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+              <option value="vacaciones">Vacaciones</option>
+              <option value="incapacidad">Incapacidad</option>
+            </select>
+            {errors.status?.message && <p className="text-danger-500 text-xs">{errors.status.message.toString()}</p>}
+          </div>
+        )}
+
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">
-            {getLabel("status", "Estado")} {isRequired("status") ? "*" : ""}
-          </label>
+          <label className="text-sm font-medium">Tipo de Nómina</label>
           <select
-            {...register("status")}
+            {...register("payroll_type")}
             className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
-            <option value="vacaciones">Vacaciones</option>
-            <option value="incapacidad">Incapacidad</option>
+            <option value="">Seleccionar tipo nómina...</option>
+            {PAYROLL_TYPES.map((pt) => (
+              <option key={pt} value={pt}>
+                {pt}
+              </option>
+            ))}
           </select>
-          {errors.status?.message && <p className="text-danger-500 text-xs">{errors.status.message.toString()}</p>}
+          {errors.payroll_type?.message && <p className="text-danger-500 text-xs">{errors.payroll_type.message.toString()}</p>}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -591,6 +611,10 @@ export default function NuevoColaboradorPage() {
                         <span className="font-medium capitalize">{formData.status || "Activo"}</span>
                       </div>
                     )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Tipo de Nómina:</span>
+                      <span className="font-medium">{formData.payroll_type || "—"}</span>
+                    </div>
                     {isVisible("workplace_city") && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">{getLabel("workplace_city", "Sede / Ciudad")}:</span>

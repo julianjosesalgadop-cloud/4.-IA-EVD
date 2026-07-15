@@ -10,6 +10,7 @@ import { getAreas, getPositions } from "@/app/actions/config";
 import { getCollaborators } from "@/app/actions/collaborators";
 import { formatDate, getStatusLabel } from "@/lib/utils";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PAYROLL_TYPES } from "@/lib/constants";
 
 const statusOptions = [
   { value: "activo", label: "Activo" },
@@ -53,6 +54,7 @@ export default function CollaboratorEditPage() {
     workplace_city: "",
     workplace: "",
     contract_type: "",
+    payroll_type: "",
     hire_date: "",
     status: "activo",
     immediate_boss_id: "",
@@ -92,6 +94,7 @@ export default function CollaboratorEditPage() {
             workplace_city: c.workplace_city || "",
             workplace: c.workplace || "",
             contract_type: c.contract_type || "",
+            payroll_type: c.payroll_type || "",
             hire_date: c.hire_date || "",
             status: c.status || "activo",
             immediate_boss_id: c.immediate_boss_id || "",
@@ -137,6 +140,7 @@ export default function CollaboratorEditPage() {
       workplace_city: form.workplace_city || null,
       workplace: form.workplace || null,
       contract_type: form.contract_type || null,
+      payroll_type: form.payroll_type || null,
       hire_date: form.hire_date || null,
       status: form.status,
       immediate_boss_id: form.immediate_boss_id || null,
@@ -341,6 +345,23 @@ export default function CollaboratorEditPage() {
                   ))}
                 </select>
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipo de Nómina</label>
+                <select
+                  value={form.payroll_type || ""}
+                  onChange={(e) => handleChange("payroll_type", e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2 bg-background"
+                >
+                  <option value="">Seleccionar...</option>
+                  {PAYROLL_TYPES.map((pt) => (
+                    <option key={pt} value={pt}>
+                      {pt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Fecha de Ingreso *</label>
                 <input

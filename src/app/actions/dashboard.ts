@@ -41,7 +41,7 @@ export async function getDashboardStats() {
     .select(`
       id, created_at, evaluation_year, status,
       result:evaluation_results(*),
-      collaborator:collaborators(full_name, workplace_city, positions(name), areas(name))
+      collaborator:collaborators(full_name, workplace_city, payroll_type, positions(name), areas(name))
     `)
     .order("created_at", { ascending: false });
     
@@ -74,6 +74,12 @@ export async function getDashboardStats() {
     .select("*", { count: "exact", head: true })
     .eq("pmi_required", true);
 
+  // Fetch all active collaborators with area and payroll type
+  const { data: collabsList } = await supabase
+    .from("collaborators")
+    .select("id, payroll_type, areas(name)")
+    .eq("status", "activo");
+
   return {
     kpis: {
       totalCollabs: totalCollabs || 0,
@@ -84,6 +90,11 @@ export async function getDashboardStats() {
       avgScore,
       pmisCount: pmisCount || 0,
     },
+    collaborators: (collabsList || []).map((c: any) => ({
+      id: c.id,
+      payroll_type: c.payroll_type || "Sin Especificar",
+      area: c.areas?.name || "Sin Área"
+    })),
     allEvaluations: allEvals.map((e: any) => {
       const res = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
       return {
@@ -92,6 +103,7 @@ export async function getDashboardStats() {
         workplace_city: e.collaborator?.workplace_city || "Sogamoso",
         position: e.collaborator?.positions?.name || "N/A",
         area: e.collaborator?.areas?.name || "N/A",
+        payroll_type: e.collaborator?.payroll_type || "N/A",
         result: res ? res.result : e.status,
         pmi_status: res ? res.pmi_status : null,
         pmi_required: res ? res.pmi_required : false,

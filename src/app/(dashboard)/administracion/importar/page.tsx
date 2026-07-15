@@ -20,6 +20,7 @@ interface CollaboratorRow {
   correo?: string;
   celular?: string;
   area: string;
+  payroll_type?: string;
   cargo: string;
   tipo_contrato?: string;
   fecha_ingreso: string;
@@ -240,7 +241,8 @@ export default function ImportarPage() {
           const contractType = (row["Tipo Contrato"] || "indefinido").toString().trim();
           const status = (row["Estado"] || "activo").toString().trim().toLowerCase();
 
-          const area = (row["Area"] || row["Área"] || row["Tipo Nomina"] || row["tipo_nomina"] || getAreaNameByCargo(cargo)).toString().trim();
+          const payrollType = (row["Tipo Nomina"] || row["tipo_nomina"] || "").toString().trim();
+          const area = (row["Area"] || row["Área"] || getAreaNameByCargo(cargo)).toString().trim();
 
           return {
             tipo_documento: "CC",
@@ -250,6 +252,7 @@ export default function ImportarPage() {
             correo: email,
             celular: phone,
             area: area,
+            payroll_type: payrollType,
             cargo: cargo,
             tipo_contrato: getContractType(contractType),
             fecha_ingreso: hireDate,
@@ -468,6 +471,7 @@ export default function ImportarPage() {
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Documento</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nombre</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Área</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Tipo Nómina</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Cargo</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Errores</th>
                     </tr>
@@ -486,6 +490,7 @@ export default function ImportarPage() {
                         <td className="px-3 py-2">{row.tipo_documento} {row.numero_documento}</td>
                         <td className="px-3 py-2 font-medium">{row.nombres} {row.apellidos}</td>
                         <td className="px-3 py-2">{row.area}</td>
+                        <td className="px-3 py-2">{row.payroll_type || "—"}</td>
                         <td className="px-3 py-2">{row.cargo}</td>
                         <td className="px-3 py-2 text-danger-500">{row.errors?.join("; ")}</td>
                       </tr>

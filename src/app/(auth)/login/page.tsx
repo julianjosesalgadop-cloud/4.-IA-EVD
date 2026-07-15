@@ -173,9 +173,6 @@ export default function LoginPage() {
         <p className="text-center text-slate-400 text-[10px] font-semibold leading-relaxed max-w-[280px] mx-auto">
           Sistema de uso exclusivo para personal autorizado de <span className="text-slate-500 font-bold">Flota Sugamuxi S.A.</span>
         </p>
-        <p className="text-center text-[9px] text-slate-300 font-semibold">
-          © 2026 Flota Sugamuxi S.A. · EVD v1.0
-        </p>
         <p className="text-center text-[10px] text-brand-600 font-bold mt-1 uppercase tracking-wider">
           Desarrollado Por Julián Salgado | Flota Sugamuxi S.A.
         </p>

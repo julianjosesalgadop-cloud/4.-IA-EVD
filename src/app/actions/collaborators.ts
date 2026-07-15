@@ -82,6 +82,7 @@ export async function createCollaborator(collaboratorData: any) {
     workplace_city: collaboratorData.workplace_city || null,
     workplace: collaboratorData.workplace || null,
     contract_type: collaboratorData.contract_type || null,
+    payroll_type: collaboratorData.payroll_type || null,
     hire_date: collaboratorData.hire_date || null,
     status: collaboratorData.status || "activo",
     immediate_boss_id: collaboratorData.immediate_boss_id || null,
@@ -324,6 +325,7 @@ export async function importCollaborators(rows: any[]) {
       birth_date: birthDate,
       termination_date: terminationDate,
       contract_type: contractType,
+      payroll_type: row["payroll_type"] || null,
       status: statusVal
     });
   }

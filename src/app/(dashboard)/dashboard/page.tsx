@@ -6,7 +6,7 @@ import {
   Users, ClipboardList, CheckCircle2, AlertCircle, TrendingUp,
   Clock, Target, BarChart3, Activity, AlertTriangle, ArrowUpRight,
   ArrowDownRight, Minus, Star, Eye, Maximize2, Minimize2,
-  ArrowUpDown, ChevronUp, ChevronDown
+  ArrowUpDown, ChevronUp, ChevronDown, GitBranch
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid,
@@ -449,35 +449,79 @@ export default function DashboardPage() {
     { mes: "Mar", evaluaciones: 0, promedio: 0 }
   ];
   
-  // Recalculate dynamic question categories average data
-  const categoryAverages: Record<string, { sum: number; count: number }> = {};
+  // Recalculate dynamic payroll type average EVD score data
+  const payrollAverages: Record<string, { sum: number; count: number }> = {};
   filteredEvals.forEach((e: any) => {
-    if (e.category_scores) {
-      Object.values(e.category_scores).forEach((cat: any) => {
-        if (cat && cat.name && typeof cat.average === "number") {
-          const catName = cat.name.trim();
-          if (!categoryAverages[catName]) {
-            categoryAverages[catName] = { sum: 0, count: 0 };
-          }
-          categoryAverages[catName].sum += cat.average;
-          categoryAverages[catName].count += 1;
-        }
-      });
+    if (e.payroll_type && e.payroll_type !== "N/A" && e.payroll_type !== "Sin Especificar") {
+      const pType = e.payroll_type.trim();
+      if (!payrollAverages[pType]) {
+        payrollAverages[pType] = { sum: 0, count: 0 };
+      }
+      payrollAverages[pType].sum += e.score;
+      payrollAverages[pType].count += 1;
     }
   });
 
-  const categoriesChartData = Object.entries(categoryAverages).map(([category, data]) => ({
-    category,
+  const payrollChartData = Object.entries(payrollAverages).map(([payroll, data]) => ({
+    payroll,
     promedio: Number((data.sum / data.count).toFixed(2)),
     evaluaciones: data.count
   })).sort((a, b) => b.promedio - a.promedio);
 
-  const displayCategoriesData = categoriesChartData.length > 0 ? categoriesChartData : [
-    { category: "Funciones del Cargo", promedio: 3.95, evaluaciones: 0 },
-    { category: "Seguridad Vial", promedio: 4.12, evaluaciones: 0 },
-    { category: "Servicio al Cliente", promedio: 3.78, evaluaciones: 0 },
-    { category: "Trabajo en Equipo", promedio: 3.91, evaluaciones: 0 },
-    { category: "SST", promedio: 3.85, evaluaciones: 0 }
+  const displayPayrollData = payrollChartData.length > 0 ? payrollChartData : [
+    { payroll: "COMISIÓN 1-2-3-4", promedio: 3.95, evaluaciones: 0 },
+    { payroll: "PLANTA (SOGAMOSO)", promedio: 4.12, evaluaciones: 0 },
+    { payroll: "AUXILIARES DE VENTA", promedio: 3.78, evaluaciones: 0 },
+    { payroll: "ADMINISTRATIVOS", promedio: 4.25, evaluaciones: 0 }
+  ];
+
+  // Calculate relation of payroll type by Area
+  const areaPayrollCounts: Record<string, Record<string, number>> = {};
+  const payrollTypesSet = new Set<string>();
+
+  const collabs = stats?.collaborators || [];
+  collabs.forEach((c: any) => {
+    const areaName = c.area || "Sin Área";
+    const payrollName = c.payroll_type || "Sin Especificar";
+    if (payrollName !== "Sin Especificar" && payrollName !== "N/A") {
+      payrollTypesSet.add(payrollName);
+    }
+    if (!areaPayrollCounts[areaName]) {
+      areaPayrollCounts[areaName] = {};
+    }
+    areaPayrollCounts[areaName][payrollName] = (areaPayrollCounts[areaName][payrollName] || 0) + 1;
+  });
+
+  // Unique list of payroll types found
+  const dynamicPayrollTypes = Array.from(payrollTypesSet).sort();
+
+  // Map to Recharts data array
+  const areaPayrollChartData = Object.entries(areaPayrollCounts).map(([area, counts]) => {
+    const obj: any = { area };
+    Object.entries(counts).forEach(([payroll, count]) => {
+      obj[payroll] = count;
+    });
+    return obj;
+  }).sort((a: any, b: any) => {
+    // Sort by total count descending
+    const sumA = Object.keys(a).filter(k => k !== "area").reduce((acc, k) => acc + (a[k] || 0), 0);
+    const sumB = Object.keys(b).filter(k => k !== "area").reduce((acc, k) => acc + (b[k] || 0), 0);
+    return sumB - sumA;
+  });
+
+  const PAYROLL_COLORS = [
+    "hsl(221.2 83.2% 53.3%)", // blue-600
+    "hsl(262.1 83.3% 57.8%)", // violet-600
+    "hsl(142.1 76.2% 36.3%)", // green-600
+    "hsl(38.2 92% 50%)",      // amber-500
+    "hsl(346.8 77.2% 49.8%)", // rose-600
+    "hsl(181.2 80% 40%)",     // teal-600
+    "hsl(25 95% 53%)",        // orange-500
+    "hsl(199 89% 48%)",       // sky-500
+    "hsl(292 84% 61%)",       // fuchsia-500
+    "hsl(162 76% 41%)",       // emerald-500
+    "hsl(326 80% 50%)",       // pink-500
+    "hsl(200 15% 43%)"        // slate-500
   ];
 
   // 1. Niveles de Desempeño
@@ -786,7 +830,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Question Categories Radar Chart */}
+        {/* Desempeño por Tipo de Nómina */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -795,11 +839,11 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="font-semibold">Categorías de Preguntas</h3>
-              <p className="text-xs text-muted-foreground">Promedio de calificación</p>
+              <h3 className="font-semibold">Desempeño por Tipo de Nómina</h3>
+              <p className="text-xs text-muted-foreground">Promedio general obtenido en EVD</p>
             </div>
             <button
-              onClick={() => setExpandedChart("radar")}
+              onClick={() => setExpandedChart("payroll")}
               className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               title="Expandir gráfico"
             >
@@ -807,18 +851,68 @@ export default function DashboardPage() {
             </button>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <RadarChart data={displayCategoriesData}>
-              <PolarGrid stroke="hsl(var(--border))" />
-              <PolarAngleAxis dataKey="category" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-              <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-              <Radar name="Promedio" dataKey="promedio" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2}>
+            <BarChart data={displayPayrollData} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="payroll" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
                 <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-              </Radar>
-              <Legend wrapperStyle={{ fontSize: "11px" }} />
-            </RadarChart>
+                {displayPayrollData.map((entry, index) => (
+                  <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
+                ))}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </motion.div>
       </div>
+
+      {/* Relación de Tipo de Nómina por Área */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.68 }}
+        className="rounded-xl border bg-card p-5"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-semibold">Relación de Tipo de Nómina por Área</h3>
+            <p className="text-xs text-muted-foreground">Distribución estructural de colaboradores activos</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setExpandedChart("payroll_area")}
+              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Expandir gráfico"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <GitBranch className="w-5 h-5 text-muted-foreground" />
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={areaPayrollChartData}
+            margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+            barSize={32}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="area" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: "11px" }} />
+            {dynamicPayrollTypes.map((pt, idx) => (
+              <Bar
+                key={pt}
+                dataKey={pt}
+                name={pt}
+                stackId="a"
+                fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </motion.div>
 
       {/* Charts Row 3 — Nuevos Gráficos Gerenciales */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1019,14 +1113,16 @@ export default function DashboardPage() {
                   {expandedChart === "cargo" && "Promedio por Cargo"}
                   {expandedChart === "dist" && "Distribución de Resultados"}
                   {expandedChart === "trend" && "Tendencia Temporal"}
-                  {expandedChart === "radar" && "Promedio por Categorías de Preguntas"}
+                  {expandedChart === "payroll" && "Desempeño por Tipo de Nómina"}
+                  {expandedChart === "payroll_area" && "Relación de Tipo de Nómina por Área"}
                   {expandedChart === "desempeno" && "Niveles de Desempeño"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {expandedChart === "cargo" && "Puntaje promedio obtenido agrupado por cargo de la empresa (Top 10)"}
                   {expandedChart === "dist" && `Distribución porcentual de las ${completedEvals} evaluaciones finalizadas`}
                   {expandedChart === "trend" && "Histórico mensual del volumen de evaluaciones y promedio general"}
-                  {expandedChart === "radar" && "Promedio de calificación agrupado por categoría de pregunta"}
+                  {expandedChart === "payroll" && "Calificación promedio agrupada por tipo de nómina del colaborador"}
+                  {expandedChart === "payroll_area" && "Distribución estructural de colaboradores activos según área y nómina"}
                   {expandedChart === "desempeno" && "Distribución de colaboradores por rango y escala oficial de calificación EVD"}
                 </p>
               </div>
@@ -1109,17 +1205,45 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 )}
 
-                {expandedChart === "radar" && (
+                {expandedChart === "payroll" && (
                   <ResponsiveContainer width="100%" height={400}>
-                    <RadarChart data={displayCategoriesData}>
-                      <PolarGrid stroke="hsl(var(--border))" />
-                      <PolarAngleAxis dataKey="category" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                      <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-                      <Radar name="Promedio" dataKey="promedio" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} strokeWidth={2.5}>
-                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                      </Radar>
+                    <BarChart data={displayPayrollData} barSize={40}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="payroll" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                        {displayPayrollData.map((entry, index) => (
+                          <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+
+                {expandedChart === "payroll_area" && (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart
+                      data={areaPayrollChartData}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                      barSize={40}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="area" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
                       <Legend wrapperStyle={{ fontSize: "12px" }} />
-                    </RadarChart>
+                      {dynamicPayrollTypes.map((pt, idx) => (
+                        <Bar
+                          key={pt}
+                          dataKey={pt}
+                          name={pt}
+                          stackId="a"
+                          fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
+                        />
+                      ))}
+                    </BarChart>
                   </ResponsiveContainer>
                 )}
 
