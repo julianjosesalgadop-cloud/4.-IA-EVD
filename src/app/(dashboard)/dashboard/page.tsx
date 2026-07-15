@@ -16,6 +16,7 @@ import {
 import { cn, formatNumber, formatScore, getResultLabel, formatDate, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 import { getDashboardStats } from "@/app/actions/dashboard";
+import { getAreas, getPositions } from "@/app/actions/config";
 
 // ---- Mock Data ----
 // ---- Helper mapping function for KPIs ----
@@ -343,16 +344,32 @@ export default function DashboardPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState("");
   const [selectedResult, setSelectedResult] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
+  const [dbAreas, setDbAreas] = useState<any[]>([]);
+  const [dbPositions, setDbPositions] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadStats() {
       const data = await getDashboardStats();
       setStats(data);
     }
+    async function loadConfigData() {
+      try {
+        const [areasRes, positionsRes] = await Promise.all([
+          getAreas(),
+          getPositions()
+        ]);
+        if (areasRes) setDbAreas(areasRes);
+        if (positionsRes) setDbPositions(positionsRes);
+      } catch (err) {
+        console.error("Error loading areas/positions on dashboard mount:", err);
+      }
+    }
     loadStats();
+    loadConfigData();
   }, []);
 
   useEffect(() => {
@@ -366,17 +383,6 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isExpanded, expandedChart]);
 
-  // Extract unique positions dynamically from database evaluations
-  const dynamicPositions = stats?.allEvaluations
-    ? (Array.from(new Set(stats.allEvaluations.map((e: any) => e.position).filter((p: any) => p && p !== "N/A"))) as string[]).sort()
-    : [];
-
-  // Extract unique areas dynamically from database evaluations
-  const dynamicAreas = stats?.allEvaluations
-    ? (Array.from(new Set(stats.allEvaluations.map((e: any) => e.area).filter((a: any) => a && a !== "N/A"))) as string[]).sort()
-    : [];
-  const displayAreasList = dynamicAreas.length > 0 ? dynamicAreas : ["Operaciones", "Mantenimiento", "Gestión Humana", "Comercial", "Financiera", "Tecnología"];
-
   // Filter evaluations based on user selections
   const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
     if (startDate && new Date(ev.date) < new Date(startDate)) return false;
@@ -386,6 +392,7 @@ export default function DashboardPage() {
       if (new Date(ev.date) > limitDate) return false;
     }
     if (selectedArea && ev.area !== selectedArea) return false;
+    if (selectedPosition && ev.position !== selectedPosition) return false;
     if (selectedResult && ev.result !== selectedResult) return false;
     return true;
   }) : [];
@@ -416,6 +423,11 @@ export default function DashboardPage() {
   ];
 
   // Recalculate dynamic position average data
+  // Extract unique positions dynamically from database evaluations
+  const dynamicPositions = stats?.allEvaluations
+    ? (Array.from(new Set(stats.allEvaluations.map((e: any) => e.position).filter((p: any) => p && p !== "N/A"))) as string[]).sort()
+    : [];
+
   const displayPositionsList = dynamicPositions.length > 0 ? dynamicPositions : ["Conductor", "Coordinador de Agencia", "Supervisor"];
   const positionAverageData = displayPositionsList.map(position => {
     const evs = filteredEvals.filter((e: any) => e.position === position && e.score > 0);
@@ -468,12 +480,7 @@ export default function DashboardPage() {
     evaluaciones: data.count
   })).sort((a, b) => b.promedio - a.promedio);
 
-  const displayPayrollData = payrollChartData.length > 0 ? payrollChartData : [
-    { payroll: "COMISIÓN 1-2-3-4", promedio: 3.95, evaluaciones: 0 },
-    { payroll: "PLANTA (SOGAMOSO)", promedio: 4.12, evaluaciones: 0 },
-    { payroll: "AUXILIARES DE VENTA", promedio: 3.78, evaluaciones: 0 },
-    { payroll: "ADMINISTRATIVOS", promedio: 4.25, evaluaciones: 0 }
-  ];
+  const displayPayrollData = payrollChartData;
 
   // Calculate relation of payroll type by Area
   const areaPayrollCounts: Record<string, Record<string, number>> = {};
@@ -612,7 +619,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 shadow-sm">
+      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 shadow-sm">
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-muted-foreground uppercase">Fecha Inicio</label>
           <input
@@ -639,8 +646,21 @@ export default function DashboardPage() {
             className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
           >
             <option value="">Todas las áreas</option>
-            {displayAreasList.map((area) => (
-              <option key={area} value={area}>{area}</option>
+            {dbAreas.map((area) => (
+              <option key={area.id} value={area.name}>{area.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase">Cargo</label>
+          <select
+            value={selectedPosition}
+            onChange={(e) => setSelectedPosition(e.target.value)}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          >
+            <option value="">Todos los cargos</option>
+            {dbPositions.map((pos) => (
+              <option key={pos.id} value={pos.name}>{pos.name}</option>
             ))}
           </select>
         </div>
@@ -663,6 +683,7 @@ export default function DashboardPage() {
               setStartDate("");
               setEndDate("");
               setSelectedArea("");
+              setSelectedPosition("");
               setSelectedResult("");
             }}
             className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-muted hover:bg-accent transition-colors font-medium text-muted-foreground hover:text-foreground h-9"
@@ -850,20 +871,26 @@ export default function DashboardPage() {
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart data={displayPayrollData} barSize={32}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="payroll" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
-                <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                {displayPayrollData.map((entry, index) => (
-                  <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {displayPayrollData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
+              <BarChart data={displayPayrollData} barSize={32}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="payroll" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
+                  <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                  {displayPayrollData.map((entry, index) => (
+                    <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[220px] text-xs text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+              No hay evaluaciones registradas.
+            </div>
+          )}
         </motion.div>
       </div>
 
@@ -1206,20 +1233,26 @@ export default function DashboardPage() {
                 )}
 
                 {expandedChart === "payroll" && (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={displayPayrollData} barSize={40}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="payroll" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
-                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                        {displayPayrollData.map((entry, index) => (
-                          <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  displayPayrollData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={displayPayrollData} barSize={40}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="payroll" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                          <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                          {displayPayrollData.map((entry, index) => (
+                            <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-[300px] text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                      No hay evaluaciones registradas.
+                    </div>
+                  )
                 )}
 
                 {expandedChart === "payroll_area" && (

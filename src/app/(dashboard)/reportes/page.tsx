@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { FileBarChart2, Download, FileSpreadsheet, FileText, Filter, TrendingUp, Search, Loader2, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { getAreas } from "@/app/actions/config";
+import { getAreas, getPositions } from "@/app/actions/config";
 import { getEvaluations } from "@/app/actions/evaluations";
 import { getPMIs } from "@/app/actions/pmi";
 import { formatScore, getResultLabel, getResultColor, compressImageIfNeeded } from "@/lib/utils";
@@ -22,7 +22,9 @@ interface EvaluationItem {
     full_name: string;
     document_number: string;
     position?: { name: string };
+    positions?: { name: string };
     areas?: { name: string };
+    area?: { name: string };
   };
   evaluator?: {
     first_name: string;
@@ -35,6 +37,7 @@ interface EvaluationItem {
 
 export default function ReportesPage() {
   const [areas, setAreas] = useState<AreaData[]>([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationItem[]>([]);
   const [filteredEvaluations, setFilteredEvaluations] = useState<EvaluationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,6 +98,7 @@ export default function ReportesPage() {
 
   // Filters
   const [selectedArea, setSelectedArea] = useState("");
+  const [selectedPosition, setSelectedPosition] = useState("");
   const [selectedResult, setSelectedResult] = useState("");
   const [startDate, setStartDate] = useState("");
 
@@ -120,12 +124,14 @@ export default function ReportesPage() {
           }
         }
 
-        const [areasData, evalsRes] = await Promise.all([
+        const [areasData, positionsData, evalsRes] = await Promise.all([
           getAreas(),
+          getPositions(),
           getEvaluations()
         ]);
         
         setAreas(areasData || []);
+        setPositions(positionsData || []);
         if (evalsRes.data) {
           let loadedEvals = evalsRes.data as any[];
           if (roleName === "lider") {
@@ -151,7 +157,14 @@ export default function ReportesPage() {
     // Filter by Area Name
     if (selectedArea) {
       results = results.filter(
-        (item) => item.collaborator?.areas?.name === selectedArea
+        (item) => item.collaborator?.areas?.name === selectedArea || item.collaborator?.area?.name === selectedArea
+      );
+    }
+
+    // Filter by Cargo Name
+    if (selectedPosition) {
+      results = results.filter(
+        (item) => item.collaborator?.positions?.name === selectedPosition || item.collaborator?.position?.name === selectedPosition
       );
     }
 
@@ -796,7 +809,7 @@ export default function ReportesPage() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Área</label>
             <select 
@@ -807,6 +820,20 @@ export default function ReportesPage() {
               <option value="">Todas las áreas</option>
               {areas.map((area) => (
                 <option key={area.id} value={area.name}>{area.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Cargo</label>
+            <select 
+              value={selectedPosition}
+              onChange={(e) => setSelectedPosition(e.target.value)}
+              className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            >
+              <option value="">Todos los cargos</option>
+              {positions.map((pos) => (
+                <option key={pos.id} value={pos.name}>{pos.name}</option>
               ))}
             </select>
           </div>
