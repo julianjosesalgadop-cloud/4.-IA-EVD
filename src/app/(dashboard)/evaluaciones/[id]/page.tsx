@@ -176,7 +176,7 @@ export default function EvaluationDetailPage() {
       // Draw Collaborator Table / Grid
       const collabInfo = [
         ["Nombre Completo:", evaluation.collaborator?.full_name || "N/A", "Documento:", `${evaluation.collaborator?.document_type || "CC"} ${evaluation.collaborator?.document_number || "N/A"}`],
-        ["Cargo Actual:", evaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", evaluation.collaborator?.areas?.name || evaluation.collaborator?.area?.name || "N/A"],
+        ["Cargo Actual:", evaluation.collaborator?.positions?.name || evaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", evaluation.collaborator?.areas?.name || evaluation.collaborator?.area?.name || "N/A"],
         ["Sede / Ciudad:", evaluation.collaborator?.workplace_city || evaluation.collaborator?.workplace || "N/A", "Fecha de Ingreso:", evaluation.collaborator?.hire_date ? new Date(evaluation.collaborator.hire_date).toLocaleDateString("es-ES") : "N/A"],
         ["Estado:", evaluation.collaborator?.status || "N/A", "", ""]
       ];
@@ -631,7 +631,7 @@ export default function EvaluationDetailPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-sm truncate">{evaluation.collaborator?.full_name || "Desconocido"}</p>
-                  <p className="text-xs text-muted-foreground truncate">Cargo: {evaluation.collaborator?.position?.name || "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">Cargo: {evaluation.collaborator?.positions?.name || evaluation.collaborator?.position?.name || "—"}</p>
                   <p className="text-xs text-muted-foreground truncate">Documento: {evaluation.collaborator?.document_number || "—"}</p>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Building2, Save, Upload, MapPin, Phone, Mail } from "lucide-react";
-import { getCompany } from "@/app/actions/admin";
+import { getCompany, updateCompany } from "@/app/actions/admin";
 import { toast } from "sonner";
 
 export default function EmpresaPage() {
@@ -19,14 +19,30 @@ export default function EmpresaPage() {
     loadCompany();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // TODO: implement update logic in server action
-    setTimeout(() => {
-      toast.success("Datos de la empresa actualizados");
-      setIsSubmitting(false);
-    }, 1000);
+    
+    const formData = new FormData(e.currentTarget);
+    const updates = {
+      name: formData.get("name") as string,
+      nit: formData.get("nit") as string,
+      country: formData.get("country") as string,
+      address: formData.get("address") as string,
+      city: formData.get("city") as string,
+      phone: formData.get("phone") as string,
+      email: formData.get("email") as string,
+    };
+
+    const res = await updateCompany(updates);
+    setIsSubmitting(false);
+
+    if (res.error) {
+      toast.error("Error al guardar cambios: " + res.error);
+    } else {
+      toast.success("Datos de la empresa actualizados correctamente");
+      setCompany((prev: any) => ({ ...prev, ...updates }));
+    }
   };
 
   return (
@@ -57,6 +73,7 @@ export default function EmpresaPage() {
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-sm font-medium">Nombre de la Empresa *</label>
                 <input 
+                  name="name"
                   defaultValue={company?.name}
                   required
                   className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -65,6 +82,7 @@ export default function EmpresaPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">NIT / Identificación Financiera</label>
                 <input 
+                  name="nit"
                   defaultValue={company?.nit}
                   className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
@@ -72,6 +90,7 @@ export default function EmpresaPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">País</label>
                 <input 
+                  name="country"
                   defaultValue={company?.country || 'Colombia'}
                   className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
@@ -89,6 +108,7 @@ export default function EmpresaPage() {
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-sm font-medium">Dirección Principal</label>
                 <input 
+                  name="address"
                   defaultValue={company?.address}
                   className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
@@ -96,6 +116,7 @@ export default function EmpresaPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Ciudad</label>
                 <input 
+                  name="city"
                   defaultValue={company?.city}
                   className="w-full h-10 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
@@ -105,6 +126,7 @@ export default function EmpresaPage() {
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input 
+                    name="phone"
                     defaultValue={company?.phone}
                     className="w-full h-10 pl-9 pr-4 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
@@ -116,6 +138,7 @@ export default function EmpresaPage() {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input 
                     type="email"
+                    name="email"
                     defaultValue={company?.email}
                     className="w-full h-10 pl-9 pr-4 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />

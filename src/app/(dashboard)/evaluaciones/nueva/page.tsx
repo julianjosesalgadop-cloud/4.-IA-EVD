@@ -463,7 +463,7 @@ function NuevaEvaluacionContent() {
       
       const collabInfo = [
         ["Nombre Completo:", savedEvaluation.collaborator?.full_name || "N/A", "Documento:", `${savedEvaluation.collaborator?.document_type || "CC"} ${savedEvaluation.collaborator?.document_number || "N/A"}`],
-        ["Cargo Actual:", savedEvaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", savedEvaluation.collaborator?.areas?.name || savedEvaluation.collaborator?.area?.name || "N/A"],
+        ["Cargo Actual:", savedEvaluation.collaborator?.positions?.name || savedEvaluation.collaborator?.position?.name || "N/A", "Área / Departamento:", savedEvaluation.collaborator?.areas?.name || savedEvaluation.collaborator?.area?.name || "N/A"],
         ["Sede / Ciudad:", savedEvaluation.collaborator?.workplace_city || savedEvaluation.collaborator?.workplace || "N/A", "Fecha de Ingreso:", formatPDFDate(savedEvaluation.collaborator?.hire_date)],
         ["Estado:", savedEvaluation.collaborator?.status || "N/A", "", ""]
       ];
@@ -896,7 +896,7 @@ function NuevaEvaluacionContent() {
           <h1 className="text-xl sm:text-2xl font-bold">Nueva Evaluación de Desempeño</h1>
           {selectedCollaborator && (
             <p className="text-muted-foreground text-xs sm:text-sm mt-1 truncate">
-              {selectedCollaborator.full_name} · {selectedCollaborator.position?.name} · {selectedCollaborator.areas?.name || selectedCollaborator.area?.name}
+              {selectedCollaborator.full_name} · {selectedCollaborator.positions?.name || selectedCollaborator.position?.name} · {selectedCollaborator.areas?.name || selectedCollaborator.area?.name}
             </p>
           )}
         </div>
@@ -1346,7 +1346,7 @@ function NuevaEvaluacionContent() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-sm leading-tight text-foreground truncate">{selectedCollaborator.full_name}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{selectedCollaborator.position?.name || "Sin Cargo"}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{selectedCollaborator.positions?.name || selectedCollaborator.position?.name || "Sin Cargo"}</p>
                     </div>
                   </div>
                 </div>

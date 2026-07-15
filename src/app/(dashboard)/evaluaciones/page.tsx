@@ -179,7 +179,7 @@ export default function EvaluacionesPage() {
       
       const collabInfo = [
         ["Nombre Completo:", evalData.collaborator?.full_name || "N/A", "Documento:", `${evalData.collaborator?.document_type || "CC"} ${evalData.collaborator?.document_number || "N/A"}`],
-        ["Cargo Actual:", evalData.collaborator?.position?.name || "N/A", "Área / Departamento:", evalData.collaborator?.areas?.name || evalData.collaborator?.area?.name || "N/A"],
+        ["Cargo Actual:", evalData.collaborator?.positions?.name || evalData.collaborator?.position?.name || "N/A", "Área / Departamento:", evalData.collaborator?.areas?.name || evalData.collaborator?.area?.name || "N/A"],
         ["Sede / Ciudad:", evalData.collaborator?.workplace_city || evalData.collaborator?.workplace || "N/A", "Fecha de Ingreso:", formatPDFDate(evalData.collaborator?.hire_date)],
         ["Estado:", evalData.collaborator?.status || "N/A", "", ""]
       ];
@@ -562,7 +562,7 @@ export default function EvaluacionesPage() {
             collaborator: e.collaborator?.full_name || "Desconocido",
             collaborator_document: e.collaborator?.document_number || "—",
             area: e.collaborator?.areas?.name || "—",
-            position: e.collaborator?.position?.name || "—",
+            position: e.collaborator?.positions?.name || e.collaborator?.position?.name || "—",
             evaluator: e.evaluator ? `${e.evaluator.first_name} ${e.evaluator.last_name}` : "—",
             date: e.created_at,
             year: e.evaluation_year,

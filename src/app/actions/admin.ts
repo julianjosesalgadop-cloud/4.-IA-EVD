@@ -372,3 +372,39 @@ export async function getCompany() {
   if (error) return { data: null, error: error.message };
   return { data, error: null };
 }
+
+export async function updateCompany(updates: {
+  name?: string;
+  nit?: string;
+  country?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  logo_url?: string | null;
+}) {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("company_id")
+    .eq("id", userData.user.id)
+    .single();
+
+  if (!profile?.company_id) return { error: "Empresa no encontrada" };
+
+  const { error } = await supabase
+    .from("companies")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", profile.company_id);
+
+  if (error) {
+    console.error("Error updating company:", error);
+    return { error: error.message };
+  }
+
+  revalidatePath("/configuracion/empresa");
+  return { success: true };
+}
