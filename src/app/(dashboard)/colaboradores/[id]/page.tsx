@@ -64,7 +64,7 @@ export default function CollaboratorDetailPage() {
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold">{collaborator.full_name}</h2>
-              <p className="text-muted-foreground">{collaborator.position?.name || "Sin cargo asignado"}</p>
+              <p className="text-muted-foreground">{collaborator.positions?.name || collaborator.position?.name || "Sin cargo asignado"}</p>
               <div className="flex items-center gap-2 mt-2">
                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
                   collaborator.status === 'activo' ? 'text-success-600 bg-success-50 border-success-200 dark:bg-success-950/30' :
@@ -140,7 +140,7 @@ export default function CollaboratorDetailPage() {
                   <p className="text-muted-foreground text-xs uppercase tracking-wide">Cargo</p>
                   <p className="font-medium flex items-center gap-2">
                     <Briefcase className="w-3.5 h-3.5" />
-                    {collaborator.position?.name || "—"}
+                    {collaborator.positions?.name || collaborator.position?.name || "—"}
                   </p>
                 </div>
                 <div>

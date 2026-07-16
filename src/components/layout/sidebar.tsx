@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, ClipboardList, Settings, TrendingUp,
   FileBarChart2, Shield, ChevronLeft, ChevronRight,
   Building2, BookOpen, LogOut, ChevronDown, ChevronUp, User,
-  Sun, Moon
+  Sun, Moon, Plus, List
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -40,16 +40,16 @@ const navGroups: NavGroup[] = [
         title: "Colaboradores",
         icon: Users,
         children: [
-          { title: "Nuevo Colaborador", href: "/colaboradores/nuevo", icon: Users },
-          { title: "Listado Colaboradores", href: "/colaboradores", icon: Users },
+          { title: "Nuevo Colaborador", href: "/colaboradores/nuevo", icon: Plus },
+          { title: "Listado Colaboradores", href: "/colaboradores", icon: List },
         ],
       },
       {
         title: "Evaluaciones",
         icon: ClipboardList,
         children: [
-          { title: "Nueva Evaluación", href: "/evaluaciones/nueva", icon: ClipboardList },
-          { title: "Resultados Evaluaciones", href: "/evaluaciones", icon: ClipboardList },
+          { title: "Nueva Evaluación", href: "/evaluaciones/nueva", icon: Plus },
+          { title: "Resultados Evaluaciones", href: "/evaluaciones", icon: List },
         ],
       },
       {
@@ -380,10 +380,17 @@ export function Sidebar({ collapsed, onToggle, onItemClick, userRole }: SidebarP
                                         : "text-slate-300 hover:text-white hover:bg-white/5"
                                     )}
                                 >
-                                  <div className={cn(
-                                    "w-2 h-2 rounded-full flex-shrink-0 transition-colors",
-                                    isActive(child.href) ? "bg-brand-400" : "bg-white/40"
-                                  )} />
+                                  {child.icon ? (
+                                    <child.icon className={cn(
+                                      "w-3.5 h-3.5 flex-shrink-0 transition-colors",
+                                      isActive(child.href) ? "text-brand-400" : "text-slate-400"
+                                    )} />
+                                  ) : (
+                                    <div className={cn(
+                                      "w-2 h-2 rounded-full flex-shrink-0 transition-colors",
+                                      isActive(child.href) ? "bg-brand-400" : "bg-white/40"
+                                    )} />
+                                  )}
                                   <span className="truncate">{child.title}</span>
                                 </Link>
                               ))}
