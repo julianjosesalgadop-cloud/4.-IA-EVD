@@ -27,6 +27,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// Definición de grupos y elementos de navegación del menú lateral con sus respectivos iconos
 const navGroups: NavGroup[] = [
   {
     groupTitle: "Menú Principal",
