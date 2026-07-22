@@ -912,28 +912,34 @@ export default function DashboardPage() {
             <GitBranch className="w-5 h-5 text-muted-foreground" />
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart
-            data={areaPayrollChartData}
-            margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-            barSize={32}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="area" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ fontSize: "11px" }} />
-            {dynamicPayrollTypes.map((pt, idx) => (
-              <Bar
-                key={pt}
-                dataKey={pt}
-                name={pt}
-                stackId="a"
-                fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
+        {dynamicPayrollTypes.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart
+              data={areaPayrollChartData}
+              margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+              barSize={32}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="area" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: "11px" }} />
+              {dynamicPayrollTypes.map((pt, idx) => (
+                <Bar
+                  key={pt}
+                  dataKey={pt}
+                  name={pt}
+                  stackId="a"
+                  fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[280px] text-xs text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+            No hay información registrada.
+          </div>
+        )}
       </motion.div>
 
       {/* Charts Row 3 — Nuevos Gráficos Gerenciales */}
@@ -1251,28 +1257,34 @@ export default function DashboardPage() {
                 )}
 
                 {expandedChart === "payroll_area" && (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart
-                      data={areaPayrollChartData}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-                      barSize={40}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="area" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: "12px" }} />
-                      {dynamicPayrollTypes.map((pt, idx) => (
-                        <Bar
-                          key={pt}
-                          dataKey={pt}
-                          name={pt}
-                          stackId="a"
-                          fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
-                        />
-                      ))}
-                    </BarChart>
-                  </ResponsiveContainer>
+                  dynamicPayrollTypes.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart
+                        data={areaPayrollChartData}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                        barSize={40}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="area" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                        {dynamicPayrollTypes.map((pt, idx) => (
+                          <Bar
+                            key={pt}
+                            dataKey={pt}
+                            name={pt}
+                            stackId="a"
+                            fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-[300px] text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                      No hay información registrada.
+                    </div>
+                  )
                 )}
 
                 {expandedChart === "desempeno" && (
