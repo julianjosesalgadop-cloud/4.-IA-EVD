@@ -1345,7 +1345,9 @@ function NuevaEvaluacionContent() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-sm leading-tight text-foreground truncate">{selectedCollaborator.full_name}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{selectedCollaborator.positions?.name || selectedCollaborator.position?.name || "Sin Cargo"}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {selectedCollaborator.position?.name || selectedCollaborator.positions?.name || (Array.isArray(selectedCollaborator.positions) ? selectedCollaborator.positions[0]?.name : null) || "Sin Cargo"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1353,7 +1355,9 @@ function NuevaEvaluacionContent() {
                 <div className="border-t border-border/60 pt-2.5 space-y-1.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Área:</span>
-                    <span className="font-semibold text-foreground truncate pl-2">{selectedCollaborator.areas?.name || selectedCollaborator.area?.name || "N/A"}</span>
+                    <span className="font-semibold text-foreground truncate pl-2">
+                      {selectedCollaborator.area?.name || selectedCollaborator.areas?.name || (Array.isArray(selectedCollaborator.areas) ? selectedCollaborator.areas[0]?.name : null) || "N/A"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Documento:</span>
