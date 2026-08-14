@@ -177,8 +177,8 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           {children}
         </div>
         <footer className="py-4 text-center border-t border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-card/10">
-          <p className="text-[11px] text-muted-foreground font-bold tracking-wide uppercase">
-            Desarrollado Por Julián Salgado | Flota Sugamuxi S.A.
+          <p className="text-[11px] text-muted-foreground font-medium">
+            Desarrollado por Julián Salgado | Flota Sugamuxi S.A.
           </p>
         </footer>
       </main>
