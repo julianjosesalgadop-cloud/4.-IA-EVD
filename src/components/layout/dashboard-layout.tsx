@@ -32,8 +32,8 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           console.log("Inactividad detectada. Cerrando sesión...");
           const { logoutAction } = await import("@/app/actions/auth");
           await logoutAction();
-          // Force client-side redirect to login
-          window.location.href = "/login";
+          // Force client-side redirect to login with inactivity flag
+          window.location.href = "/login?expired=inactivity";
         } catch (err) {
           console.error("Error al cerrar sesión por inactividad:", err);
         }
@@ -41,7 +41,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
     };
 
     // Events to track user activity
-    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"];
 
     // Initialize timer
     resetTimer();

@@ -36,6 +36,14 @@ export default function LoginPage() {
       }
     );
 
+    // Detectar si la sesión fue cerrada por inactividad
+    if (typeof window !== "undefined" && window.location.search.includes("expired=inactivity")) {
+      toast.warning("Tu sesión se ha cerrado automáticamente tras 15 minutos de inactividad.", {
+        id: "inactivity-toast",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     return () => {
       subscription.unsubscribe();
     };
