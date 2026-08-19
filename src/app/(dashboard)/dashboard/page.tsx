@@ -460,10 +460,10 @@ export default function DashboardPage() {
     { mes: "Ene", evaluaciones: 0, promedio: 0 }
   ];
   
-  // Recalculate dynamic payroll type average EVD score data
+  // Recalculate dynamic payroll type average EVD score data from evaluated collaborators (score > 0)
   const payrollAverages: Record<string, { sum: number; count: number }> = {};
   filteredEvals.forEach((e: any) => {
-    if (e.payroll_type && e.payroll_type !== "N/A") {
+    if (e.payroll_type && e.payroll_type !== "N/A" && e.score > 0) {
       const pType = e.payroll_type.trim();
       if (!payrollAverages[pType]) {
         payrollAverages[pType] = { sum: 0, count: 0 };
