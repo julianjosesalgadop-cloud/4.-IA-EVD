@@ -943,13 +943,14 @@ export default function DashboardPage() {
                 outerRadius={65}
                 paddingAngle={3}
                 dataKey="value"
-                label={({ name, value }) => value > 0 ? `${name}: ${value}` : ""}
+                label={false}
+                labelLine={false}
               >
                 {resultDistribution.map((entry, index) => (
                   <Cell key={index} fill={entry.color} stroke="transparent" />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => [`${value} evaluaciones`, ""]} />
+              <Tooltip formatter={(value, name) => [`${value} evaluaciones`, name || "Cantidad"]} />
             </PieChart>
           </ResponsiveContainer>
           <div className="space-y-2 mt-2">
@@ -1177,13 +1178,14 @@ export default function DashboardPage() {
                             outerRadius={95}
                             paddingAngle={3}
                             dataKey="value"
-                            label={({ name, value }) => value > 0 ? `${name}: ${value}` : ""}
+                            label={false}
+                            labelLine={false}
                           >
                             {resultDistribution.map((entry, index) => (
                               <Cell key={index} fill={entry.color} stroke="transparent" />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value) => [`${value} evaluaciones`, ""]} />
+                          <Tooltip formatter={(value, name) => [`${value} evaluaciones`, name || "Cantidad"]} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
