@@ -465,7 +465,7 @@ export default function DashboardPage() {
   // Recalculate dynamic payroll type average EVD score data
   const payrollAverages: Record<string, { sum: number; count: number }> = {};
   filteredEvals.forEach((e: any) => {
-    if (e.payroll_type && e.payroll_type !== "N/A" && e.payroll_type !== "Sin Especificar") {
+    if (e.payroll_type && e.payroll_type !== "N/A") {
       const pType = e.payroll_type.trim();
       if (!payrollAverages[pType]) {
         payrollAverages[pType] = { sum: 0, count: 0 };
@@ -491,7 +491,7 @@ export default function DashboardPage() {
   collabs.forEach((c: any) => {
     const areaName = c.area || "Sin Área";
     const payrollName = c.payroll_type || "Sin Especificar";
-    if (payrollName !== "Sin Especificar" && payrollName !== "N/A") {
+    if (payrollName && payrollName !== "N/A") {
       payrollTypesSet.add(payrollName);
     }
     if (!areaPayrollCounts[areaName]) {
@@ -695,13 +695,189 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Charts Row 3 — Nuevos Gráficos Gerenciales */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Gráfico 1: Niveles de Desempeño */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="rounded-xl border bg-card p-5"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-semibold">Niveles de Desempeño</h3>
+              <p className="text-xs text-muted-foreground">Distribución por rangos EVD</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("desempeno")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <Users className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
+            <BarChart
+              data={performanceTiersData}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+              barSize={16}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                width={140}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
+              <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="value" position="right" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                {performanceTiersData.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        {/* Colaboradores Destacados Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="rounded-xl border bg-card p-5 space-y-4"
+        >
+          <div>
+            <h3 className="font-semibold">Colaboradores Destacados</h3>
+            <p className="text-xs text-muted-foreground">Top 5 mejores promedios en EVD</p>
+          </div>
+          <div className="space-y-3">
+            {filteredEvals
+              .filter((e: any) => e.score > 0)
+              .sort((a: any, b: any) => b.score - a.score)
+              .slice(0, 5)
+              .map((e: any, idx: number) => {
+                const colors = [
+                  "bg-yellow-500/20 text-yellow-600 border-yellow-500/30",
+                  "bg-slate-300/40 text-slate-600 border-slate-300/50",
+                  "bg-amber-600/20 text-amber-700 border-amber-600/30",
+                  "bg-brand-500/10 text-brand-600 border-brand-500/20",
+                  "bg-brand-500/10 text-brand-600 border-brand-500/20"
+                ];
+                const badges = ["🥇", "🥈", "🥉", "4.", "5."];
+                return (
+                  <div key={e.id} className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/10">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border", colors[idx] || "bg-muted text-muted-foreground")}>
+                        {badges[idx]}
+                      </span>
+                      <div className="overflow-hidden">
+                        <p className="font-semibold text-xs truncate text-foreground leading-normal">{e.collaborator}</p>
+                        <p className="text-[10px] text-muted-foreground truncate leading-normal">{e.position}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-brand-600 px-2 py-0.5 bg-brand-500/10 rounded-lg">
+                      {e.score.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            {filteredEvals.filter((e: any) => e.score > 0).length === 0 && (
+              <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">
+                No hay evaluaciones registradas.
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Datos de Interés Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="rounded-xl border bg-card p-5 space-y-4"
+        >
+          <div>
+            <h3 className="font-semibold">Datos de Interés</h3>
+            <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl border bg-success-50/5 dark:bg-success-950/5 border-success-200/50 dark:border-success-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-success-700 dark:text-success-400 uppercase tracking-wider">Aprobación</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-success-600 dark:text-success-400 leading-none">
+                  {completedEvals > 0 ? ((aprobados / completedEvals) * 100).toFixed(0) : 0}%
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">Colaboradores aprobados</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border bg-warning-50/5 dark:bg-warning-950/5 border-warning-200/50 dark:border-warning-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-warning-700 dark:text-warning-400 uppercase tracking-wider">Planes de Mejora</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-warning-600 dark:text-warning-400 leading-none">
+                  {completedEvals > 0 ? ((conPMI / completedEvals) * 100).toFixed(0) : 0}%
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">Requirieron PMI</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border bg-brand-50/5 dark:bg-brand-950/5 border-brand-200/50 dark:border-brand-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider">Promedio General</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-brand-600 dark:text-brand-400 leading-none">
+                  {avgScore.toFixed(2)}
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">Calificación promedio</p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl border bg-primary-50/5 dark:bg-primary-950/5 border-primary-200/50 dark:border-primary-900/30 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">Tasa Crítica</span>
+              <div className="mt-2">
+                <p className="text-xl font-black text-primary-600 dark:text-primary-400 leading-none">
+                  {completedEvals > 0 ? ((reprobados / completedEvals) * 100).toFixed(0) : 0}%
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-1">No aprobados</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Datos del Proceso</h4>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Total colaboradores:</span>
+              <span className="font-semibold text-foreground">{totalCollabs}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Evaluaciones realizadas:</span>
+              <span className="font-semibold text-foreground">{completedEvals}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Participación:</span>
+              <span className="font-semibold text-foreground">
+                {totalCollabs > 0 ? ((completedEvals / totalCollabs) * 100).toFixed(0) : 0}%
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cargo Averages Bar Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.65 }}
           className="lg:col-span-2 rounded-xl border bg-card p-5"
         >
           <div className="flex items-center justify-between mb-5">
@@ -750,7 +926,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55 }}
+          transition={{ delay: 0.7 }}
           className="rounded-xl border bg-card p-5"
         >
           <div className="flex items-center justify-between mb-5">
@@ -941,182 +1117,6 @@ export default function DashboardPage() {
           </div>
         )}
       </motion.div>
-
-      {/* Charts Row 3 — Nuevos Gráficos Gerenciales */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfico 1: Niveles de Desempeño */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="rounded-xl border bg-card p-5"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="font-semibold">Niveles de Desempeño</h3>
-              <p className="text-xs text-muted-foreground">Distribución por rangos EVD</p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setExpandedChart("desempeno")}
-                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title="Expandir gráfico"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-              <Users className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart
-              data={performanceTiersData}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-              barSize={16}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                width={140}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
-              <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
-                <LabelList dataKey="value" position="right" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                {performanceTiersData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Colaboradores Destacados Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.75 }}
-          className="rounded-xl border bg-card p-5 space-y-4"
-        >
-          <div>
-            <h3 className="font-semibold">Colaboradores Destacados</h3>
-            <p className="text-xs text-muted-foreground">Top 5 mejores promedios en EVD</p>
-          </div>
-          <div className="space-y-3">
-            {filteredEvals
-              .filter((e: any) => e.score > 0)
-              .sort((a: any, b: any) => b.score - a.score)
-              .slice(0, 5)
-              .map((e: any, idx: number) => {
-                const colors = [
-                  "bg-yellow-500/20 text-yellow-600 border-yellow-500/30",
-                  "bg-slate-300/40 text-slate-600 border-slate-300/50",
-                  "bg-amber-600/20 text-amber-700 border-amber-600/30",
-                  "bg-brand-500/10 text-brand-600 border-brand-500/20",
-                  "bg-brand-500/10 text-brand-600 border-brand-500/20"
-                ];
-                const badges = ["🥇", "🥈", "🥉", "4.", "5."];
-                return (
-                  <div key={e.id} className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/10">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border", colors[idx] || "bg-muted text-muted-foreground")}>
-                        {badges[idx]}
-                      </span>
-                      <div className="overflow-hidden">
-                        <p className="font-semibold text-xs truncate text-foreground leading-normal">{e.collaborator}</p>
-                        <p className="text-[10px] text-muted-foreground truncate leading-normal">{e.position}</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-extrabold text-brand-600 px-2 py-0.5 bg-brand-500/10 rounded-lg">
-                      {e.score.toFixed(2)}
-                    </span>
-                  </div>
-                );
-              })}
-            {filteredEvals.filter((e: any) => e.score > 0).length === 0 && (
-              <div className="h-48 flex items-center justify-center text-xs text-muted-foreground">
-                No hay evaluaciones registradas.
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Datos de Interes Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="rounded-xl border bg-card p-5 space-y-4"
-        >
-          <div>
-            <h3 className="font-semibold">Datos de Interés</h3>
-            <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl border bg-success-50/5 dark:bg-success-950/5 border-success-200/50 dark:border-success-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-success-700 dark:text-success-400 uppercase tracking-wider">Aprobación</span>
-              <div className="mt-2">
-                <p className="text-xl font-black text-success-600 dark:text-success-400 leading-none">
-                  {completedEvals > 0 ? ((aprobados / completedEvals) * 100).toFixed(0) : 0}%
-                </p>
-                <p className="text-[9px] text-muted-foreground mt-1">Colaboradores aprobados</p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl border bg-warning-50/5 dark:bg-warning-950/5 border-warning-200/50 dark:border-warning-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-warning-700 dark:text-warning-400 uppercase tracking-wider">Planes de Mejora</span>
-              <div className="mt-2">
-                <p className="text-xl font-black text-warning-600 dark:text-warning-400 leading-none">
-                  {completedEvals > 0 ? ((conPMI / completedEvals) * 100).toFixed(0) : 0}%
-                </p>
-                <p className="text-[9px] text-muted-foreground mt-1">Requirieron PMI</p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl border bg-brand-50/5 dark:bg-brand-950/5 border-brand-200/50 dark:border-brand-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider">Promedio General</span>
-              <div className="mt-2">
-                <p className="text-xl font-black text-brand-600 dark:text-brand-400 leading-none">
-                  {avgScore.toFixed(2)}
-                </p>
-                <p className="text-[9px] text-muted-foreground mt-1">Calificación promedio</p>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl border bg-primary-50/5 dark:bg-primary-950/5 border-primary-200/50 dark:border-primary-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">Tasa Crítica</span>
-              <div className="mt-2">
-                <p className="text-xl font-black text-primary-600 dark:text-primary-400 leading-none">
-                  {completedEvals > 0 ? ((reprobados / completedEvals) * 100).toFixed(0) : 0}%
-                </p>
-                <p className="text-[9px] text-muted-foreground mt-1">No aprobados</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Datos del Proceso</h4>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Total colaboradores:</span>
-              <span className="font-semibold text-foreground">{totalCollabs}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Evaluaciones realizadas:</span>
-              <span className="font-semibold text-foreground">{completedEvals}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Participación:</span>
-              <span className="font-semibold text-foreground">
-                {totalCollabs > 0 ? ((completedEvals / totalCollabs) * 100).toFixed(0) : 0}%
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      </div>
 
       {/* Modal de Gráfico Expandido */}
       <AnimatePresence>

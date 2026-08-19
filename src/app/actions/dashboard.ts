@@ -90,20 +90,27 @@ export async function getDashboardStats() {
       avgScore,
       pmisCount: pmisCount || 0,
     },
-    collaborators: (collabsList || []).map((c: any) => ({
-      id: c.id,
-      payroll_type: c.payroll_type || "Sin Especificar",
-      area: c.areas?.name || "Sin Área"
-    })),
+    collaborators: (collabsList || []).map((c: any) => {
+      const areaObj = c.areas && !Array.isArray(c.areas) ? c.areas : c.areas?.[0] || null;
+      return {
+        id: c.id,
+        payroll_type: c.payroll_type || "Sin Especificar",
+        area: areaObj?.name || "Sin Área"
+      };
+    }),
     allEvaluations: allEvals.map((e: any) => {
       const res = e.result && !Array.isArray(e.result) ? e.result : e.result?.[0] || null;
+      const collab = e.collaborator && !Array.isArray(e.collaborator) ? e.collaborator : e.collaborator?.[0] || null;
+      const posObj = collab?.positions && !Array.isArray(collab.positions) ? collab.positions : collab?.positions?.[0] || null;
+      const areaObj = collab?.areas && !Array.isArray(collab.areas) ? collab.areas : collab?.areas?.[0] || null;
+
       return {
         id: e.id,
-        collaborator: e.collaborator?.full_name || "Desconocido",
-        workplace_city: e.collaborator?.workplace_city || "Sogamoso",
-        position: e.collaborator?.positions?.name || "N/A",
-        area: e.collaborator?.areas?.name || "N/A",
-        payroll_type: e.collaborator?.payroll_type || "N/A",
+        collaborator: collab?.full_name || "Desconocido",
+        workplace_city: collab?.workplace_city || "Sogamoso",
+        position: posObj?.name || "N/A",
+        area: areaObj?.name || "N/A",
+        payroll_type: collab?.payroll_type || "Sin Especificar",
         result: res ? res.result : e.status,
         pmi_status: res ? res.pmi_status : null,
         pmi_required: res ? res.pmi_required : false,
