@@ -418,9 +418,9 @@ export default function DashboardPage() {
   ];
 
   const resultDistribution = [
-    { name: "Aprobados", value: aprobados, color: "#10b981" },
-    { name: "Plan Mejora", value: conPMI, color: "#f59e0b" },
-    { name: "No Aprobados", value: reprobados, color: "#ef4444" },
+    { name: "Aprobados", value: aprobados, color: "#012169" },
+    { name: "Plan Mejora", value: conPMI, color: "#0084d5" },
+    { name: "No Aprobados", value: reprobados, color: "#94a3b8" },
   ];
 
   // Recalculate dynamic position average data
@@ -457,9 +457,7 @@ export default function DashboardPage() {
   }).filter(t => t.evaluaciones > 0);
 
   const displayTrendData = trendData.length > 0 ? trendData : [
-    { mes: "Ene", evaluaciones: 0, promedio: 0 },
-    { mes: "Feb", evaluaciones: 0, promedio: 0 },
-    { mes: "Mar", evaluaciones: 0, promedio: 0 }
+    { mes: "Ene", evaluaciones: 0, promedio: 0 }
   ];
   
   // Recalculate dynamic payroll type average EVD score data
@@ -517,22 +515,21 @@ export default function DashboardPage() {
     return sumB - sumA;
   });
 
+  // Paleta de Colores Corporativos (Grupo Libertadores / Sugamuxi)
   const PAYROLL_COLORS = [
-    "hsl(221.2 83.2% 53.3%)", // blue-600
-    "hsl(262.1 83.3% 57.8%)", // violet-600
-    "hsl(142.1 76.2% 36.3%)", // green-600
-    "hsl(38.2 92% 50%)",      // amber-500
-    "hsl(346.8 77.2% 49.8%)", // rose-600
-    "hsl(181.2 80% 40%)",     // teal-600
-    "hsl(25 95% 53%)",        // orange-500
-    "hsl(199 89% 48%)",       // sky-500
-    "hsl(292 84% 61%)",       // fuchsia-500
-    "hsl(162 76% 41%)",       // emerald-500
-    "hsl(326 80% 50%)",       // pink-500
-    "hsl(200 15% 43%)"        // slate-500
+    "#012169", // Azul Profundo
+    "#0084d5", // Azul Digital
+    "#131b2e", // Negro Tech
+    "#94a3b8", // Gris UX
+    "#1fccea", // Action Cyan
+    "#38bdf8", // Sky Blue
+    "#64748b", // Slate Gray
+    "#0284c7", // Deep Sky Blue
+    "#475569", // Dark Slate
+    "#cbd5e1"  // Light Gray
   ];
 
-  // 1. Niveles de Desempeño
+  // 1. Niveles de Desempeño con Colores Corporativos
   const tierExcelente = filteredEvals.filter((e: any) => e.score >= 4.5 && e.score <= 5.0).length;
   const tierSobresaliente = filteredEvals.filter((e: any) => e.score >= 3.5 && e.score < 4.5).length;
   const tierCompetente = filteredEvals.filter((e: any) => e.score >= 2.5 && e.score < 3.5).length;
@@ -540,11 +537,11 @@ export default function DashboardPage() {
   const tierInsatisfactorio = filteredEvals.filter((e: any) => e.score > 0 && e.score < 1.5).length;
 
   const performanceTiersData = [
-    { name: "Excelente (4.5 - 5.0)", value: tierExcelente, color: "#10b981" },
-    { name: "Sobresaliente (3.5 - 4.49)", value: tierSobresaliente, color: "#3b82f6" },
-    { name: "Cumple lo esperado (2.5 - 3.49)", value: tierCompetente, color: "#71717a" },
-    { name: "Requiere Mejora (1.5 - 2.49)", value: tierRequiereMejora, color: "#f59e0b" },
-    { name: "No cumple (< 1.5)", value: tierInsatisfactorio, color: "#ef4444" },
+    { name: "Excelente (4.5 - 5.0)", value: tierExcelente, color: "#012169" },
+    { name: "Sobresaliente (3.5 - 4.49)", value: tierSobresaliente, color: "#0084d5" },
+    { name: "Cumple lo esperado (2.5 - 3.49)", value: tierCompetente, color: "#38bdf8" },
+    { name: "Requiere Mejora (1.5 - 2.49)", value: tierRequiereMejora, color: "#94a3b8" },
+    { name: "No cumple (< 1.5)", value: tierInsatisfactorio, color: "#475569" },
   ];
 
   // 2. Rendimiento Promedio por Sede (Ciudad)
@@ -724,7 +721,7 @@ export default function DashboardPage() {
             <BarChart
               data={performanceTiersData}
               layout="vertical"
-              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+              margin={{ top: 5, right: 45, left: 10, bottom: 5 }}
               barSize={16}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
@@ -739,7 +736,7 @@ export default function DashboardPage() {
               />
               <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
               <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
-                <LabelList dataKey="value" position="right" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                <LabelList dataKey="value" position="right" dx={6} style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
                 {performanceTiersData.map((entry, index) => (
                   <Cell key={index} fill={entry.color} />
                 ))}
@@ -766,11 +763,11 @@ export default function DashboardPage() {
               .slice(0, 5)
               .map((e: any, idx: number) => {
                 const colors = [
-                  "bg-yellow-500/20 text-yellow-600 border-yellow-500/30",
-                  "bg-slate-300/40 text-slate-600 border-slate-300/50",
-                  "bg-amber-600/20 text-amber-700 border-amber-600/30",
-                  "bg-brand-500/10 text-brand-600 border-brand-500/20",
-                  "bg-brand-500/10 text-brand-600 border-brand-500/20"
+                  "bg-amber-500/20 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-300",
+                  "bg-slate-300/40 text-slate-700 border-slate-400/50 dark:bg-slate-700/40 dark:text-slate-200",
+                  "bg-blue-600/20 text-blue-800 border-blue-600/40 dark:bg-blue-900/30 dark:text-blue-200",
+                  "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-950/30 dark:text-sky-300",
+                  "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-950/30 dark:text-sky-300"
                 ];
                 const badges = ["🥇", "🥈", "🥉", "4.", "5."];
                 return (
@@ -784,7 +781,7 @@ export default function DashboardPage() {
                         <p className="text-[10px] text-muted-foreground truncate leading-normal">{e.position}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-extrabold text-brand-600 px-2 py-0.5 bg-brand-500/10 rounded-lg">
+                    <span className="text-xs font-extrabold text-[#012169] dark:text-[#0084d5] px-2 py-0.5 bg-[#012169]/10 dark:bg-[#0084d5]/20 rounded-lg">
                       {e.score.toFixed(2)}
                     </span>
                   </div>
@@ -810,20 +807,20 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl border bg-success-50/5 dark:bg-success-950/5 border-success-200/50 dark:border-success-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-success-700 dark:text-success-400 uppercase tracking-wider">Aprobación</span>
+            <div className="p-3 rounded-xl border bg-[#012169]/5 border-[#012169]/20 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-[#012169] dark:text-[#0084d5] uppercase tracking-wider">Aprobación</span>
               <div className="mt-2">
-                <p className="text-xl font-black text-success-600 dark:text-success-400 leading-none">
+                <p className="text-xl font-black text-[#012169] dark:text-[#0084d5] leading-none">
                   {completedEvals > 0 ? ((aprobados / completedEvals) * 100).toFixed(0) : 0}%
                 </p>
                 <p className="text-[9px] text-muted-foreground mt-1">Colaboradores aprobados</p>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl border bg-warning-50/5 dark:bg-warning-950/5 border-warning-200/50 dark:border-warning-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-warning-700 dark:text-warning-400 uppercase tracking-wider">Planes de Mejora</span>
+            <div className="p-3 rounded-xl border bg-[#0084d5]/5 border-[#0084d5]/20 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-[#0084d5] dark:text-[#38bdf8] uppercase tracking-wider">Planes de Mejora</span>
               <div className="mt-2">
-                <p className="text-xl font-black text-warning-600 dark:text-warning-400 leading-none">
+                <p className="text-xl font-black text-[#0084d5] dark:text-[#38bdf8] leading-none">
                   {completedEvals > 0 ? ((conPMI / completedEvals) * 100).toFixed(0) : 0}%
                 </p>
                 <p className="text-[9px] text-muted-foreground mt-1">Requirieron PMI</p>
@@ -840,10 +837,10 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl border bg-primary-50/5 dark:bg-primary-950/5 border-primary-200/50 dark:border-primary-900/30 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-primary-700 dark:text-primary-400 uppercase tracking-wider">Tasa Crítica</span>
+            <div className="p-3 rounded-xl border bg-slate-500/5 border-slate-300 dark:border-slate-800 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Tasa Crítica</span>
               <div className="mt-2">
-                <p className="text-xl font-black text-primary-600 dark:text-primary-400 leading-none">
+                <p className="text-xl font-black text-slate-700 dark:text-slate-300 leading-none">
                   {completedEvals > 0 ? ((reprobados / completedEvals) * 100).toFixed(0) : 0}%
                 </p>
                 <p className="text-[9px] text-muted-foreground mt-1">No aprobados</p>
@@ -897,28 +894,28 @@ export default function DashboardPage() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart data={positionAverageData} barSize={32}>
+            <BarChart data={positionAverageData} barSize={32} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="position" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
-                <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                <LabelList dataKey="promedio" position="top" dy={-4} style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
                 {positionAverageData.map((entry, index) => (
                   <Cell
                     key={index}
-                    fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"}
+                    fill={entry.promedio >= 4.0 ? "#012169" : entry.promedio >= 3.1 ? "#0084d5" : "#94a3b8"}
                   />
                 ))}
               </Bar>
               {/* Threshold line at 4.0 */}
-              <CartesianGrid y={4.0} strokeDasharray="4 4" stroke="#10b981" vertical={false} horizontal={false} />
+              <CartesianGrid y={4.0} strokeDasharray="4 4" stroke="#012169" vertical={false} horizontal={false} />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-success-500 inline-block" /> Aprobado (≥4.0)</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-brand-500 inline-block" /> Plan Mejora (3.1–3.9)</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-danger-500 inline-block" /> No Aprobado (&lt;3.1)</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#012169] inline-block" /> Aprobado (≥4.0)</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#0084d5] inline-block" /> Plan Mejora (3.1–3.9)</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#94a3b8] inline-block" /> No Aprobado (&lt;3.1)</span>
           </div>
         </motion.div>
 
@@ -1006,17 +1003,17 @@ export default function DashboardPage() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <LineChart data={displayTrendData}>
+            <LineChart data={displayTrendData} margin={{ top: 25, right: 15, left: -10, bottom: 15 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4, fill: "#3b82f6" }} name="Evaluaciones" activeDot={{ r: 6 }}>
-                <LabelList dataKey="evaluaciones" position="top" style={{ fontSize: 9, fill: "#3b82f6", fontWeight: "bold" }} />
+              <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#012169" strokeWidth={2.5} dot={{ r: 4, fill: "#012169" }} name="Evaluaciones" activeDot={{ r: 6 }}>
+                <LabelList dataKey="evaluaciones" position="top" dy={-8} style={{ fontSize: 10, fill: "#012169", fontWeight: "bold" }} />
               </Line>
-              <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4, fill: "#8b5cf6" }} name="Promedio" activeDot={{ r: 6 }}>
-                <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "#8b5cf6", fontWeight: "bold" }} />
+              <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#0084d5" strokeWidth={2.5} dot={{ r: 4, fill: "#0084d5" }} name="Promedio" activeDot={{ r: 6 }}>
+                <LabelList dataKey="promedio" position="bottom" dy={8} style={{ fontSize: 10, fill: "#0084d5", fontWeight: "bold" }} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -1044,15 +1041,15 @@ export default function DashboardPage() {
           </div>
           {displayPayrollData.length > 0 ? (
             <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-              <BarChart data={displayPayrollData} barSize={32}>
+              <BarChart data={displayPayrollData} barSize={32} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="payroll" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
-                  <LabelList dataKey="promedio" position="top" style={{ fontSize: 9, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                  <LabelList dataKey="promedio" position="top" dy={-4} style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
                   {displayPayrollData.map((entry, index) => (
-                    <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
+                    <Cell key={index} fill={entry.promedio >= 4.0 ? "#012169" : entry.promedio >= 3.1 ? "#0084d5" : "#94a3b8"} />
                   ))}
                 </Bar>
               </BarChart>
@@ -1092,7 +1089,7 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart
               data={areaPayrollChartData}
-              margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+              margin={{ top: 25, right: 15, left: -10, bottom: 5 }}
               barSize={32}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
