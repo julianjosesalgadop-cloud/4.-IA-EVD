@@ -343,6 +343,7 @@ export default function DashboardPage() {
   const [selectedResult, setSelectedResult] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
+  const [trendViewMode, setTrendViewMode] = useState<"dia" | "mes">("dia");
   const [dbAreas, setDbAreas] = useState<any[]>([]);
   const [dbPositions, setDbPositions] = useState<any[]>([]);
 
@@ -434,24 +435,64 @@ export default function DashboardPage() {
     };
   }).sort((a, b) => b.promedio - a.promedio).slice(0, 10);
   
-  // Recalculate dynamic monthly trend
-  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  const currentYear = new Date().getFullYear();
-  const trendData = months.map((mes, idx) => {
-    const evs = filteredEvals.filter((e: any) => {
+  // Recalculate dynamic trend data (por Día o por Mes)
+  let trendData: Array<{ label: string; evaluaciones: number; promedio: number }> = [];
+
+  if (trendViewMode === "dia") {
+    const dailyMap: Record<string, { displayLabel: string; sum: number; count: number }> = {};
+    
+    filteredEvals.forEach((e: any) => {
+      if (!e.date) return;
       const d = new Date(e.date);
-      return d.getMonth() === idx && d.getFullYear() === currentYear;
+      if (isNaN(d.getTime())) return;
+
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const dateKey = `${yyyy}-${mm}-${dd}`;
+      const monthsAbbr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      const displayLabel = `${d.getDate()} ${monthsAbbr[d.getMonth()]}`;
+
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = { displayLabel, sum: 0, count: 0 };
+      }
+      dailyMap[dateKey].count += 1;
+      if (e.score > 0) {
+        dailyMap[dateKey].sum += e.score;
+      }
     });
-    const avg = evs.length > 0 ? evs.reduce((sum: number, e: any) => sum + e.score, 0) / evs.length : 0;
-    return {
-      mes,
-      evaluaciones: evs.length,
-      promedio: Number(avg.toFixed(2))
-    };
-  }).filter(t => t.evaluaciones > 0);
+
+    trendData = Object.keys(dailyMap)
+      .sort()
+      .map(key => {
+        const item = dailyMap[key];
+        const avg = item.count > 0 && item.sum > 0 ? item.sum / item.count : 0;
+        return {
+          label: item.displayLabel,
+          evaluaciones: item.count,
+          promedio: Number(avg.toFixed(2))
+        };
+      });
+  } else {
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const currentYear = new Date().getFullYear();
+    trendData = months.map((mes, idx) => {
+      const evs = filteredEvals.filter((e: any) => {
+        const d = new Date(e.date);
+        return d.getMonth() === idx && d.getFullYear() === currentYear;
+      });
+      const scoredEvs = evs.filter((e: any) => e.score > 0);
+      const avg = scoredEvs.length > 0 ? scoredEvs.reduce((sum: number, e: any) => sum + e.score, 0) / scoredEvs.length : 0;
+      return {
+        label: mes,
+        evaluaciones: evs.length,
+        promedio: Number(avg.toFixed(2))
+      };
+    }).filter(t => t.evaluaciones > 0);
+  }
 
   const displayTrendData = trendData.length > 0 ? trendData : [
-    { mes: "Ene", evaluaciones: 0, promedio: 0 }
+    { label: trendViewMode === "dia" ? "Sin Datos" : "Ene", evaluaciones: 0, promedio: 0 }
   ];
   
   // Recalculate dynamic payroll type average EVD score data from evaluated collaborators (score > 0)
@@ -981,28 +1022,58 @@ export default function DashboardPage() {
           transition={{ delay: 0.6 }}
           className="lg:col-span-2 rounded-xl border bg-card p-5"
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <h3 className="font-semibold">Tendencia</h3>
-              <p className="text-xs text-muted-foreground">Evolución de evaluaciones y promedio mensual</p>
+              <p className="text-xs text-muted-foreground">
+                {trendViewMode === "dia" ? "Evolución diaria de evaluaciones y promedio" : "Evolución mensual de evaluaciones y promedio"}
+              </p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setExpandedChart("trend")}
-                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title="Expandir gráfico"
-              >
-                <Maximize2 className="w-4 h-4" />
-              </button>
-              <TrendingUp className="w-5 h-5 text-brand-500" />
+            <div className="flex items-center gap-3">
+              {/* Filter Buttons: Día / Mes */}
+              <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border text-xs">
+                <button
+                  onClick={() => setTrendViewMode("dia")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md font-semibold transition-all text-xs",
+                    trendViewMode === "dia"
+                      ? "bg-[#012169] text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Por Día
+                </button>
+                <button
+                  onClick={() => setTrendViewMode("mes")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md font-semibold transition-all text-xs",
+                    trendViewMode === "mes"
+                      ? "bg-[#012169] text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Por Mes
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setExpandedChart("trend")}
+                  className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                  title="Expandir gráfico"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+                <TrendingUp className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
+              </div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
             <LineChart data={displayTrendData} margin={{ top: 25, right: 15, left: -10, bottom: 15 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#012169" strokeWidth={2.5} dot={{ r: 4, fill: "#012169" }} name="Evaluaciones" activeDot={{ r: 6 }}>
                 <LabelList dataKey="evaluaciones" position="top" dy={-8} style={{ fontSize: 10, fill: "#012169", fontWeight: "bold" }} />
@@ -1210,17 +1281,17 @@ export default function DashboardPage() {
 
                 {expandedChart === "trend" && (
                   <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={displayTrendData}>
+                    <LineChart data={displayTrendData} margin={{ top: 25, right: 15, left: -10, bottom: 15 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                       <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                       <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CustomTooltip />} />
-                      <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, fill: "#3b82f6" }} name="Evaluaciones">
-                        <LabelList dataKey="evaluaciones" position="top" style={{ fontSize: 10, fill: "#3b82f6", fontWeight: "bold" }} />
+                      <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#012169" strokeWidth={3} dot={{ r: 5, fill: "#012169" }} name="Evaluaciones">
+                        <LabelList dataKey="evaluaciones" position="top" dy={-8} style={{ fontSize: 10, fill: "#012169", fontWeight: "bold" }} />
                       </Line>
-                      <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 5, fill: "#8b5cf6" }} name="Promedio">
-                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 10, fill: "#8b5cf6", fontWeight: "bold" }} />
+                      <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#0084d5" strokeWidth={3} dot={{ r: 5, fill: "#0084d5" }} name="Promedio">
+                        <LabelList dataKey="promedio" position="bottom" dy={8} style={{ fontSize: 10, fill: "#0084d5", fontWeight: "bold" }} />
                       </Line>
                     </LineChart>
                   </ResponsiveContainer>
