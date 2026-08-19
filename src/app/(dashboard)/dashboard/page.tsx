@@ -1170,7 +1170,14 @@ export default function DashboardPage() {
                   name={pt}
                   stackId="a"
                   fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
-                />
+                >
+                  <LabelList
+                    dataKey={pt}
+                    position="center"
+                    formatter={(val: any) => (val > 0 ? val : "")}
+                    style={{ fontSize: 10, fill: "#ffffff", fontWeight: "bold" }}
+                  />
+                </Bar>
               ))}
             </BarChart>
           </ResponsiveContainer>
@@ -1340,7 +1347,14 @@ export default function DashboardPage() {
                             name={pt}
                             stackId="a"
                             fill={PAYROLL_COLORS[idx % PAYROLL_COLORS.length]}
-                          />
+                          >
+                            <LabelList
+                              dataKey={pt}
+                              position="center"
+                              formatter={(val: any) => (val > 0 ? val : "")}
+                              style={{ fontSize: 11, fill: "#ffffff", fontWeight: "bold" }}
+                            />
+                          </Bar>
                         ))}
                       </BarChart>
                     </ResponsiveContainer>
