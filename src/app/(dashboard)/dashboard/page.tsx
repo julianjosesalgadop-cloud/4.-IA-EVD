@@ -39,8 +39,8 @@ function KPICard({ item, index }: { item: any; index: number }) {
 
   useEffect(() => {
     const target = typeof item.value === "number" ? item.value : 0;
-    const duration = 1200;
-    const steps = 60;
+    const duration = 1000;
+    const steps = 40;
     const increment = target / steps;
     let current = 0;
     const timer = setInterval(() => {
@@ -55,49 +55,45 @@ function KPICard({ item, index }: { item: any; index: number }) {
     return () => clearInterval(timer);
   }, [item.value]);
 
-  const isPositive = (item.change ?? 0) > 0;
-  const isNeutral = item.change === 0;
-
-  const colorMap = {
-    brand: { icon: "text-brand-500", bg: "bg-brand-50 dark:bg-brand-950/30", bar: "#3b82f6" },
-    violet: { icon: "text-violet-500", bg: "bg-violet-50 dark:bg-violet-950/30", bar: "#8b5cf6" },
-    success: { icon: "text-success-500", bg: "bg-success-50 dark:bg-success-950/30", bar: "#10b981" },
-    warning: { icon: "text-warning-600", bg: "bg-warning-50 dark:bg-warning-950/30", bar: "#f59e0b" },
-    danger: { icon: "text-danger-500", bg: "bg-danger-50 dark:bg-danger-950/30", bar: "#ef4444" },
+  const colorMap: Record<string, { topBorder: string; iconBg: string; iconText: string }> = {
+    brand: { topBorder: "border-t-[#012169]", iconBg: "bg-[#012169]/10 dark:bg-[#012169]/30", iconText: "text-[#012169] dark:text-[#0084d5]" },
+    violet: { topBorder: "border-t-[#0084d5]", iconBg: "bg-[#0084d5]/10 dark:bg-[#0084d5]/30", iconText: "text-[#0084d5] dark:text-[#38bdf8]" },
+    success: { topBorder: "border-t-[#012169]", iconBg: "bg-[#012169]/10 dark:bg-[#012169]/30", iconText: "text-[#012169] dark:text-[#0084d5]" },
+    warning: { topBorder: "border-t-[#0084d5]", iconBg: "bg-[#0084d5]/10 dark:bg-[#0084d5]/30", iconText: "text-[#0084d5] dark:text-[#38bdf8]" },
+    danger: { topBorder: "border-t-[#94a3b8]", iconBg: "bg-[#94a3b8]/10 dark:bg-[#94a3b8]/30", iconText: "text-[#475569] dark:text-[#94a3b8]" },
   };
 
-  const colors = colorMap[item.color as keyof typeof colorMap];
+  const colors = colorMap[item.color as keyof typeof colorMap] || colorMap.brand;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.4 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
       className={cn(
-        "kpi-card-brand rounded-xl p-5 cursor-default",
-        `kpi-card-${item.color}`,
-        "hover:shadow-card-hover transition-all duration-200"
+        "relative bg-card border border-border border-t-[3px] rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-default space-y-3",
+        colors.topBorder
       )}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className={cn("p-2.5 rounded-xl", colors.bg)}>
-          <item.icon className={cn("w-5 h-5", colors.icon)} />
+      <div className="flex items-center justify-between">
+        <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center transition-colors", colors.iconBg)}>
+          <item.icon className={cn("w-5 h-5", colors.iconText)} />
         </div>
       </div>
 
       <div className="space-y-1">
         <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold tracking-tight">
+          <span className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
             {item.color === "brand" && item.title.includes("Promedio")
               ? formatScore(displayValue)
               : formatNumber(Math.round(displayValue))
             }
           </span>
           {item.suffix && (
-            <span className="text-sm text-muted-foreground">{item.suffix}</span>
+            <span className="text-xs font-semibold text-muted-foreground">{item.suffix}</span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground font-medium">{item.title}</p>
+        <p className="text-xs font-semibold text-muted-foreground leading-snug">{item.title}</p>
       </div>
     </motion.div>
   );
@@ -686,7 +682,7 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-children">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 stagger-children">
         {kpiData.map((item, i) => (
           <KPICard key={item.title} item={item} index={i} />
         ))}
