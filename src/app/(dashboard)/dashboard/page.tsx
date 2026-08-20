@@ -71,27 +71,27 @@ function KPICard({ item, index }: { item: any; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
       className={cn(
-        "relative bg-card border border-border border-t-[3px] rounded-xl p-4 md:p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-default flex flex-col items-center justify-center text-center space-y-2.5",
+        "relative bg-card border border-border border-t-[3px] rounded-xl p-3 md:p-3.5 shadow-xs hover:shadow-sm transition-all duration-200 cursor-default flex flex-col items-center justify-center text-center space-y-1.5",
         colors.topBorder
       )}
     >
-      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors mx-auto", colors.iconBg)}>
-        <item.icon className={cn("w-5 h-5", colors.iconText)} />
+      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-colors mx-auto", colors.iconBg)}>
+        <item.icon className={cn("w-4 h-4", colors.iconText)} />
       </div>
 
-      <div className="space-y-1 w-full flex flex-col items-center justify-center">
-        <div className="flex items-baseline justify-center gap-1">
-          <span className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground text-center">
+      <div className="space-y-0.5 w-full flex flex-col items-center justify-center">
+        <div className="flex items-baseline justify-center gap-0.5">
+          <span className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground text-center leading-tight">
             {item.color === "brand" && item.title.includes("Promedio")
               ? formatScore(displayValue)
               : formatNumber(Math.round(displayValue))
             }
           </span>
           {item.suffix && (
-            <span className="text-xs font-semibold text-muted-foreground">{item.suffix}</span>
+            <span className="text-[10px] font-semibold text-muted-foreground">{item.suffix}</span>
           )}
         </div>
-        <p className="text-xs font-semibold text-muted-foreground text-center leading-snug max-w-[140px] mx-auto">{item.title}</p>
+        <p className="text-[11px] font-semibold text-muted-foreground text-center leading-tight max-w-[130px] mx-auto">{item.title}</p>
       </div>
     </motion.div>
   );
