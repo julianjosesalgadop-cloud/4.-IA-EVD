@@ -789,34 +789,34 @@ export default function DashboardPage() {
         >
           <div>
             <h3 className="font-semibold">Colaboradores Destacados</h3>
-            <p className="text-xs text-muted-foreground">Top 5 mejores promedios en EVD</p>
+            <p className="text-xs text-muted-foreground">Ranking de mejores promedios en EVD</p>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
             {filteredEvals
               .filter((e: any) => e.score > 0)
               .sort((a: any, b: any) => b.score - a.score)
-              .slice(0, 5)
               .map((e: any, idx: number) => {
-                const colors = [
-                  "bg-amber-500/20 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-300",
-                  "bg-slate-300/40 text-slate-700 border-slate-400/50 dark:bg-slate-700/40 dark:text-slate-200",
-                  "bg-blue-600/20 text-blue-800 border-blue-600/40 dark:bg-blue-900/30 dark:text-blue-200",
-                  "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-950/30 dark:text-sky-300",
-                  "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-950/30 dark:text-sky-300"
-                ];
-                const badges = ["🥇", "🥈", "🥉", "4.", "5."];
+                const badgeStyle = idx === 0
+                  ? "bg-amber-500/20 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-300"
+                  : idx === 1
+                  ? "bg-slate-300/40 text-slate-700 border-slate-400/50 dark:bg-slate-700/40 dark:text-slate-200"
+                  : idx === 2
+                  ? "bg-amber-700/20 text-amber-800 border-amber-700/40 dark:bg-amber-800/30 dark:text-amber-200"
+                  : "bg-[#012169]/10 text-[#012169] border-[#012169]/20 dark:bg-[#0084d5]/20 dark:text-[#38bdf8]";
+                
+                const badgeLabel = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}.`;
                 return (
                   <div key={e.id} className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/10">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border", colors[idx] || "bg-muted text-muted-foreground")}>
-                        {badges[idx]}
+                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border shrink-0", badgeStyle)}>
+                        {badgeLabel}
                       </span>
                       <div className="overflow-hidden">
                         <p className="font-semibold text-xs truncate text-foreground leading-normal">{e.collaborator}</p>
                         <p className="text-[10px] text-muted-foreground truncate leading-normal">{e.position}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-extrabold text-[#012169] dark:text-[#0084d5] px-2 py-0.5 bg-[#012169]/10 dark:bg-[#0084d5]/20 rounded-lg">
+                    <span className="text-xs font-extrabold text-[#012169] dark:text-[#0084d5] px-2 py-0.5 bg-[#012169]/10 dark:bg-[#0084d5]/20 rounded-lg shrink-0">
                       {e.score.toFixed(2)}
                     </span>
                   </div>
