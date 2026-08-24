@@ -211,7 +211,10 @@ export default function ReportesPage() {
           ? item.result
           : item.result?.[0] || null;
         if (resObj && resObj.category_scores) {
-          Object.values(resObj.category_scores).forEach((cat: any) => {
+          const cats = Array.isArray(resObj.category_scores)
+            ? resObj.category_scores
+            : Object.values(resObj.category_scores);
+          cats.forEach((cat: any) => {
             if (cat?.name) {
               uniqueCategories.add(cat.name);
             }
@@ -230,19 +233,25 @@ export default function ReportesPage() {
           "ID Evaluación": item.code || "—",
           "Colaborador": item.collaborator?.full_name || "N/A",
           "Documento": item.collaborator?.document_number || "N/A",
-          "Área": item.collaborator?.areas?.name || "N/A",
-          "Cargo": item.collaborator?.position?.name || "N/A",
+          "Área": item.collaborator?.areas?.name || item.collaborator?.area?.name || "N/A",
+          "Cargo": item.collaborator?.positions?.name || item.collaborator?.position?.name || "N/A",
           "Evaluador": item.evaluator ? `${item.evaluator.first_name} ${item.evaluator.last_name}` : "N/A",
           "Fecha de Finalización": item.finalized_at ? new Date(item.finalized_at).toLocaleDateString("es-ES") : "Pendiente",
         };
 
         // Add dynamic category averages
+        const cats = resObj?.category_scores
+          ? (Array.isArray(resObj.category_scores) ? resObj.category_scores : Object.values(resObj.category_scores))
+          : [];
+
         categoriesList.forEach((catName) => {
           let scoreVal: any = "—";
-          if (resObj && resObj.category_scores) {
-            const catMatch = Object.values(resObj.category_scores).find((c: any) => c.name === catName) as any;
+          if (resObj && cats.length > 0) {
+            const catMatch = cats.find((c: any) => c.name === catName) as any;
             if (catMatch && catMatch.average !== undefined) {
               scoreVal = Number(formatScore(catMatch.average));
+            } else if (catMatch && catMatch.score !== undefined) {
+              scoreVal = Number(formatScore(catMatch.score));
             }
           }
           row[`Promedio Cat: ${catName}`] = scoreVal;
@@ -263,6 +272,7 @@ export default function ReportesPage() {
         categoryCounts: Record<string, number>;
         overallSum: number;
         overallCount: number;
+        aprobadosCount: number;
       }> = {};
 
       evaluations.forEach((item) => {
@@ -270,7 +280,7 @@ export default function ReportesPage() {
           ? item.result
           : item.result?.[0] || null;
         
-        const areaName = item.collaborator?.areas?.name || "Sin Área";
+        const areaName = item.collaborator?.areas?.name || item.collaborator?.area?.name || "Sin Área";
         
         if (!areaDataMap[areaName]) {
           areaDataMap[areaName] = {
@@ -279,7 +289,8 @@ export default function ReportesPage() {
             categorySums: {},
             categoryCounts: {},
             overallSum: 0,
-            overallCount: 0
+            overallCount: 0,
+            aprobadosCount: 0
           };
         }
 
@@ -289,20 +300,26 @@ export default function ReportesPage() {
           areaStat.totalEvaluated++;
           areaStat.overallSum += Number(resObj.overall_average) || 0;
           areaStat.overallCount++;
-
-          if (resObj.category_scores) {
-            Object.values(resObj.category_scores).forEach((cat: any) => {
-              if (cat?.name && cat.average !== undefined) {
-                const catName = cat.name;
-                if (!areaStat.categorySums[catName]) {
-                  areaStat.categorySums[catName] = 0;
-                  areaStat.categoryCounts[catName] = 0;
-                }
-                areaStat.categorySums[catName] += Number(cat.average) || 0;
-                areaStat.categoryCounts[catName]++;
-              }
-            });
+          if (resObj.result === "aprobado") {
+            areaStat.aprobadosCount++;
           }
+
+          const cats = resObj.category_scores
+            ? (Array.isArray(resObj.category_scores) ? resObj.category_scores : Object.values(resObj.category_scores))
+            : [];
+
+          cats.forEach((cat: any) => {
+            if (cat?.name && (cat.average !== undefined || cat.score !== undefined)) {
+              const catName = cat.name;
+              const val = cat.average !== undefined ? cat.average : cat.score;
+              if (!areaStat.categorySums[catName]) {
+                areaStat.categorySums[catName] = 0;
+                areaStat.categoryCounts[catName] = 0;
+              }
+              areaStat.categorySums[catName] += Number(val) || 0;
+              areaStat.categoryCounts[catName]++;
+            }
+          });
         }
       });
 
@@ -319,13 +336,44 @@ export default function ReportesPage() {
           row[`Promedio Cat: ${catName}`] = count > 0 ? Number(formatScore(sum / count)) : "—";
         });
 
-        // Add overall area general average score
+        // Add overall area general average score and approval %
         row["Promedio General Área"] = areaStat.overallCount > 0 ? Number(formatScore(areaStat.overallSum / areaStat.overallCount)) : 0;
+        row["% Aprobación"] = areaStat.overallCount > 0 ? `${((areaStat.aprobadosCount / areaStat.overallCount) * 100).toFixed(0)}%` : "0%";
 
         return row;
       });
 
-      // 4. Create workbook and add sheets
+      // 4. Generate rows for Category tab
+      const catSummaryMap: Record<string, { sum: number; count: number }> = {};
+      evaluations.forEach((item) => {
+        const resObj = item.result && !Array.isArray(item.result)
+          ? item.result
+          : item.result?.[0] || null;
+        if (resObj && resObj.category_scores) {
+          const cats = Array.isArray(resObj.category_scores)
+            ? resObj.category_scores
+            : Object.values(resObj.category_scores);
+          cats.forEach((cat: any) => {
+            if (cat?.name && (cat.average !== undefined || cat.score !== undefined)) {
+              const catName = cat.name;
+              const val = cat.average !== undefined ? cat.average : cat.score;
+              if (!catSummaryMap[catName]) {
+                catSummaryMap[catName] = { sum: 0, count: 0 };
+              }
+              catSummaryMap[catName].sum += Number(val) || 0;
+              catSummaryMap[catName].count++;
+            }
+          });
+        }
+      });
+
+      const categoryRows = Object.entries(catSummaryMap).map(([catName, stat]) => ({
+        "Categoría": catName,
+        "Evaluaciones Registradas": stat.count,
+        "Promedio General Obtenido": stat.count > 0 ? Number(formatScore(stat.sum / stat.count)) : 0
+      }));
+
+      // 5. Create workbook and add sheets
       const workbook = XLSX.utils.book_new();
 
       const worksheetCollab = XLSX.utils.json_to_sheet(collaboratorRows);
@@ -334,12 +382,17 @@ export default function ReportesPage() {
       const worksheetArea = XLSX.utils.json_to_sheet(areaRows);
       XLSX.utils.book_append_sheet(workbook, worksheetArea, "Resultados por Área");
 
-      // Auto-fit column widths for both sheets
+      if (categoryRows.length > 0) {
+        const worksheetCat = XLSX.utils.json_to_sheet(categoryRows);
+        XLSX.utils.book_append_sheet(workbook, worksheetCat, "Resultados por Categoría");
+      }
+
+      // Auto-fit column widths for sheets
       const setColWidths = (ws: XLSX.WorkSheet, rows: any[]) => {
-        if (rows.length === 0) return;
+        if (!rows || rows.length === 0) return;
         const maxColWidth = rows.reduce((acc, row) => {
           Object.keys(row).forEach((key, i) => {
-            const val = String((row as any)[key]);
+            const val = String((row as any)[key] ?? "");
             acc[i] = Math.max(acc[i] || 10, val.length + 2, key.length + 2);
           });
           return acc;
@@ -349,6 +402,10 @@ export default function ReportesPage() {
 
       setColWidths(worksheetCollab, collaboratorRows);
       setColWidths(worksheetArea, areaRows);
+      if (categoryRows.length > 0) {
+        const wsCat = workbook.Sheets["Resultados por Categoría"];
+        if (wsCat) setColWidths(wsCat, categoryRows);
+      }
 
       XLSX.writeFile(workbook, `Reporte_Consolidado_EVD_${new Date().getFullYear()}.xlsx`);
       toast.success("Excel Consolidado descargado exitosamente", { id: toastId });
@@ -499,82 +556,86 @@ export default function ReportesPage() {
       let pmiCount = 0;
       let noApprovedCount = 0;
 
-      const areaStats: Record<string, { sum: number; count: number }> = {};
-      const catStats: Record<string, { sum: number; count: number }> = {};
+      const areaStats: Record<string, { total: number; sum: number }> = {};
+      const catStats: Record<string, { total: number; sum: number; count: number }> = {};
 
       evaluations.forEach((item) => {
         const resObj = item.result && !Array.isArray(item.result)
           ? item.result
           : item.result?.[0] || null;
-
+        
         if (resObj) {
-          const score = resObj.overall_average || 0;
+          const score = Number(resObj.overall_average) || 0;
           scoreSum += score;
 
           if (resObj.result === "aprobado") approvedCount++;
           else if (resObj.result === "plan_mejoramiento") pmiCount++;
-          else noApprovedCount++;
+          else if (resObj.result === "no_aprobado") noApprovedCount++;
 
-          // Area
-          const areaName = item.collaborator?.areas?.name || "Sin Área";
-          if (!areaStats[areaName]) areaStats[areaName] = { sum: 0, count: 0 };
+          const areaName = item.collaborator?.areas?.name || item.collaborator?.area?.name || "Sin Área";
+          if (!areaStats[areaName]) areaStats[areaName] = { total: 0, sum: 0 };
+          areaStats[areaName].total++;
           areaStats[areaName].sum += score;
-          areaStats[areaName].count++;
 
-          // Categories
           if (resObj.category_scores) {
-            Object.entries(resObj.category_scores).forEach(([_, cat]: [string, any]) => {
-              if (!catStats[cat.name]) catStats[cat.name] = { sum: 0, count: 0 };
-              catStats[cat.name].sum += cat.average || 0;
-              catStats[cat.name].count++;
+            const cats = Array.isArray(resObj.category_scores)
+              ? resObj.category_scores
+              : Object.values(resObj.category_scores);
+            cats.forEach((cat: any) => {
+              if (cat?.name && (cat.average !== undefined || cat.score !== undefined)) {
+                const catName = cat.name;
+                const val = cat.average !== undefined ? cat.average : cat.score;
+                if (!catStats[catName]) catStats[catName] = { total: 0, sum: 0, count: 0 };
+                catStats[catName].sum += Number(val) || 0;
+                catStats[catName].count++;
+              }
             });
           }
         }
       });
 
-      const averageScore = total > 0 ? (scoreSum / total).toFixed(2) : "0.00";
+      const avgGeneral = total > 0 ? (scoreSum / total).toFixed(2) : "0.00";
+      const approvalRate = total > 0 ? ((approvedCount / total) * 100).toFixed(0) : "0";
 
-      // 1. Metrics table
-      const metricsRows = [
-        ["Total Evaluaciones Registradas", `${total}`],
-        ["Calificación Promedio General", `${averageScore} / 5.0`],
-        ["Colaboradores Aprobados (Nota >= 4.0)", `${approvedCount} (${total > 0 ? Math.round((approvedCount/total)*100) : 0}%)`],
-        ["Colaboradores en Plan de Mejora (Nota 3.1 - 3.9)", `${pmiCount} (${total > 0 ? Math.round((pmiCount/total)*100) : 0}%)`],
-        ["Colaboradores No Aprobados (Nota < 3.1)", `${noApprovedCount} (${total > 0 ? Math.round((noApprovedCount/total)*100) : 0}%)`]
-      ];
+      let currentY = 46;
 
+      // Executive Summary KPI Box
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(marginX, currentY, 180, 32, 2, 2, "F");
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(marginX, currentY, 180, 32, 2, 2, "D");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(brandColorBlue[0], brandColorBlue[1], brandColorBlue[2]);
+      doc.text("MÉTRICAS CLAVE CONSOLIDADAS", marginX + 5, currentY + 7);
+
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textColorDark[0], textColorDark[1], textColorDark[2]);
+
+      doc.text(`Total Evaluaciones Realizadas: ${total}`, marginX + 5, currentY + 15);
+      doc.text(`Promedio General Obtenido: ${avgGeneral} / 5.0`, marginX + 5, currentY + 22);
+      doc.text(`Tasa Global de Aprobación: ${approvalRate}%`, marginX + 5, currentY + 28);
+
+      doc.text(`Evaluaciones Aprobadas: ${approvedCount}`, marginX + 95, currentY + 15);
+      doc.text(`Con Plan de Mejoramiento (PMI): ${pmiCount}`, marginX + 95, currentY + 22);
+      doc.text(`No Aprobados: ${noApprovedCount}`, marginX + 95, currentY + 28);
+
+      currentY += 40;
+
+      // 2. Area breakdown table
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11.5);
       doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("1. MÉTRICAS CLAVE", marginX, 48);
-
-      autoTable(doc, {
-        startY: 52,
-        head: [],
-        body: metricsRows,
-        theme: "grid",
-        styles: { fontSize: 8.5, cellPadding: 2.5, textColor: textColorDark as any },
-        columnStyles: {
-          0: { fontStyle: "bold", cellWidth: 100, fillColor: [248, 250, 252] as any },
-          1: { cellWidth: 80, halign: "center" }
-        },
-        margin: { left: marginX, right: marginX, top: 26, bottom: 24 }
-      });
-
-      let currentY = (doc as any).lastAutoTable.finalY + 8;
-
-      // 2. Area table
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11.5);
-      doc.setTextColor(brandColorLightBlue[0], brandColorLightBlue[1], brandColorLightBlue[2]);
-      doc.text("2. PROMEDIOS DE DESEMPEÑO POR ÁREA", marginX, currentY);
+      doc.text("2. DESEMPEÑO PROMEDIO POR ÁREA", marginX, currentY);
       currentY += 4;
 
-      const areaHeaders = [["Área / Departamento", "Calificación Promedio", "Colaboradores Evaluados"]];
+      const areaHeaders = [["Área de la Empresa", "Total Evaluaciones", "Promedio General"]];
       const areaRows = Object.entries(areaStats).map(([name, stat]) => [
         name,
-        `${(stat.sum / stat.count).toFixed(2)} / 5.0`,
-        `${stat.count} colaboradores`
+        stat.total.toString(),
+        `${(stat.sum / stat.total).toFixed(2)} / 5.0`
       ]);
 
       autoTable(doc, {
@@ -668,7 +729,7 @@ export default function ReportesPage() {
     }
   };
 
-  // Export Excel for Filtered Data
+  // Export Excel for Filtered Data with Category and Area breakdowns
   const handleExportFilteredExcel = () => {
     if (filteredEvaluations.length === 0) {
       toast.error("No hay resultados de búsqueda para exportar");
@@ -677,40 +738,215 @@ export default function ReportesPage() {
 
     const toastId = toast.loading("Exportando resultados filtrados...");
     try {
-      const excelRows = filteredEvaluations.map((item) => {
+      // 1. Get all unique category names dynamically from filtered evaluations
+      const uniqueCategories = new Set<string>();
+      filteredEvaluations.forEach((item) => {
         const resObj = item.result && !Array.isArray(item.result)
           ? item.result
           : item.result?.[0] || null;
-        return {
+        if (resObj && resObj.category_scores) {
+          const cats = Array.isArray(resObj.category_scores)
+            ? resObj.category_scores
+            : Object.values(resObj.category_scores);
+          cats.forEach((cat: any) => {
+            if (cat?.name) {
+              uniqueCategories.add(cat.name);
+            }
+          });
+        }
+      });
+      const categoriesList = Array.from(uniqueCategories).sort();
+
+      // 2. Tab 1: Detailed Collaborator Results with Category Columns
+      const collaboratorRows = filteredEvaluations.map((item) => {
+        const resObj = item.result && !Array.isArray(item.result)
+          ? item.result
+          : item.result?.[0] || null;
+
+        const row: Record<string, any> = {
+          "ID Evaluación": item.code || "—",
           "Colaborador": item.collaborator?.full_name || "N/A",
           "Documento": item.collaborator?.document_number || "N/A",
-          "Área": item.collaborator?.areas?.name || "N/A",
-          "Cargo": item.collaborator?.position?.name || "N/A",
+          "Área": item.collaborator?.areas?.name || item.collaborator?.area?.name || "N/A",
+          "Cargo": item.collaborator?.positions?.name || item.collaborator?.position?.name || "N/A",
           "Evaluador": item.evaluator ? `${item.evaluator.first_name} ${item.evaluator.last_name}` : "N/A",
-          "Fecha Evaluación": item.finalized_at ? new Date(item.finalized_at).toLocaleDateString("es-ES") : new Date(item.created_at).toLocaleDateString("es-ES"),
-          "Puntaje": resObj ? Number(formatScore(resObj.overall_average)) : 0,
-          "Resultado": resObj ? getResultLabel(resObj.result) : "Pendiente",
+          "Fecha Evaluación": item.finalized_at
+            ? new Date(item.finalized_at).toLocaleDateString("es-ES")
+            : item.created_at
+            ? new Date(item.created_at).toLocaleDateString("es-ES")
+            : "N/A",
         };
+
+        // Add dynamic category score columns
+        const cats = resObj?.category_scores
+          ? (Array.isArray(resObj.category_scores) ? resObj.category_scores : Object.values(resObj.category_scores))
+          : [];
+
+        categoriesList.forEach((catName) => {
+          let scoreVal: any = "—";
+          if (resObj && cats.length > 0) {
+            const catMatch = cats.find((c: any) => c.name === catName) as any;
+            if (catMatch && catMatch.average !== undefined) {
+              scoreVal = Number(formatScore(catMatch.average));
+            } else if (catMatch && catMatch.score !== undefined) {
+              scoreVal = Number(formatScore(catMatch.score));
+            }
+          }
+          row[`Promedio Cat: ${catName}`] = scoreVal;
+        });
+
+        row["Puntaje General"] = resObj ? Number(formatScore(resObj.overall_average)) : "Pendiente";
+        row["Resultado EVD"] = resObj ? getResultLabel(resObj.result) : "Pendiente";
+
+        return row;
       });
 
-      const worksheet = XLSX.utils.json_to_sheet(excelRows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Resultados Filtrados");
+      // 3. Tab 2: Results by Area
+      const areaMap: Record<string, {
+        name: string;
+        totalEvaluated: number;
+        categorySums: Record<string, number>;
+        categoryCounts: Record<string, number>;
+        overallSum: number;
+        overallCount: number;
+        aprobadosCount: number;
+      }> = {};
 
-      const maxColWidth = excelRows.reduce((acc, row) => {
-        Object.keys(row).forEach((key, i) => {
-          const val = String((row as any)[key]);
-          acc[i] = Math.max(acc[i] || 10, val.length + 2, key.length + 2);
+      filteredEvaluations.forEach((item) => {
+        const resObj = item.result && !Array.isArray(item.result)
+          ? item.result
+          : item.result?.[0] || null;
+
+        const areaName = item.collaborator?.areas?.name || item.collaborator?.area?.name || "Sin Área";
+
+        if (!areaMap[areaName]) {
+          areaMap[areaName] = {
+            name: areaName,
+            totalEvaluated: 0,
+            categorySums: {},
+            categoryCounts: {},
+            overallSum: 0,
+            overallCount: 0,
+            aprobadosCount: 0
+          };
+        }
+
+        const areaStat = areaMap[areaName];
+        areaStat.totalEvaluated++;
+
+        if (resObj) {
+          areaStat.overallSum += Number(resObj.overall_average) || 0;
+          areaStat.overallCount++;
+          if (resObj.result === "aprobado") {
+            areaStat.aprobadosCount++;
+          }
+
+          const cats = resObj.category_scores
+            ? (Array.isArray(resObj.category_scores) ? resObj.category_scores : Object.values(resObj.category_scores))
+            : [];
+
+          cats.forEach((cat: any) => {
+            if (cat?.name && (cat.average !== undefined || cat.score !== undefined)) {
+              const catName = cat.name;
+              const val = cat.average !== undefined ? cat.average : cat.score;
+              if (!areaStat.categorySums[catName]) {
+                areaStat.categorySums[catName] = 0;
+                areaStat.categoryCounts[catName] = 0;
+              }
+              areaStat.categorySums[catName] += Number(val) || 0;
+              areaStat.categoryCounts[catName]++;
+            }
+          });
+        }
+      });
+
+      const areaRows = Object.values(areaMap).map((areaStat) => {
+        const row: Record<string, any> = {
+          "Área": areaStat.name,
+          "Total Evaluaciones": areaStat.totalEvaluated,
+        };
+
+        categoriesList.forEach((catName) => {
+          const sum = areaStat.categorySums[catName] || 0;
+          const count = areaStat.categoryCounts[catName] || 0;
+          row[`Promedio Cat: ${catName}`] = count > 0 ? Number(formatScore(sum / count)) : "—";
         });
-        return acc;
-      }, [] as number[]);
-      worksheet["!cols"] = maxColWidth.map(w => ({ wch: w }));
 
-      XLSX.writeFile(workbook, `Resultados_Filtrados_EVD_${new Date().toISOString().slice(0,10)}.xlsx`);
-      toast.success("Resultados filtrados exportados exitosamente", { id: toastId });
+        row["Promedio General Área"] = areaStat.overallCount > 0 ? Number(formatScore(areaStat.overallSum / areaStat.overallCount)) : 0;
+        row["% Aprobación"] = areaStat.overallCount > 0 ? `${((areaStat.aprobadosCount / areaStat.overallCount) * 100).toFixed(0)}%` : "0%";
+
+        return row;
+      });
+
+      // 4. Tab 3: Results by Category
+      const catSummaryMap: Record<string, { sum: number; count: number }> = {};
+      filteredEvaluations.forEach((item) => {
+        const resObj = item.result && !Array.isArray(item.result)
+          ? item.result
+          : item.result?.[0] || null;
+        if (resObj && resObj.category_scores) {
+          const cats = Array.isArray(resObj.category_scores)
+            ? resObj.category_scores
+            : Object.values(resObj.category_scores);
+          cats.forEach((cat: any) => {
+            if (cat?.name && (cat.average !== undefined || cat.score !== undefined)) {
+              const catName = cat.name;
+              const val = cat.average !== undefined ? cat.average : cat.score;
+              if (!catSummaryMap[catName]) {
+                catSummaryMap[catName] = { sum: 0, count: 0 };
+              }
+              catSummaryMap[catName].sum += Number(val) || 0;
+              catSummaryMap[catName].count++;
+            }
+          });
+        }
+      });
+
+      const categoryRows = Object.entries(catSummaryMap).map(([catName, stat]) => ({
+        "Categoría": catName,
+        "Evaluaciones Registradas": stat.count,
+        "Promedio General Obtenido": stat.count > 0 ? Number(formatScore(stat.sum / stat.count)) : 0
+      }));
+
+      // 5. Create Workbook and Sheets
+      const workbook = XLSX.utils.book_new();
+
+      const wsCollab = XLSX.utils.json_to_sheet(collaboratorRows);
+      XLSX.utils.book_append_sheet(workbook, wsCollab, "Resultados Filtrados");
+
+      const wsArea = XLSX.utils.json_to_sheet(areaRows);
+      XLSX.utils.book_append_sheet(workbook, wsArea, "Resumen por Área");
+
+      if (categoryRows.length > 0) {
+        const wsCat = XLSX.utils.json_to_sheet(categoryRows);
+        XLSX.utils.book_append_sheet(workbook, wsCat, "Resumen por Categoría");
+      }
+
+      // Auto-fit column widths helper
+      const setColWidths = (ws: XLSX.WorkSheet, rows: any[]) => {
+        if (!rows || rows.length === 0) return;
+        const maxColWidth = rows.reduce((acc, row) => {
+          Object.keys(row).forEach((key, i) => {
+            const val = String((row as any)[key] ?? "");
+            acc[i] = Math.max(acc[i] || 10, val.length + 2, key.length + 2);
+          });
+          return acc;
+        }, [] as number[]);
+        ws["!cols"] = maxColWidth.map((w: number) => ({ wch: w }));
+      };
+
+      setColWidths(wsCollab, collaboratorRows);
+      setColWidths(wsArea, areaRows);
+      if (categoryRows.length > 0) {
+        const wsCat = workbook.Sheets["Resumen por Categoría"];
+        if (wsCat) setColWidths(wsCat, categoryRows);
+      }
+
+      XLSX.writeFile(workbook, `Reporte_EVD_Filtrado_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success("Excel con resultados por área y categoría descargado exitosamente", { id: toastId });
     } catch (error) {
-      console.error(error);
-      toast.error("Error al exportar resultados filtrados", { id: toastId });
+      console.error("Error exporting filtered Excel:", error);
+      toast.error("Error al exportar los resultados a Excel", { id: toastId });
     }
   };
 
