@@ -6,7 +6,7 @@ import {
   Users, ClipboardList, CheckCircle2, AlertCircle, TrendingUp,
   Clock, Target, BarChart3, Activity, AlertTriangle, ArrowUpRight,
   ArrowDownRight, Minus, Star, Eye, Maximize2, Minimize2,
-  ArrowUpDown, ChevronUp, ChevronDown, GitBranch
+  ArrowUpDown, ChevronUp, ChevronDown, GitBranch, Award
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid,
@@ -769,15 +769,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Row 3 — Nuevos Gráficos Gerenciales */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* Gráfico 1: Niveles de Desempeño */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="rounded-xl border bg-card p-5"
+          className="rounded-xl border bg-card p-5 flex flex-col justify-between h-full"
         >
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="font-semibold">Niveles de Desempeño</h3>
               <p className="text-xs text-muted-foreground">Distribución por rangos EVD</p>
@@ -793,32 +793,40 @@ export default function DashboardPage() {
               <Users className="w-5 h-5 text-muted-foreground" />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart
-              data={performanceTiersData}
-              layout="vertical"
-              margin={{ top: 5, right: 45, left: 10, bottom: 5 }}
-              barSize={16}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                width={140}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
-              <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
-                <LabelList dataKey="value" position="right" dx={6} style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                {performanceTiersData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="flex-1 w-full min-h-[240px] flex items-center justify-center">
+            <ResponsiveContainer width="100%" height={isExpanded ? 320 : 250}>
+              <BarChart
+                data={performanceTiersData}
+                layout="vertical"
+                margin={{ top: 10, right: 35, left: 10, bottom: 5 }}
+                barSize={18}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  width={145}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
+                <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
+                  <LabelList dataKey="value" position="right" dx={6} style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                  {performanceTiersData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground mt-2">
+            <span>Evaluaciones clasificadas: <strong className="text-foreground">{completedEvals}</strong></span>
+            <span className="text-[#012169] dark:text-[#0084d5] font-bold">
+              {completedEvals > 0 ? `${Math.round(((performanceTiersData[0].value + performanceTiersData[1].value) / completedEvals) * 100)}% nivel superior` : "0%"}
+            </span>
+          </div>
         </motion.div>
 
         {/* Colaboradores Destacados Card */}
@@ -826,13 +834,16 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.55 }}
-          className="rounded-xl border bg-card p-5 space-y-4"
+          className="rounded-xl border bg-card p-5 flex flex-col justify-between h-full space-y-3"
         >
-          <div>
-            <h3 className="font-semibold">Colaboradores Destacados</h3>
-            <p className="text-xs text-muted-foreground">Ranking de mejores promedios en EVD</p>
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h3 className="font-semibold">Colaboradores Destacados</h3>
+              <p className="text-xs text-muted-foreground">Ranking de mejores promedios en EVD</p>
+            </div>
+            <Award className="w-5 h-5 text-amber-500" />
           </div>
-          <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1 flex-1">
             {filteredEvals
               .filter((e: any) => e.score > 0)
               .sort((a: any, b: any) => b.score - a.score)
@@ -869,6 +880,10 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+          <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground mt-auto">
+            <span>Colaboradores con nota: <strong className="text-foreground">{filteredEvals.filter((e: any) => e.score > 0).length}</strong></span>
+            <span className="text-amber-600 dark:text-amber-400 font-semibold">Top EVD</span>
+          </div>
         </motion.div>
 
         {/* Datos de Interés Card */}
@@ -876,16 +891,19 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="rounded-xl border bg-card p-5 space-y-4"
+          className="rounded-xl border bg-card p-5 flex flex-col justify-between h-full space-y-3"
         >
-          <div>
-            <h3 className="font-semibold">Datos de Interés</h3>
-            <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h3 className="font-semibold">Datos de Interés</h3>
+              <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
+            </div>
+            <TrendingUp className="w-5 h-5 text-[#0084d5]" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl border bg-[#012169]/5 border-[#012169]/20 flex flex-col justify-between">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-2.5 rounded-xl border bg-[#012169]/5 border-[#012169]/20 flex flex-col justify-between">
               <span className="text-[10px] font-bold text-[#012169] dark:text-[#0084d5] uppercase tracking-wider">Aprobación</span>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <p className="text-xl font-black text-[#012169] dark:text-[#0084d5] leading-none">
                   {completedEvals > 0 ? ((aprobados / completedEvals) * 100).toFixed(0) : 0}%
                 </p>
@@ -893,9 +911,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl border bg-[#0084d5]/5 border-[#0084d5]/20 flex flex-col justify-between">
+            <div className="p-2.5 rounded-xl border bg-[#0084d5]/5 border-[#0084d5]/20 flex flex-col justify-between">
               <span className="text-[10px] font-bold text-[#0084d5] dark:text-[#38bdf8] uppercase tracking-wider">Planes de Mejora</span>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <p className="text-xl font-black text-[#0084d5] dark:text-[#38bdf8] leading-none">
                   {completedEvals > 0 ? ((conPMI / completedEvals) * 100).toFixed(0) : 0}%
                 </p>
@@ -903,9 +921,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl border bg-brand-50/5 dark:bg-brand-950/5 border-brand-200/50 dark:border-brand-900/30 flex flex-col justify-between">
+            <div className="p-2.5 rounded-xl border bg-brand-50/5 dark:bg-brand-950/5 border-brand-200/50 dark:border-brand-900/30 flex flex-col justify-between">
               <span className="text-[10px] font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider">Promedio General</span>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <p className="text-xl font-black text-brand-600 dark:text-brand-400 leading-none">
                   {avgScore.toFixed(2)}
                 </p>
@@ -913,9 +931,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl border bg-slate-500/5 border-slate-300 dark:border-slate-800 flex flex-col justify-between">
+            <div className="p-2.5 rounded-xl border bg-slate-500/5 border-slate-300 dark:border-slate-800 flex flex-col justify-between">
               <span className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Tasa Crítica</span>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <p className="text-xl font-black text-slate-700 dark:text-slate-300 leading-none">
                   {completedEvals > 0 ? ((reprobados / completedEvals) * 100).toFixed(0) : 0}%
                 </p>
@@ -924,7 +942,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
+          <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-auto">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Datos del Proceso</h4>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Requeridos (≥ 6 meses):</span>
