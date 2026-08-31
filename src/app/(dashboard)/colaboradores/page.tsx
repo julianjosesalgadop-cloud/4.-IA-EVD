@@ -21,10 +21,21 @@ const STATUS_COLORS: Record<string, string> = {
   incapacidad: "text-warning-600 bg-warning-50 border-warning-200 dark:bg-warning-950/30",
 };
 
+function isEvdRequired(hireDateStr?: string | null): boolean {
+  if (!hireDateStr) return true;
+  const hireDate = new Date(hireDateStr);
+  if (isNaN(hireDate.getTime())) return true;
+  const now = new Date();
+  let months = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+  if (now.getDate() < hireDate.getDate()) months--;
+  return months >= 6;
+}
+
 export default function ColaboradoresPage() {
   const [search, setSearch] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedEvdRequirement, setSelectedEvdRequirement] = useState("");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const pageSize = 10;
@@ -66,11 +77,15 @@ export default function ColaboradoresPage() {
       c.email?.toLowerCase().includes(search.toLowerCase());
     const matchesArea = !selectedArea || c.area?.name === selectedArea;
     const matchesStatus = !selectedStatus || c.status === selectedStatus;
-    return matchesSearch && matchesArea && matchesStatus;
+    const isReq = isEvdRequired(c.hire_date);
+    const matchesEvd = !selectedEvdRequirement ||
+      (selectedEvdRequirement === "requerido" && isReq) ||
+      (selectedEvdRequirement === "no_requerido" && !isReq);
+    return matchesSearch && matchesArea && matchesStatus && matchesEvd;
   });
 
   // Reset page when filters change
-  React.useEffect(() => { setPage(1); }, [search, selectedArea, selectedStatus]);
+  React.useEffect(() => { setPage(1); }, [search, selectedArea, selectedStatus, selectedEvdRequirement]);
 
   const [sortField, setSortField] = useState<string>("full_name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -100,6 +115,9 @@ export default function ColaboradoresPage() {
     } else if (sortField === "hire_date") {
       valA = a.hire_date ? new Date(a.hire_date).getTime() : 0;
       valB = b.hire_date ? new Date(b.hire_date).getTime() : 0;
+    } else if (sortField === "evd_required") {
+      valA = isEvdRequired(a.hire_date) ? 1 : 0;
+      valB = isEvdRequired(b.hire_date) ? 1 : 0;
     } else if (sortField === "status") {
       valA = (a.status || "").toLowerCase();
       valB = (b.status || "").toLowerCase();
@@ -210,9 +228,9 @@ export default function ColaboradoresPage() {
         >
           <Filter className="w-4 h-4" />
           Filtros
-          {(selectedArea || selectedStatus) && (
+          {(selectedArea || selectedStatus || selectedEvdRequirement) && (
             <span className="bg-primary-foreground/20 text-xs rounded-full w-4 h-4 flex items-center justify-center">
-              {[selectedArea, selectedStatus].filter(Boolean).length}
+              {[selectedArea, selectedStatus, selectedEvdRequirement].filter(Boolean).length}
             </span>
           )}
         </button>
@@ -255,9 +273,21 @@ export default function ColaboradoresPage() {
                   <option value="incapacidad">Incapacidad</option>
                 </select>
               </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Evaluación EVD</label>
+                <select
+                  value={selectedEvdRequirement}
+                  onChange={(e) => setSelectedEvdRequirement(e.target.value)}
+                  className="w-full h-9 rounded-lg border bg-background text-sm px-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">Todos</option>
+                  <option value="requerido">Requerido (≥ 6 meses)</option>
+                  <option value="no_requerido">No Requerido (&lt; 6 meses)</option>
+                </select>
+              </div>
               <div className="flex items-end">
                 <button
-                  onClick={() => { setSelectedArea(""); setSelectedStatus(""); }}
+                  onClick={() => { setSelectedArea(""); setSelectedStatus(""); setSelectedEvdRequirement(""); }}
                   className="w-full h-9 rounded-lg border text-sm hover:bg-accent transition-colors"
                 >
                   Limpiar filtros
@@ -319,6 +349,16 @@ export default function ColaboradoresPage() {
                     )}
                   </div>
                 </th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell cursor-pointer select-none" onClick={() => handleSort("evd_required")}>
+                  <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
+                    EVD
+                    {sortField === "evd_required" ? (
+                      sortOrder === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-55" />
+                    )}
+                  </div>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer select-none" onClick={() => handleSort("status")}>
                   <div className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold">
                     Estado
@@ -337,7 +377,7 @@ export default function ColaboradoresPage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
+                  <td colSpan={7} className="px-4 py-12 text-center">
                     <div className="flex justify-center items-center gap-3">
                       <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                       <p className="font-medium text-muted-foreground">Cargando colaboradores...</p>
@@ -346,7 +386,7 @@ export default function ColaboradoresPage() {
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
+                  <td colSpan={7} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                         <Users className="w-6 h-6 text-muted-foreground" />
@@ -394,6 +434,18 @@ export default function ColaboradoresPage() {
                     {/* Hire Date */}
                     <td className="px-4 py-3 hidden lg:table-cell text-sm text-muted-foreground">
                       {collab.hire_date ? formatDate(collab.hire_date) : "—"}
+                    </td>
+                    {/* EVD Requirement */}
+                    <td className="px-3 py-3 hidden sm:table-cell">
+                      {isEvdRequired(collab.hire_date) ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border border-[#012169]/20 bg-[#012169]/10 text-[#012169] dark:bg-[#0084d5]/20 dark:text-[#38bdf8] dark:border-[#0084d5]/30">
+                          Requerido
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-slate-300 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" title="Menos de 6 meses de antigüedad">
+                          No Requerido
+                        </span>
+                      )}
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3">
