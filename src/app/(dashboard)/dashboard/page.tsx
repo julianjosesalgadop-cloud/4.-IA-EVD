@@ -1114,120 +1114,75 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Trend Line Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="lg:col-span-2 rounded-xl border bg-card p-5"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div>
-              <h3 className="font-semibold">Tendencia</h3>
-              <p className="text-xs text-muted-foreground">
-                {trendViewMode === "dia" ? "Evolución diaria de evaluaciones y promedio" : "Evolución mensual de evaluaciones y promedio"}
-              </p>
+      {/* Gráfico de Tendencia Temporal (Fila Completa) */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="rounded-xl border bg-card p-5 space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+          <div>
+            <h3 className="font-semibold">Tendencia</h3>
+            <p className="text-xs text-muted-foreground">
+              {trendViewMode === "dia" ? "Evolución diaria de evaluaciones y promedio" : "Evolución mensual de evaluaciones y promedio"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Filter Buttons: Día / Mes */}
+            <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border text-xs">
+              <button
+                onClick={() => setTrendViewMode("dia")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md font-semibold transition-all text-xs",
+                  trendViewMode === "dia"
+                    ? "bg-[#012169] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Por Día
+              </button>
+              <button
+                onClick={() => setTrendViewMode("mes")}
+                className={cn(
+                  "px-2.5 py-1 rounded-md font-semibold transition-all text-xs",
+                  trendViewMode === "mes"
+                    ? "bg-[#012169] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Por Mes
+              </button>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Filter Buttons: Día / Mes */}
-              <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border text-xs">
-                <button
-                  onClick={() => setTrendViewMode("dia")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md font-semibold transition-all text-xs",
-                    trendViewMode === "dia"
-                      ? "bg-[#012169] text-white shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Por Día
-                </button>
-                <button
-                  onClick={() => setTrendViewMode("mes")}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md font-semibold transition-all text-xs",
-                    trendViewMode === "mes"
-                      ? "bg-[#012169] text-white shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Por Mes
-                </button>
-              </div>
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setExpandedChart("trend")}
-                  className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                  title="Expandir gráfico"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-                <TrendingUp className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
-              </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("trend")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <TrendingUp className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <LineChart data={displayTrendData} margin={{ top: 25, right: 15, left: -10, bottom: 15 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#012169" strokeWidth={2.5} dot={{ r: 4, fill: "#012169" }} name="Evaluaciones" activeDot={{ r: 6 }}>
-                <LabelList dataKey="evaluaciones" position="top" dy={-8} style={{ fontSize: 10, fill: "#012169", fontWeight: "bold" }} />
-              </Line>
-              <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#0084d5" strokeWidth={2.5} dot={{ r: 4, fill: "#0084d5" }} name="Promedio" activeDot={{ r: 6 }}>
-                <LabelList dataKey="promedio" position="bottom" dy={8} style={{ fontSize: 10, fill: "#0084d5", fontWeight: "bold" }} />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Desempeño por Tipo de Nómina */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
-          className="rounded-xl border bg-card p-5"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="font-semibold">Desempeño por Tipo de Nómina</h3>
-              <p className="text-xs text-muted-foreground">Promedio general obtenido en EVD</p>
-            </div>
-            <button
-              onClick={() => setExpandedChart("payroll")}
-              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              title="Expandir gráfico"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
-          </div>
-          {displayPayrollData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-              <BarChart data={displayPayrollData} barSize={32} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="payroll" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 5]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="promedio" name="Promedio" radius={[4, 4, 0, 0]}>
-                  <LabelList dataKey="promedio" position="top" dy={-4} style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                  {displayPayrollData.map((entry, index) => (
-                    <Cell key={index} fill={entry.promedio >= 4.0 ? "#012169" : entry.promedio >= 3.1 ? "#0084d5" : "#94a3b8"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-[220px] text-xs text-muted-foreground border border-dashed rounded-lg bg-muted/10">
-              No hay evaluaciones registradas.
-            </div>
-          )}
-        </motion.div>
-      </div>
+        </div>
+        <ResponsiveContainer width="100%" height={isExpanded ? 340 : 260}>
+          <LineChart data={displayTrendData} margin={{ top: 25, right: 30, left: -10, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <YAxis yAxisId="right" orientation="right" domain={[0, 5]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Line yAxisId="left" type="monotone" dataKey="evaluaciones" stroke="#012169" strokeWidth={2.5} dot={{ r: 4, fill: "#012169" }} name="Evaluaciones" activeDot={{ r: 6 }}>
+              <LabelList dataKey="evaluaciones" position="top" dy={-8} style={{ fontSize: 10, fill: "#012169", fontWeight: "bold" }} />
+            </Line>
+            <Line yAxisId="right" type="monotone" dataKey="promedio" stroke="#0084d5" strokeWidth={2.5} dot={{ r: 4, fill: "#0084d5" }} name="Promedio" activeDot={{ r: 6 }}>
+              <LabelList dataKey="promedio" position="bottom" dy={8} style={{ fontSize: 10, fill: "#0084d5", fontWeight: "bold" }} />
+            </Line>
+          </LineChart>
+        </ResponsiveContainer>
+      </motion.div>
 
       {/* Relación de Tipo de Nómina por Área */}
       <motion.div
