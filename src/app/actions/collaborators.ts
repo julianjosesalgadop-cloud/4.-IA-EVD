@@ -118,21 +118,47 @@ export async function createCollaborator(collaboratorData: any) {
 
 export async function getCollaborators() {
   const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from("collaborators")
-    .select(`
-      *,
-      areas(name),
-      positions(name)
-    `)
-    .order("created_at", { ascending: false });
+  const currentYear = new Date().getFullYear();
 
-  if (error) {
-    console.error("Error fetching collaborators:", error);
-    return { data: [], error: error.message };
+  const [collabsRes, evalsRes] = await Promise.all([
+    supabase
+      .from("collaborators")
+      .select(`
+        *,
+        areas(name),
+        positions(name)
+      `)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("evaluations")
+      .select("id, collaborator_id, evaluation_year, status, created_at")
+  ]);
+
+  if (collabsRes.error) {
+    console.error("Error fetching collaborators:", collabsRes.error);
+    return { data: [], error: collabsRes.error.message };
   }
 
-  return { data, error: null };
+  // Set of collaborator IDs who completed or have an evaluation for current year
+  const completedCurrentYearCollabs = new Set<string>();
+
+  if (evalsRes.data) {
+    evalsRes.data.forEach((ev: any) => {
+      const year = ev.evaluation_year || (ev.created_at ? new Date(ev.created_at).getFullYear() : currentYear);
+      if (year === currentYear) {
+        if (ev.status === "finalizada" || ev.status === "completada" || ev.status === "completado" || ev.status === "aprobada") {
+          completedCurrentYearCollabs.add(ev.collaborator_id);
+        }
+      }
+    });
+  }
+
+  const enhancedData = (collabsRes.data || []).map((collab: any) => ({
+    ...collab,
+    has_evaluated_current_year: completedCurrentYearCollabs.has(collab.id)
+  }));
+
+  return { data: enhancedData, error: null };
 }
 
 export async function getCollaboratorById(collaboratorId: string) {
