@@ -341,6 +341,7 @@ export default function DashboardPage() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedResult, setSelectedResult] = useState("");
+  const [selectedSeniority, setSelectedSeniority] = useState("obligados");
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [trendViewMode, setTrendViewMode] = useState<"dia" | "mes">("dia");
@@ -379,8 +380,10 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isExpanded, expandedChart]);
 
-  // Filter evaluations based on user selections
+  // Filter evaluations based on user selections and seniority filter (6 months rule)
   const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
+    if (selectedSeniority === "obligados" && ev.is_eligible === false) return false;
+    if (selectedSeniority === "exentos" && ev.is_eligible === true) return false;
     if (startDate && new Date(ev.date) < new Date(startDate)) return false;
     if (endDate) {
       const limitDate = new Date(endDate);
@@ -393,8 +396,17 @@ export default function DashboardPage() {
     return true;
   }) : [];
 
-  // Recalculate KPI data dynamically from filtered evaluations
+  // Recalculate KPI data dynamically from filtered evaluations and collaborator stats
   const totalCollabs = stats?.kpis?.totalCollabs || 0;
+  const eligibleCollabs = stats?.kpis?.eligibleCollabs || 0;
+  const exemptCollabs = stats?.kpis?.exemptCollabs || 0;
+
+  const displayCollabValue = selectedSeniority === "obligados"
+    ? eligibleCollabs
+    : selectedSeniority === "exentos"
+    ? exemptCollabs
+    : totalCollabs;
+
   const completedEvals = filteredEvals.filter((e: any) => e.result !== "borrador" && e.result !== "en_proceso").length;
   const aprobados = filteredEvals.filter((e: any) => e.result === "aprobado").length;
   const conPMI = filteredEvals.filter((e: any) => e.result === "plan_mejoramiento").length;
@@ -404,7 +416,13 @@ export default function DashboardPage() {
   const avgScore = scoredEvals.length > 0 ? scoredEvals.reduce((sum: number, e: any) => sum + e.score, 0) / scoredEvals.length : 0;
 
   const kpiData = [
-    { title: "Total Colaboradores", value: totalCollabs, icon: Users, color: "brand", suffix: "" },
+    {
+      title: selectedSeniority === "obligados" ? "Colaboradores Obligados" : selectedSeniority === "exentos" ? "Colaboradores Exentos" : "Total Colaboradores",
+      value: displayCollabValue,
+      icon: Users,
+      color: "brand",
+      suffix: selectedSeniority === "obligados" ? ` (${exemptCollabs} exentos)` : ""
+    },
     { title: "Evaluaciones Finalizadas", value: completedEvals, icon: ClipboardList, color: "violet", suffix: "" },
     { title: "Evaluaciones Aprobadas", value: aprobados, icon: CheckCircle2, color: "success", suffix: "" },
     { title: "Con Plan de Mejora", value: conPMI, icon: Target, color: "warning", suffix: "" },
@@ -522,6 +540,10 @@ export default function DashboardPage() {
 
   const collabs = stats?.collaborators || [];
   collabs.forEach((c: any) => {
+    if (selectedSeniority === "obligados" && c.is_eligible === false) return;
+    if (selectedSeniority === "exentos" && c.is_eligible === true) return;
+    if (selectedAreas.length > 0 && !selectedAreas.includes(c.area)) return;
+
     const areaName = c.area || "Sin Área";
     const payrollName = c.payroll_type || "Sin Especificar";
     if (payrollName && payrollName !== "N/A") {
@@ -652,7 +674,19 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 shadow-sm">
+      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 shadow-sm">
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase">Antigüedad</label>
+          <select
+            value={selectedSeniority}
+            onChange={(e) => setSelectedSeniority(e.target.value)}
+            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px] font-medium"
+          >
+            <option value="obligados">Obligados (≥ 6 meses)</option>
+            <option value="todos">Todos los colaboradores</option>
+            <option value="exentos">Exentos (&lt; 6 meses)</option>
+          </select>
+        </div>
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-muted-foreground uppercase">Fecha Inicio</label>
           <input
@@ -712,6 +746,7 @@ export default function DashboardPage() {
               setSelectedAreas([]);
               setSelectedPositions([]);
               setSelectedResult("");
+              setSelectedSeniority("obligados");
             }}
             className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-muted hover:bg-accent transition-colors font-semibold text-muted-foreground hover:text-foreground h-[38px]"
           >
@@ -886,17 +921,21 @@ export default function DashboardPage() {
           <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Datos del Proceso</h4>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Total colaboradores:</span>
-              <span className="font-semibold text-foreground">{totalCollabs}</span>
+              <span className="text-muted-foreground">Obligados (≥ 6 meses):</span>
+              <span className="font-semibold text-foreground">{eligibleCollabs}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Exentos (&lt; 6 meses):</span>
+              <span className="font-semibold text-slate-500">{exemptCollabs}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Evaluaciones realizadas:</span>
               <span className="font-semibold text-foreground">{completedEvals}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Participación:</span>
-              <span className="font-semibold text-foreground">
-                {totalCollabs > 0 ? ((completedEvals / totalCollabs) * 100).toFixed(0) : 0}%
+              <span className="text-muted-foreground">Participación (sobre obligados):</span>
+              <span className="font-bold text-[#012169] dark:text-[#0084d5]">
+                {eligibleCollabs > 0 ? Math.min(100, Math.round((completedEvals / eligibleCollabs) * 100)) : 0}%
               </span>
             </div>
           </div>

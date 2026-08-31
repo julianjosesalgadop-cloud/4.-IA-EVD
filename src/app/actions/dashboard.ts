@@ -27,13 +27,31 @@ async function getSupabase() {
   );
 }
 
+function isEligibleByHireDate(hireDateStr: string | null | undefined): boolean {
+  if (!hireDateStr) return true;
+  const hireDate = new Date(hireDateStr);
+  if (isNaN(hireDate.getTime())) return true;
+  const now = new Date();
+  let months = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+  if (now.getDate() < hireDate.getDate()) {
+    months--;
+  }
+  return months >= 6;
+}
+
 export async function getDashboardStats() {
   const supabase = await getSupabase();
   
-  // 1. Total Collaborators
-  const { count: totalCollabs } = await supabase
+  // 1. Fetch active collaborators with hire_date, payroll_type, and areas
+  const { data: collabsList } = await supabase
     .from("collaborators")
-    .select("*", { count: "exact", head: true });
+    .select("id, hire_date, payroll_type, areas(name)")
+    .eq("status", "activo");
+
+  const activeCollabs = collabsList || [];
+  const totalCollabs = activeCollabs.length;
+  const eligibleCollabs = activeCollabs.filter(c => isEligibleByHireDate(c.hire_date)).length;
+  const exemptCollabs = totalCollabs - eligibleCollabs;
 
   // 2. Evaluations
   const { data: evals } = await supabase
@@ -41,7 +59,7 @@ export async function getDashboardStats() {
     .select(`
       id, created_at, evaluation_year, status,
       result:evaluation_results(*),
-      collaborator:collaborators(full_name, workplace_city, payroll_type, positions(name), areas(name))
+      collaborator:collaborators(full_name, workplace_city, payroll_type, hire_date, positions(name), areas(name))
     `)
     .order("created_at", { ascending: false });
     
@@ -74,15 +92,11 @@ export async function getDashboardStats() {
     .select("*", { count: "exact", head: true })
     .eq("pmi_required", true);
 
-  // Fetch all active collaborators with area and payroll type
-  const { data: collabsList } = await supabase
-    .from("collaborators")
-    .select("id, payroll_type, areas(name)")
-    .eq("status", "activo");
-
   return {
     kpis: {
-      totalCollabs: totalCollabs || 0,
+      totalCollabs,
+      eligibleCollabs,
+      exemptCollabs,
       completedEvals: completed.length,
       aprobados,
       conPMI,
@@ -90,12 +104,14 @@ export async function getDashboardStats() {
       avgScore,
       pmisCount: pmisCount || 0,
     },
-    collaborators: (collabsList || []).map((c: any) => {
+    collaborators: activeCollabs.map((c: any) => {
       const areaObj = c.areas && !Array.isArray(c.areas) ? c.areas : c.areas?.[0] || null;
       return {
         id: c.id,
         payroll_type: c.payroll_type || "Sin Especificar",
-        area: areaObj?.name || "Sin Área"
+        area: areaObj?.name || "Sin Área",
+        hire_date: c.hire_date,
+        is_eligible: isEligibleByHireDate(c.hire_date)
       };
     }),
     allEvaluations: allEvals.map((e: any) => {
@@ -111,6 +127,8 @@ export async function getDashboardStats() {
         position: posObj?.name || "N/A",
         area: areaObj?.name || "N/A",
         payroll_type: collab?.payroll_type || "Sin Especificar",
+        hire_date: collab?.hire_date || null,
+        is_eligible: isEligibleByHireDate(collab?.hire_date),
         result: res ? res.result : e.status,
         pmi_status: res ? res.pmi_status : null,
         pmi_required: res ? res.pmi_required : false,
