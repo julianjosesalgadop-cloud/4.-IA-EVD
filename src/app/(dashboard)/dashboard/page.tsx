@@ -841,7 +841,16 @@ export default function DashboardPage() {
               <h3 className="font-semibold">Colaboradores Destacados</h3>
               <p className="text-xs text-muted-foreground">Ranking de mejores promedios en EVD</p>
             </div>
-            <Award className="w-5 h-5 text-amber-500" />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("destacados")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <Award className="w-5 h-5 text-amber-500" />
+            </div>
           </div>
           <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1 flex-1">
             {filteredEvals
@@ -898,7 +907,16 @@ export default function DashboardPage() {
               <h3 className="font-semibold">Datos de Interés</h3>
               <p className="text-xs text-muted-foreground">Métricas ejecutivas de cumplimiento</p>
             </div>
-            <TrendingUp className="w-5 h-5 text-[#0084d5]" />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setExpandedChart("datos_interes")}
+                className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Expandir gráfico"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+              <TrendingUp className="w-5 h-5 text-[#0084d5]" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div className="p-2.5 rounded-xl border bg-[#012169]/5 border-[#012169]/20 flex flex-col justify-between">
@@ -1297,6 +1315,8 @@ export default function DashboardPage() {
                   {expandedChart === "payroll" && "Desempeño por Tipo de Nómina"}
                   {expandedChart === "payroll_area" && "Relación de Tipo de Nómina por Área"}
                   {expandedChart === "desempeno" && "Niveles de Desempeño"}
+                  {expandedChart === "destacados" && "Ranking de Colaboradores Destacados"}
+                  {expandedChart === "datos_interes" && "Datos de Interés y Métricas del Proceso"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {expandedChart === "cargo" && "Puntaje promedio obtenido agrupado por cargo de la empresa (Top 10)"}
@@ -1305,25 +1325,38 @@ export default function DashboardPage() {
                   {expandedChart === "payroll" && "Calificación promedio agrupada por tipo de nómina del colaborador"}
                   {expandedChart === "payroll_area" && "Distribución estructural de colaboradores activos según área y nómina"}
                   {expandedChart === "desempeno" && "Distribución de colaboradores por rango y escala oficial de calificación EVD"}
+                  {expandedChart === "destacados" && "Listado completo y detallado de los colaboradores con mejores promedios en la evaluación"}
+                  {expandedChart === "datos_interes" && "Métricas ejecutivas de cumplimiento, tasas de aprobación y consolidado de participación"}
                 </p>
               </div>
 
               <div className="w-full flex items-center justify-center min-h-[300px] md:min-h-[400px]">
                 {expandedChart === "cargo" && (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={positionAverageData} barSize={36}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis dataKey="position" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
-                        <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                        {positionAverageData.map((entry, index) => (
-                          <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="w-full">
+                    <ResponsiveContainer width="100%" height={380}>
+                      <BarChart data={positionAverageData} barSize={36} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="position" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                          <LabelList dataKey="promedio" position="top" dy={-4} style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                          {positionAverageData.map((entry, index) => (
+                            <Cell
+                              key={index}
+                              fill={entry.promedio >= 4.0 ? "#012169" : entry.promedio >= 3.1 ? "#0084d5" : "#94a3b8"}
+                            />
+                          ))}
+                        </Bar>
+                        <CartesianGrid y={4.0} strokeDasharray="4 4" stroke="#012169" vertical={false} horizontal={false} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#012169] inline-block" /> Aprobado (≥4.0)</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#0084d5] inline-block" /> Plan Mejora (3.1–3.9)</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#94a3b8] inline-block" /> No Aprobado (&lt;3.1)</span>
+                    </div>
+                  </div>
                 )}
 
                 {expandedChart === "dist" && (
@@ -1409,20 +1442,31 @@ export default function DashboardPage() {
 
                 {expandedChart === "payroll" && (
                   displayPayrollData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={400}>
-                      <BarChart data={displayPayrollData} barSize={40}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis dataKey="payroll" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                        <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
-                          <LabelList dataKey="promedio" position="top" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                          {displayPayrollData.map((entry, index) => (
-                            <Cell key={index} fill={entry.promedio >= 4.0 ? "#10b981" : entry.promedio >= 3.1 ? "#3b82f6" : "#ef4444"} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="w-full">
+                      <ResponsiveContainer width="100%" height={380}>
+                        <BarChart data={displayPayrollData} barSize={40} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                          <XAxis dataKey="payroll" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
+                            <LabelList dataKey="promedio" position="top" dy={-4} style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                            {displayPayrollData.map((entry, index) => (
+                              <Cell
+                                key={index}
+                                fill={entry.promedio >= 4.0 ? "#012169" : entry.promedio >= 3.1 ? "#0084d5" : "#94a3b8"}
+                              />
+                            ))}
+                          </Bar>
+                          <CartesianGrid y={4.0} strokeDasharray="4 4" stroke="#012169" vertical={false} horizontal={false} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className="flex items-center justify-center gap-4 mt-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#012169] inline-block" /> Aprobado (≥4.0)</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#0084d5] inline-block" /> Plan Mejora (3.1–3.9)</span>
+                        <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded bg-[#94a3b8] inline-block" /> No Aprobado (&lt;3.1)</span>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center w-full h-[300px] text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
                       No hay evaluaciones registradas.
@@ -1468,33 +1512,118 @@ export default function DashboardPage() {
                   )
                 )}
 
-                {expandedChart === "desempeno" && (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart
-                      data={performanceTiersData}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-                      barSize={20}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
-                      <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                        width={160}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
-                      <Bar dataKey="value" name="Colaboradores" radius={[0, 6, 6, 0]}>
-                        <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
-                        {performanceTiersData.map((entry, index) => (
-                          <Cell key={index} fill={entry.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                {expandedChart === "destacados" && (
+                  <div className="w-full space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
+                      {filteredEvals
+                        .filter((e: any) => e.score > 0)
+                        .sort((a: any, b: any) => b.score - a.score)
+                        .map((e: any, idx: number) => {
+                          const badgeStyle = idx === 0
+                            ? "bg-amber-500/20 text-amber-700 border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-300"
+                            : idx === 1
+                            ? "bg-slate-300/40 text-slate-700 border-slate-400/50 dark:bg-slate-700/40 dark:text-slate-200"
+                            : idx === 2
+                            ? "bg-amber-700/20 text-amber-800 border-amber-700/40 dark:bg-amber-800/30 dark:text-amber-200"
+                            : "bg-[#012169]/10 text-[#012169] border-[#012169]/20 dark:bg-[#0084d5]/20 dark:text-[#38bdf8]";
+                          
+                          const badgeLabel = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}.`;
+                          return (
+                            <div key={e.id} className="flex items-center justify-between p-3 rounded-xl border bg-muted/10 hover:bg-muted/20 transition-colors">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <span className={cn("w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border shrink-0", badgeStyle)}>
+                                  {badgeLabel}
+                                </span>
+                                <div className="overflow-hidden">
+                                  <p className="font-semibold text-sm truncate text-foreground">{e.collaborator}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{e.position} {e.area ? `· ${e.area}` : ""}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs font-extrabold text-[#012169] dark:text-[#0084d5] px-2.5 py-1 bg-[#012169]/10 dark:bg-[#0084d5]/20 rounded-lg">
+                                  {e.score.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {filteredEvals.filter((e: any) => e.score > 0).length === 0 && (
+                        <div className="col-span-2 h-48 flex items-center justify-center text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                          No hay evaluaciones registradas.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {expandedChart === "datos_interes" && (
+                  <div className="w-full space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-4 rounded-xl border bg-[#012169]/5 border-[#012169]/20 flex flex-col justify-between">
+                        <span className="text-xs font-bold text-[#012169] dark:text-[#0084d5] uppercase tracking-wider">Aprobación</span>
+                        <div className="mt-3">
+                          <p className="text-3xl font-black text-[#012169] dark:text-[#0084d5] leading-none">
+                            {completedEvals > 0 ? ((aprobados / completedEvals) * 100).toFixed(0) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1.5">{aprobados} de {completedEvals} aprobados</p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl border bg-[#0084d5]/5 border-[#0084d5]/20 flex flex-col justify-between">
+                        <span className="text-xs font-bold text-[#0084d5] dark:text-[#38bdf8] uppercase tracking-wider">Planes de Mejora</span>
+                        <div className="mt-3">
+                          <p className="text-3xl font-black text-[#0084d5] dark:text-[#38bdf8] leading-none">
+                            {completedEvals > 0 ? ((conPMI / completedEvals) * 100).toFixed(0) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1.5">{conPMI} con plan de mejora</p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl border bg-brand-50/5 dark:bg-brand-950/5 border-brand-200/50 dark:border-brand-900/30 flex flex-col justify-between">
+                        <span className="text-xs font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider">Promedio General</span>
+                        <div className="mt-3">
+                          <p className="text-3xl font-black text-brand-600 dark:text-brand-400 leading-none">
+                            {avgScore.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1.5">Escala sobre 5.0</p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-xl border bg-slate-500/5 border-slate-300 dark:border-slate-800 flex flex-col justify-between">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">Tasa Crítica</span>
+                        <div className="mt-3">
+                          <p className="text-3xl font-black text-slate-700 dark:text-slate-300 leading-none">
+                            {completedEvals > 0 ? ((reprobados / completedEvals) * 100).toFixed(0) : 0}%
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1.5">{reprobados} no aprobados</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-5 rounded-xl border bg-muted/10 space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Detalle del Proceso de Evaluación</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div className="flex justify-between p-3 rounded-lg border bg-background">
+                          <span className="text-muted-foreground">Requeridos (≥ 6 meses):</span>
+                          <span className="font-bold text-foreground">{eligibleCollabs} colaboradores</span>
+                        </div>
+                        <div className="flex justify-between p-3 rounded-lg border bg-background">
+                          <span className="text-muted-foreground">Exentos (&lt; 6 meses):</span>
+                          <span className="font-semibold text-slate-500">{exemptCollabs} colaboradores</span>
+                        </div>
+                        <div className="flex justify-between p-3 rounded-lg border bg-background">
+                          <span className="text-muted-foreground">Evaluaciones realizadas:</span>
+                          <span className="font-bold text-foreground">{completedEvals} finalizadas</span>
+                        </div>
+                        <div className="flex justify-between p-3 rounded-lg border bg-background">
+                          <span className="text-muted-foreground">Participación (sobre requeridos):</span>
+                          <span className="font-extrabold text-[#012169] dark:text-[#0084d5]">
+                            {eligibleCollabs > 0 ? Math.min(100, Math.round((completedEvals / eligibleCollabs) * 100)) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </motion.div>
