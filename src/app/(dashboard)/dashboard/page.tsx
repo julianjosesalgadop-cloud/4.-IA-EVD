@@ -341,7 +341,7 @@ export default function DashboardPage() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedResult, setSelectedResult] = useState("");
-  const [selectedSeniority, setSelectedSeniority] = useState("obligados");
+  const [selectedSeniority, setSelectedSeniority] = useState("requeridos");
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
   const [trendViewMode, setTrendViewMode] = useState<"dia" | "mes">("dia");
@@ -382,7 +382,7 @@ export default function DashboardPage() {
 
   // Filter evaluations based on user selections and seniority filter (6 months rule)
   const filteredEvals = stats?.allEvaluations ? stats.allEvaluations.filter((ev: any) => {
-    if (selectedSeniority === "obligados" && ev.is_eligible === false) return false;
+    if ((selectedSeniority === "requeridos" || selectedSeniority === "obligados") && ev.is_eligible === false) return false;
     if (selectedSeniority === "exentos" && ev.is_eligible === true) return false;
     if (startDate && new Date(ev.date) < new Date(startDate)) return false;
     if (endDate) {
@@ -401,7 +401,7 @@ export default function DashboardPage() {
   const eligibleCollabs = stats?.kpis?.eligibleCollabs || 0;
   const exemptCollabs = stats?.kpis?.exemptCollabs || 0;
 
-  const displayCollabValue = selectedSeniority === "obligados"
+  const displayCollabValue = (selectedSeniority === "requeridos" || selectedSeniority === "obligados")
     ? eligibleCollabs
     : selectedSeniority === "exentos"
     ? exemptCollabs
@@ -417,11 +417,15 @@ export default function DashboardPage() {
 
   const kpiData = [
     {
-      title: selectedSeniority === "obligados" ? "Colaboradores Obligados" : selectedSeniority === "exentos" ? "Colaboradores Exentos" : "Total Colaboradores",
+      title: (selectedSeniority === "requeridos" || selectedSeniority === "obligados")
+        ? "Colaboradores Requeridos"
+        : selectedSeniority === "exentos"
+        ? "Colaboradores Exentos"
+        : "Total Colaboradores",
       value: displayCollabValue,
       icon: Users,
       color: "brand",
-      suffix: selectedSeniority === "obligados" ? ` (${exemptCollabs} exentos)` : ""
+      suffix: (selectedSeniority === "requeridos" || selectedSeniority === "obligados") ? ` (${exemptCollabs} exentos)` : ""
     },
     { title: "Evaluaciones Finalizadas", value: completedEvals, icon: ClipboardList, color: "violet", suffix: "" },
     { title: "Evaluaciones Aprobadas", value: aprobados, icon: CheckCircle2, color: "success", suffix: "" },
@@ -540,7 +544,7 @@ export default function DashboardPage() {
 
   const collabs = stats?.collaborators || [];
   collabs.forEach((c: any) => {
-    if (selectedSeniority === "obligados" && c.is_eligible === false) return;
+    if ((selectedSeniority === "requeridos" || selectedSeniority === "obligados") && c.is_eligible === false) return;
     if (selectedSeniority === "exentos" && c.is_eligible === true) return;
     if (selectedAreas.length > 0 && !selectedAreas.includes(c.area)) return;
 
@@ -674,38 +678,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 shadow-sm">
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase">Antigüedad</label>
+      <div className="bg-card border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 shadow-sm">
+        <div className="lg:col-span-2 space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Antigüedad</label>
           <select
             value={selectedSeniority}
             onChange={(e) => setSelectedSeniority(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px] font-medium"
+            className="w-full text-xs border rounded-xl px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px] font-medium"
           >
-            <option value="obligados">Obligados (≥ 6 meses)</option>
+            <option value="requeridos">Requeridos (≥ 6 meses)</option>
             <option value="todos">Todos los colaboradores</option>
             <option value="exentos">Exentos (&lt; 6 meses)</option>
           </select>
         </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase">Fecha Inicio</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase">Fecha Fin</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none"
-          />
-        </div>
-        <div>
+        <div className="lg:col-span-2">
           <MultiSelectSearch
             options={dbAreas}
             selectedValues={selectedAreas}
@@ -715,7 +701,7 @@ export default function DashboardPage() {
             label="Área"
           />
         </div>
-        <div>
+        <div className="lg:col-span-2">
           <MultiSelectSearch
             options={dbPositions}
             selectedValues={selectedPositions}
@@ -725,12 +711,32 @@ export default function DashboardPage() {
             label="Cargo"
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-muted-foreground uppercase">Resultado</label>
+        <div className="lg:col-span-3 space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Rango de Fechas</label>
+          <div className="flex items-center gap-1.5 w-full min-w-0">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full min-w-0 text-xs border rounded-xl px-2 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px]"
+              title="Fecha Inicio"
+            />
+            <span className="text-muted-foreground text-xs font-semibold px-0.5 shrink-0">a</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full min-w-0 text-xs border rounded-xl px-2 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px]"
+              title="Fecha Fin"
+            />
+          </div>
+        </div>
+        <div className="lg:col-span-2 space-y-1">
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Resultado</label>
           <select
             value={selectedResult}
             onChange={(e) => setSelectedResult(e.target.value)}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px]"
+            className="w-full text-xs border rounded-xl px-2.5 py-1.5 bg-background focus:ring-2 focus:ring-primary/20 focus:outline-none h-[38px]"
           >
             <option value="">Todos los resultados</option>
             <option value="aprobado">Aprobados</option>
@@ -738,7 +744,7 @@ export default function DashboardPage() {
             <option value="no_aprobado">No Aprobados</option>
           </select>
         </div>
-        <div className="flex items-end">
+        <div className="lg:col-span-1 flex items-end">
           <button
             onClick={() => {
               setStartDate("");
@@ -746,11 +752,11 @@ export default function DashboardPage() {
               setSelectedAreas([]);
               setSelectedPositions([]);
               setSelectedResult("");
-              setSelectedSeniority("obligados");
+              setSelectedSeniority("requeridos");
             }}
-            className="w-full text-xs border rounded-lg px-2.5 py-1.5 bg-muted hover:bg-accent transition-colors font-semibold text-muted-foreground hover:text-foreground h-[38px]"
+            className="w-full text-xs border rounded-xl px-2 py-1.5 bg-muted hover:bg-accent transition-colors font-semibold text-muted-foreground hover:text-foreground h-[38px] truncate"
           >
-            Limpiar filtros
+            Limpiar
           </button>
         </div>
       </div>
@@ -921,7 +927,7 @@ export default function DashboardPage() {
           <div className="p-3 rounded-xl border bg-muted/10 space-y-2 mt-1">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Datos del Proceso</h4>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Obligados (≥ 6 meses):</span>
+              <span className="text-muted-foreground">Requeridos (≥ 6 meses):</span>
               <span className="font-semibold text-foreground">{eligibleCollabs}</span>
             </div>
             <div className="flex justify-between text-xs">
@@ -933,7 +939,7 @@ export default function DashboardPage() {
               <span className="font-semibold text-foreground">{completedEvals}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Participación (sobre obligados):</span>
+              <span className="text-muted-foreground">Participación (sobre requeridos):</span>
               <span className="font-bold text-[#012169] dark:text-[#0084d5]">
                 {eligibleCollabs > 0 ? Math.min(100, Math.round((completedEvals / eligibleCollabs) * 100)) : 0}%
               </span>

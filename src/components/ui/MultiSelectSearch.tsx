@@ -92,7 +92,7 @@ export default function MultiSelectSearch({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border bg-popover p-2 text-popover-foreground shadow-lg animate-in fade-in-50 slide-in-from-top-1">
+        <div className="absolute z-50 mt-1 max-h-60 w-full min-w-[280px] overflow-auto rounded-xl border bg-popover p-2 text-popover-foreground shadow-xl animate-in fade-in-50 slide-in-from-top-1">
           <div className="relative mb-2 flex items-center border-b pb-2">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
