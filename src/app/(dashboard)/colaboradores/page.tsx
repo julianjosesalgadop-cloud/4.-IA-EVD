@@ -9,6 +9,7 @@ import {
   CheckCircle2, Clock, ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { cn, getStatusLabel, getInitials, formatDate, getContractTypeLabel } from "@/lib/utils";
 import type { Collaborator } from "@/types";
 
@@ -41,6 +42,7 @@ export default function ColaboradoresPage() {
   const [selectedEvaluationStatus, setSelectedEvaluationStatus] = useState("");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const pageSize = 10;
 
   const [collaborators, setCollaborators] = useState<any[]>([]);
@@ -151,6 +153,54 @@ export default function ColaboradoresPage() {
     inactivos: collaborators.filter((c: any) => c.status !== "activo").length,
   };
 
+  const handleExportExcel = async () => {
+    if (filtered.length === 0) {
+      toast.error("No hay colaboradores para exportar");
+      return;
+    }
+
+    const toastId = toast.loading("Generando archivo Excel...");
+    setIsExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const excelRows = filtered.map((c: any) => ({
+        "Documento": c.document_number || "—",
+        "Tipo Doc.": c.document_type || "CC",
+        "Colaborador": c.full_name,
+        "Correo": c.email || "—",
+        "Teléfono": c.phone || "—",
+        "Cargo": c.position?.name || "—",
+        "Área": c.area?.name || "—",
+        "Fecha Ingreso": c.hire_date ? formatDate(c.hire_date) : "—",
+        "Antigüedad": isEvdRequired(c.hire_date) ? "Requerido" : "No Requerido",
+        "EVD 2026": c.has_evaluated_current_year ? "Realizada" : "Pendiente",
+        "Estado": getStatusLabel(c.status || ""),
+        "Tipo de Nómina": c.payroll_type || "—",
+        "Tipo de Contrato": getContractTypeLabel(c.contract_type || ""),
+        "Ciudad": c.workplace_city || "—",
+        "Sede": c.workplace || "—",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Colaboradores");
+
+      // Auto-fit column widths
+      const maxCols = Object.keys(excelRows[0] || {}).map((key) => ({
+        wch: Math.max(key.length, 14),
+      }));
+      worksheet["!cols"] = maxCols;
+
+      XLSX.writeFile(workbook, `Colaboradores_Flota_Sugamuxi_${currentYear}.xlsx`);
+      toast.success("Excel de colaboradores descargado correctamente", { id: toastId });
+    } catch (err: any) {
+      console.error("Error exporting to Excel:", err);
+      toast.error("Error al exportar a Excel: " + (err?.message || err), { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="w-full min-h-screen px-3 sm:px-4 py-4 sm:py-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-fade-in">
@@ -169,7 +219,12 @@ export default function ColaboradoresPage() {
               <span className="hidden sm:inline">Importar</span>
             </button>
           </Link>
-          <button className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors">
+          <button
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-medium hover:bg-accent transition-colors disabled:opacity-50"
+            title="Exportar a Excel"
+          >
             <Download className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
             <span className="hidden sm:inline">Exportar</span>
           </button>

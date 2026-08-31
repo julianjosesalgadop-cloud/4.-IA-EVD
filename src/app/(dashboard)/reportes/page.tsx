@@ -22,6 +22,7 @@ interface EvaluationItem {
   collaborator: {
     full_name: string;
     document_number: string;
+    hire_date?: string;
     position?: { name: string };
     positions?: { name: string };
     areas?: { name: string };
@@ -34,6 +35,16 @@ interface EvaluationItem {
   finalized_at?: string;
   created_at: string;
   result?: any;
+}
+
+function isEvdRequired(hireDateStr?: string | null): boolean {
+  if (!hireDateStr) return true;
+  const hireDate = new Date(hireDateStr);
+  if (isNaN(hireDate.getTime())) return true;
+  const now = new Date();
+  let months = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+  if (now.getDate() < hireDate.getDate()) months--;
+  return months >= 6;
 }
 
 export default function ReportesPage() {
@@ -236,6 +247,8 @@ export default function ReportesPage() {
           "Área": item.collaborator?.areas?.name || item.collaborator?.area?.name || "N/A",
           "Cargo": item.collaborator?.positions?.name || item.collaborator?.position?.name || "N/A",
           "Evaluador": item.evaluator ? `${item.evaluator.first_name} ${item.evaluator.last_name}` : "N/A",
+          "Antigüedad": isEvdRequired(item.collaborator?.hire_date) ? "Requerido" : "No Requerido",
+          "EVD 2026": (item.finalized_at || (item as any).status === "finalizada") ? "Realizada" : "Pendiente",
           "Fecha de Finalización": item.finalized_at ? new Date(item.finalized_at).toLocaleDateString("es-ES") : "Pendiente",
         };
 

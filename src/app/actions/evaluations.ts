@@ -265,6 +265,7 @@ export async function getEvaluations() {
         full_name, 
         document_number, 
         position_id,
+        hire_date,
         position:positions(name),
         areas:areas(name)
       ),

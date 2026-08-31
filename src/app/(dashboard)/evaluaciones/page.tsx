@@ -32,6 +32,16 @@ const RESULT_STYLE: Record<string, string> = {
   pendiente: "text-muted-foreground bg-muted border-border",
 };
 
+function isEvdRequired(hireDateStr?: string | null): boolean {
+  if (!hireDateStr) return true;
+  const hireDate = new Date(hireDateStr);
+  if (isNaN(hireDate.getTime())) return true;
+  const now = new Date();
+  let months = (now.getFullYear() - hireDate.getFullYear()) * 12 + (now.getMonth() - hireDate.getMonth());
+  if (now.getDate() < hireDate.getDate()) months--;
+  return months >= 6;
+}
+
 export default function EvaluacionesPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -567,7 +577,7 @@ export default function EvaluacionesPage() {
             collaborator: e.collaborator?.full_name || "Desconocido",
             collaborator_document: e.collaborator?.document_number || "—",
             area: e.collaborator?.areas?.name || "—",
-            position: e.collaborator?.positions?.name || e.collaborator?.position?.name || "—",
+          position: e.collaborator?.positions?.name || e.collaborator?.position?.name || "—",
             evaluator: e.evaluator ? `${e.evaluator.first_name} ${e.evaluator.last_name}` : "—",
             date: e.created_at,
             year: e.evaluation_year,
@@ -575,6 +585,7 @@ export default function EvaluacionesPage() {
             result: resObj ? resObj.result : "pendiente",
             score: resObj ? resObj.overall_average : 0,
             has_pmi: resObj ? resObj.pmi_required : false,
+            hire_date: e.collaborator?.hire_date || null,
           };
         });
         setEvaluations(mapped);
@@ -590,12 +601,47 @@ export default function EvaluacionesPage() {
         if (areasRes) setDbAreas(areasRes);
         if (positionsRes) setDbPositions(positionsRes);
       } catch (err) {
-        console.error("Error loading config on evaluations mount:", err);
+        console.error("Error loading areas/positions filter data:", err);
       }
     }
     loadEvaluations();
     loadConfigData();
   }, []);
+
+  const filtered = evaluations.filter((e) => {
+    const matchSearch =
+      !search ||
+      e.collaborator.toLowerCase().includes(search.toLowerCase()) ||
+      e.collaborator_document.includes(search) ||
+      e.evaluator.toLowerCase().includes(search.toLowerCase()) ||
+      e.code.toLowerCase().includes(search.toLowerCase());
+
+    const matchArea = filterAreas.length === 0 || filterAreas.includes(e.area);
+    const matchPosition = filterPositions.length === 0 || filterPositions.includes(e.position);
+
+    const matchResult = !filterResult || e.result === filterResult;
+    
+    let matchDate = true;
+    if (startDate || endDate) {
+      if (!e.date) {
+        matchDate = false;
+      } else {
+        const evalDate = new Date(e.date);
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (evalDate < start) matchDate = false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (evalDate > end) matchDate = false;
+        }
+      }
+    }
+    
+    return matchSearch && matchResult && matchDate && matchArea && matchPosition;
+  });
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -605,32 +651,6 @@ export default function EvaluacionesPage() {
       setSortOrder("asc");
     }
   };
-
-  const filtered = evaluations.filter((e) => {
-    const matchSearch = !search || e.collaborator.toLowerCase().includes(search.toLowerCase());
-    const matchArea = filterAreas.length === 0 || filterAreas.includes(e.area);
-    const matchPosition = filterPositions.length === 0 || filterPositions.includes(e.position);
-    const matchResult = !filterResult || 
-      (filterResult === "plan_mejoramiento" 
-        ? (e.result === "plan_mejoramiento" || e.has_pmi) 
-        : e.result === filterResult);
-    
-    let matchDate = true;
-    if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const evalDate = new Date(e.date);
-      if (evalDate < start) matchDate = false;
-    }
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      const evalDate = new Date(e.date);
-      if (evalDate > end) matchDate = false;
-    }
-    
-    return matchSearch && matchResult && matchDate && matchArea && matchPosition;
-  });
 
   const sorted = [...filtered].sort((a, b) => {
     let valA: any = a[sortField as keyof typeof a];
@@ -682,6 +702,7 @@ export default function EvaluacionesPage() {
     const toastId = toast.loading("Generando archivo Excel...");
     try {
       const XLSX = await import("xlsx");
+      const currentYear = new Date().getFullYear();
       const excelRows = filtered.map((e) => ({
         "ID Evaluación": e.code || "—",
         "Evaluador": e.evaluator,
@@ -689,7 +710,9 @@ export default function EvaluacionesPage() {
         "Documento Colaborador": e.collaborator_document || "—",
         "Área": e.area,
         "Cargo": e.position,
-        "Año": e.year,
+        "Año": e.year || currentYear,
+        "Antigüedad": isEvdRequired(e.hire_date) ? "Requerido" : "No Requerido",
+        "EVD 2026": (e.status === "finalizada" || e.status === "completada" || e.status === "aprobada") ? "Realizada" : "Pendiente",
         "Estado": getStatusLabel(e.status),
         "Puntaje (Promedio)": e.score > 0 ? Number(formatScore(e.score)) : 0,
         "Resultado": getResultLabel(e.result),
