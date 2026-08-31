@@ -6,7 +6,7 @@ import {
   Users, Plus, Search, Filter, Download, Upload,
   ChevronLeft, ChevronRight, Eye, Edit, MoreHorizontal,
   UserCheck, UserX, ArrowUpDown, Building2, ChevronUp, ChevronDown,
-  CheckCircle2, Clock
+  CheckCircle2, Clock, ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { cn, getStatusLabel, getInitials, formatDate, getContractTypeLabel } from "@/lib/utils";
@@ -146,6 +146,8 @@ export default function ColaboradoresPage() {
   const stats = {
     total: collaborators.length,
     activos: collaborators.filter((c: any) => c.status === "activo").length,
+    requeridos: collaborators.filter((c: any) => c.status === "activo" && isEvdRequired(c.hire_date)).length,
+    noRequeridos: collaborators.filter((c: any) => c.status === "activo" && !isEvdRequired(c.hire_date)).length,
     inactivos: collaborators.filter((c: any) => c.status !== "activo").length,
   };
 
@@ -182,35 +184,34 @@ export default function ColaboradoresPage() {
       </div>
 
       {/* Stats mini-cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {[
           { label: "Total", value: stats.total, icon: Users, color: "brand" },
           { label: "Activos", value: stats.activos, icon: UserCheck, color: "success" },
+          { label: "Requeridos (≥ 6m)", value: stats.requeridos, icon: ShieldCheck, color: "institutional" },
+          { label: "No Requeridos (< 6m)", value: stats.noRequeridos, icon: Clock, color: "muted" },
           { label: "Inactivos / Retirados", value: stats.inactivos, icon: UserX, color: "warning" },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08 }}
+            transition={{ delay: i * 0.06 }}
             className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border bg-card"
           >
             <div className={cn(
               "p-2 sm:p-2.5 rounded-lg flex-shrink-0",
-              stat.color === "brand" ? "bg-brand-50 dark:bg-brand-950/30" :
-              stat.color === "success" ? "bg-success-50 dark:bg-success-950/30" :
-              "bg-warning-50 dark:bg-warning-950/30"
+              stat.color === "institutional" ? "bg-[#012169]/10 text-[#012169] dark:bg-[#0084d5]/20 dark:text-[#38bdf8]" :
+              stat.color === "brand" ? "bg-brand-50 text-brand-500 dark:bg-brand-950/30 dark:text-brand-400" :
+              stat.color === "success" ? "bg-success-50 text-success-600 dark:bg-success-950/30 dark:text-success-400" :
+              stat.color === "muted" ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" :
+              "bg-warning-50 text-warning-600 dark:bg-warning-950/30 dark:text-warning-400"
             )}>
-              <stat.icon className={cn(
-                "w-4 h-4",
-                stat.color === "brand" ? "text-brand-500" :
-                stat.color === "success" ? "text-success-600" :
-                "text-warning-600"
-              )} />
+              <stat.icon className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-2xl font-bold leading-none">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+              <p className="text-xl sm:text-2xl font-bold leading-none">{stat.value}</p>
+              <p className="text-xs text-muted-foreground mt-1 truncate">{stat.label}</p>
             </div>
           </motion.div>
         ))}

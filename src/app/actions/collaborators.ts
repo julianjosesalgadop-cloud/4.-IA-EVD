@@ -118,6 +118,7 @@ export async function createCollaborator(collaboratorData: any) {
 
 export async function getCollaborators() {
   const supabase = await getSupabase();
+  const adminClient = getSupabaseAdmin();
   const currentYear = new Date().getFullYear();
 
   const [collabsRes, evalsRes] = await Promise.all([
@@ -129,9 +130,9 @@ export async function getCollaborators() {
         positions(name)
       `)
       .order("created_at", { ascending: false }),
-    supabase
+    adminClient
       .from("evaluations")
-      .select("id, collaborator_id, evaluation_year, status, created_at")
+      .select("id, evaluatee_id, evaluation_year, status, created_at")
   ]);
 
   if (collabsRes.error) {
@@ -145,9 +146,11 @@ export async function getCollaborators() {
   if (evalsRes.data) {
     evalsRes.data.forEach((ev: any) => {
       const year = ev.evaluation_year || (ev.created_at ? new Date(ev.created_at).getFullYear() : currentYear);
-      if (year === currentYear) {
-        if (ev.status === "finalizada" || ev.status === "completada" || ev.status === "completado" || ev.status === "aprobada") {
-          completedCurrentYearCollabs.add(ev.collaborator_id);
+      const collabId = ev.evaluatee_id || (ev as any).collaborator_id;
+      if (collabId && Number(year) === currentYear) {
+        const st = (ev.status || "").toLowerCase();
+        if (st === "finalizada" || st === "completada" || st === "completado" || st === "aprobada" || st === "activo") {
+          completedCurrentYearCollabs.add(collabId);
         }
       }
     });
