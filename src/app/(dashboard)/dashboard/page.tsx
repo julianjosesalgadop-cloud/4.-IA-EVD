@@ -1019,18 +1019,38 @@ export default function DashboardPage() {
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 220 : 160}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={isExpanded ? 240 : 180}>
+            <PieChart margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
               <Pie
                 data={resultDistribution}
                 cx="50%"
                 cy="50%"
-                innerRadius={40}
-                outerRadius={65}
+                innerRadius={36}
+                outerRadius={56}
                 paddingAngle={3}
                 dataKey="value"
-                label={false}
-                labelLine={false}
+                label={(props: any) => {
+                  const { cx = 0, cy = 0, midAngle = 0, outerRadius = 0, value = 0, percent = 0 } = props || {};
+                  if (!value || value === 0) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = Number(outerRadius) + 14;
+                  const x = Number(cx) + radius * Math.cos(-Number(midAngle) * RADIAN);
+                  const y = Number(cy) + radius * Math.sin(-Number(midAngle) * RADIAN);
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="hsl(var(--foreground))"
+                      textAnchor={x > Number(cx) ? "start" : "end"}
+                      dominantBaseline="central"
+                      fontSize={10}
+                      fontWeight="bold"
+                    >
+                      {`${value} (${Math.round(Number(percent) * 100)}%)`}
+                    </text>
+                  );
+                }}
+                labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
               >
                 {resultDistribution.map((entry, index) => (
                   <Cell key={index} fill={entry.color} stroke="transparent" />
@@ -1292,17 +1312,37 @@ export default function DashboardPage() {
                   <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
                     <div className="w-full md:w-2/3 h-[280px] md:h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
+                        <PieChart margin={{ top: 20, right: 35, left: 35, bottom: 20 }}>
                           <Pie
                             data={resultDistribution}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={95}
+                            innerRadius={55}
+                            outerRadius={85}
                             paddingAngle={3}
                             dataKey="value"
-                            label={false}
-                            labelLine={false}
+                            label={(props: any) => {
+                              const { cx = 0, cy = 0, midAngle = 0, outerRadius = 0, value = 0, percent = 0 } = props || {};
+                              if (!value || value === 0) return null;
+                              const RADIAN = Math.PI / 180;
+                              const radius = Number(outerRadius) + 16;
+                              const x = Number(cx) + radius * Math.cos(-Number(midAngle) * RADIAN);
+                              const y = Number(cy) + radius * Math.sin(-Number(midAngle) * RADIAN);
+                              return (
+                                <text
+                                  x={x}
+                                  y={y}
+                                  fill="hsl(var(--foreground))"
+                                  textAnchor={x > Number(cx) ? "start" : "end"}
+                                  dominantBaseline="central"
+                                  fontSize={12}
+                                  fontWeight="bold"
+                                >
+                                  {`${value} (${Math.round(Number(percent) * 100)}%)`}
+                                </text>
+                              );
+                            }}
+                            labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
                           >
                             {resultDistribution.map((entry, index) => (
                               <Cell key={index} fill={entry.color} stroke="transparent" />
