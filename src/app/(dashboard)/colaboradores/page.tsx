@@ -146,11 +146,11 @@ export default function ColaboradoresPage() {
   const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   const stats = {
-    total: collaborators.length,
-    activos: collaborators.filter((c: any) => c.status === "activo").length,
-    requeridos: collaborators.filter((c: any) => c.status === "activo" && isEvdRequired(c.hire_date)).length,
-    noRequeridos: collaborators.filter((c: any) => c.status === "activo" && !isEvdRequired(c.hire_date)).length,
-    inactivos: collaborators.filter((c: any) => c.status !== "activo").length,
+    total: filtered.length,
+    activos: filtered.filter((c: any) => c.status === "activo").length,
+    requeridos: filtered.filter((c: any) => c.status === "activo" && isEvdRequired(c.hire_date)).length,
+    noRequeridos: filtered.filter((c: any) => c.status === "activo" && !isEvdRequired(c.hire_date)).length,
+    inactivos: filtered.filter((c: any) => c.status !== "activo").length,
   };
 
   const handleExportExcel = async () => {

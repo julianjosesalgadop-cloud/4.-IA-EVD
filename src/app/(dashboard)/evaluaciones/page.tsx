@@ -742,10 +742,10 @@ export default function EvaluacionesPage() {
   };
 
   // Summary stats
-  const total = evaluations.length;
-  const aprobados = evaluations.filter(e => e.result === "aprobado").length;
-  const conPMI = evaluations.filter(e => e.has_pmi).length;
-  const noAprobados = evaluations.filter(e => e.result === "no_aprobado").length;
+  const total = filtered.length;
+  const aprobados = filtered.filter(e => e.result === "aprobado").length;
+  const conPMI = filtered.filter(e => e.has_pmi || e.result === "plan_mejoramiento").length;
+  const noAprobados = filtered.filter(e => e.result === "no_aprobado").length;
 
   return (
     <div className="space-y-6 animate-fade-in">
