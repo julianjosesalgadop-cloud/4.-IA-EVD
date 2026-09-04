@@ -1009,10 +1009,19 @@ export default function DashboardPage() {
               <BarChart3 className="w-5 h-5 text-muted-foreground" />
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={isExpanded ? 320 : 220}>
-            <BarChart data={positionAverageData} barSize={32} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={isExpanded ? 340 : 260}>
+            <BarChart data={positionAverageData} barSize={30} margin={{ top: 25, right: 10, left: -10, bottom: 25 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="position" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="position"
+                interval={0}
+                angle={-25}
+                textAnchor="end"
+                height={55}
+                tick={{ fontSize: 9.5, fill: "hsl(var(--muted-foreground))" }}
+                axisLine={false}
+                tickLine={false}
+              />
               <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
@@ -1288,10 +1297,19 @@ export default function DashboardPage() {
               <div className="w-full flex items-center justify-center min-h-[300px] md:min-h-[400px]">
                 {expandedChart === "cargo" && (
                   <div className="w-full">
-                    <ResponsiveContainer width="100%" height={380}>
-                      <BarChart data={positionAverageData} barSize={36} margin={{ top: 25, right: 10, left: -10, bottom: 5 }}>
+                    <ResponsiveContainer width="100%" height={420}>
+                      <BarChart data={positionAverageData} barSize={36} margin={{ top: 25, right: 15, left: -10, bottom: 35 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis dataKey="position" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <XAxis
+                          dataKey="position"
+                          interval={0}
+                          angle={-25}
+                          textAnchor="end"
+                          height={65}
+                          tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
                         <YAxis domain={[0, 5]} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar dataKey="promedio" name="Promedio" radius={[6, 6, 0, 0]}>
