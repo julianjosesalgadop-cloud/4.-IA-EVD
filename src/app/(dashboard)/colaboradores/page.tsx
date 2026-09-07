@@ -201,6 +201,11 @@ export default function ColaboradoresPage() {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="w-full min-h-screen px-3 sm:px-4 py-4 sm:py-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-fade-in">
@@ -589,16 +594,17 @@ export default function ColaboradoresPage() {
           </p>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setPage(Math.max(1, page - 1))}
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page === 1}
               className="p-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Página anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((p) => (
               <button
                 key={p}
-                onClick={() => setPage(p)}
+                onClick={() => handlePageChange(p)}
                 className={cn(
                   "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
                   page === p ? "bg-primary text-primary-foreground" : "hover:bg-accent"
@@ -608,9 +614,10 @@ export default function ColaboradoresPage() {
               </button>
             ))}
             <button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
               disabled={page === totalPages || totalPages === 0}
               className="p-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Página siguiente"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

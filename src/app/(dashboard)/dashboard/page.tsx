@@ -596,13 +596,44 @@ export default function DashboardPage() {
   const tierCompetente = filteredEvals.filter((e: any) => e.score >= 2.5 && e.score < 3.5).length;
   const tierRequiereMejora = filteredEvals.filter((e: any) => e.score >= 1.5 && e.score < 2.5).length;
   const tierInsatisfactorio = filteredEvals.filter((e: any) => e.score > 0 && e.score < 1.5).length;
+  const totalClassified = tierExcelente + tierSobresaliente + tierCompetente + tierRequiereMejora + tierInsatisfactorio;
 
   const performanceTiersData = [
-    { name: "Excelente (4.5 - 5.0)", value: tierExcelente, color: "#012169" },
-    { name: "Sobresaliente (3.5 - 4.49)", value: tierSobresaliente, color: "#0084d5" },
-    { name: "Cumple lo esperado (2.5 - 3.49)", value: tierCompetente, color: "#38bdf8" },
-    { name: "Requiere Mejora (1.5 - 2.49)", value: tierRequiereMejora, color: "#94a3b8" },
-    { name: "No cumple (< 1.5)", value: tierInsatisfactorio, color: "#475569" },
+    {
+      name: "Excelente (4.5 - 5.0)",
+      value: tierExcelente,
+      percentage: totalClassified > 0 ? ((tierExcelente / totalClassified) * 100).toFixed(1) : "0",
+      displayLabel: totalClassified > 0 && tierExcelente > 0 ? `${tierExcelente} (${((tierExcelente / totalClassified) * 100).toFixed(1)}%)` : `${tierExcelente}`,
+      color: "#012169"
+    },
+    {
+      name: "Sobresaliente (3.5 - 4.49)",
+      value: tierSobresaliente,
+      percentage: totalClassified > 0 ? ((tierSobresaliente / totalClassified) * 100).toFixed(1) : "0",
+      displayLabel: totalClassified > 0 && tierSobresaliente > 0 ? `${tierSobresaliente} (${((tierSobresaliente / totalClassified) * 100).toFixed(1)}%)` : `${tierSobresaliente}`,
+      color: "#0084d5"
+    },
+    {
+      name: "Cumple lo esperado (2.5 - 3.49)",
+      value: tierCompetente,
+      percentage: totalClassified > 0 ? ((tierCompetente / totalClassified) * 100).toFixed(1) : "0",
+      displayLabel: totalClassified > 0 && tierCompetente > 0 ? `${tierCompetente} (${((tierCompetente / totalClassified) * 100).toFixed(1)}%)` : `${tierCompetente}`,
+      color: "#38bdf8"
+    },
+    {
+      name: "Requiere Mejora (1.5 - 2.49)",
+      value: tierRequiereMejora,
+      percentage: totalClassified > 0 ? ((tierRequiereMejora / totalClassified) * 100).toFixed(1) : "0",
+      displayLabel: totalClassified > 0 && tierRequiereMejora > 0 ? `${tierRequiereMejora} (${((tierRequiereMejora / totalClassified) * 100).toFixed(1)}%)` : `${tierRequiereMejora}`,
+      color: "#94a3b8"
+    },
+    {
+      name: "No cumple (< 1.5)",
+      value: tierInsatisfactorio,
+      percentage: totalClassified > 0 ? ((tierInsatisfactorio / totalClassified) * 100).toFixed(1) : "0",
+      displayLabel: totalClassified > 0 && tierInsatisfactorio > 0 ? `${tierInsatisfactorio} (${((tierInsatisfactorio / totalClassified) * 100).toFixed(1)}%)` : `${tierInsatisfactorio}`,
+      color: "#475569"
+    },
   ];
 
   // 2. Rendimiento Promedio por Sede (Ciudad)
@@ -798,7 +829,7 @@ export default function DashboardPage() {
               <BarChart
                 data={performanceTiersData}
                 layout="vertical"
-                margin={{ top: 10, right: 35, left: 10, bottom: 5 }}
+                margin={{ top: 10, right: 65, left: 10, bottom: 5 }}
                 barSize={18}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
@@ -811,9 +842,20 @@ export default function DashboardPage() {
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip formatter={(value) => [`${value} colaboradores`, "Cantidad"]} />
+                <Tooltip
+                  formatter={(value: any, name: any, item: any) => {
+                    const payload = item?.payload;
+                    const pct = payload?.percentage || "0";
+                    return [`${value} colaboradores (${pct}%)`, "Cantidad"];
+                  }}
+                />
                 <Bar dataKey="value" name="Colaboradores" radius={[0, 4, 4, 0]}>
-                  <LabelList dataKey="value" position="right" dx={6} style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }} />
+                  <LabelList
+                    dataKey="displayLabel"
+                    position="right"
+                    dx={6}
+                    style={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: "bold" }}
+                  />
                   {performanceTiersData.map((entry, index) => (
                     <Cell key={index} fill={entry.color} />
                   ))}
@@ -1483,6 +1525,57 @@ export default function DashboardPage() {
                       No hay información registrada.
                     </div>
                   )
+                )}
+
+                {expandedChart === "desempeno" && (
+                  <div className="w-full space-y-4">
+                    <ResponsiveContainer width="100%" height={380}>
+                      <BarChart
+                        data={performanceTiersData}
+                        layout="vertical"
+                        margin={{ top: 15, right: 80, left: 15, bottom: 10 }}
+                        barSize={24}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+                        <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                          width={180}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          formatter={(value: any, name: any, item: any) => {
+                            const payload = item?.payload;
+                            const pct = payload?.percentage || "0";
+                            return [`${value} colaboradores (${pct}%)`, "Cantidad"];
+                          }}
+                        />
+                        <Bar dataKey="value" name="Colaboradores" radius={[0, 6, 6, 0]}>
+                          <LabelList
+                            dataKey="displayLabel"
+                            position="right"
+                            dx={8}
+                            style={{ fontSize: 12, fill: "hsl(var(--foreground))", fontWeight: "bold" }}
+                          />
+                          {performanceTiersData.map((entry, index) => (
+                            <Cell key={index} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t">
+                      {performanceTiersData.map((tier) => (
+                        <div key={tier.name} className="p-3 rounded-xl border bg-muted/10 text-center">
+                          <p className="text-xs text-muted-foreground truncate" title={tier.name}>{tier.name.split(" (")[0]}</p>
+                          <p className="text-lg font-bold text-foreground mt-0.5">{tier.value}</p>
+                          <p className="text-xs font-semibold text-brand-600 dark:text-brand-400">{tier.percentage}%</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {expandedChart === "destacados" && (

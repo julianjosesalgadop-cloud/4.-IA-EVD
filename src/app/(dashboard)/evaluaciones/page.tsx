@@ -1143,10 +1143,26 @@ export default function EvaluacionesPage() {
             {filtered.length} evaluaciones · Página {page} de {totalPages || 1}
           </p>
           <div className="flex items-center gap-1">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-2 rounded-lg hover:bg-accent disabled:opacity-40">
+            <button
+              onClick={() => {
+                setPage(p => Math.max(1, p - 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={page === 1}
+              className="p-2 rounded-lg hover:bg-accent disabled:opacity-40"
+              title="Página anterior"
+            >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="p-2 rounded-lg hover:bg-accent disabled:opacity-40">
+            <button
+              onClick={() => {
+                setPage(p => Math.min(totalPages, p + 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              disabled={page >= totalPages}
+              className="p-2 rounded-lg hover:bg-accent disabled:opacity-40"
+              title="Página siguiente"
+            >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

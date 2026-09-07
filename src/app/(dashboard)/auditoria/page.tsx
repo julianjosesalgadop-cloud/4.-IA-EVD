@@ -157,6 +157,11 @@ export default function AuditoriaPage() {
   const totalPages = Math.ceil(sorted.length / pageSize);
   const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   function clearFilters() {
     setFilterAction("");
     setDateFrom("");
@@ -463,7 +468,7 @@ export default function AuditoriaPage() {
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => handlePageChange(Math.max(1, page - 1))}
                 disabled={page === 1}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg border bg-background text-foreground text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                 title="Página anterior"
@@ -480,7 +485,7 @@ export default function AuditoriaPage() {
               </div>
 
               <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                 disabled={page >= totalPages}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg border bg-background text-foreground text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                 title="Página siguiente"
