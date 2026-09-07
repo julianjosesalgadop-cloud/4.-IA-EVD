@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ClipboardList, RefreshCcw, Search, Filter,
   ChevronDown, Calendar, User, Database, ArrowUpCircle,
-  ArrowUpDown, ChevronUp
+  ArrowUpDown, ChevronUp, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { getAuditLogs } from "@/app/actions/audit";
 import { toast } from "sonner";
@@ -70,6 +70,8 @@ export default function AuditoriaPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -146,6 +148,15 @@ export default function AuditoriaPage() {
     return userName.includes(term) || tableName.includes(term) || desc.includes(term);
   });
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterAction, dateFrom, dateTo]);
+
+  const sorted = sortedLogs(filtered);
+  const totalPages = Math.ceil(sorted.length / pageSize);
+  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
+
   function clearFilters() {
     setFilterAction("");
     setDateFrom("");
@@ -196,24 +207,24 @@ export default function AuditoriaPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border bg-card text-center">
-          <p className="text-2xl font-bold text-brand-600">{logs.length}</p>
+          <p className="text-2xl font-bold text-brand-600">{filtered.length}</p>
           <p className="text-xs text-muted-foreground mt-0.5">Total registros</p>
         </div>
         <div className="p-4 rounded-xl border bg-card text-center">
           <p className="text-2xl font-bold text-success-600">
-            {logs.filter((l) => l.action === "crear").length}
+            {filtered.filter((l) => l.action === "crear").length}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">Creaciones</p>
         </div>
         <div className="p-4 rounded-xl border bg-card text-center">
           <p className="text-2xl font-bold text-blue-600">
-            {logs.filter((l) => l.action === "editar").length}
+            {filtered.filter((l) => l.action === "editar").length}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">Ediciones</p>
         </div>
         <div className="p-4 rounded-xl border bg-card text-center">
           <p className="text-2xl font-bold text-purple-600">
-            {logs.filter((l) => l.action === "finalizar").length}
+            {filtered.filter((l) => l.action === "finalizar").length}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">Finalizaciones</p>
         </div>
@@ -364,7 +375,7 @@ export default function AuditoriaPage() {
                   </td>
                 </tr>
               ) : (
-                sortedLogs(filtered).map((log, idx) => {
+                paginated.map((log, idx) => {
                   const actionConf = ACTION_CONFIG[log.action] || {
                     label: log.action,
                     color: "text-muted-foreground",
@@ -444,12 +455,40 @@ export default function AuditoriaPage() {
           </table>
         </div>
         {filtered.length > 0 && (
-          <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground flex items-center justify-between">
-            <span>Mostrando {filtered.length} de {logs.length} registros</span>
-            <span className="flex items-center gap-1">
-              <ArrowUpCircle className="w-3.5 h-3.5" />
-              Más recientes primero
-            </span>
+          <div className="px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+              Mostrando <span className="font-semibold text-foreground">{((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, filtered.length)}</span> de <span className="font-semibold text-foreground">{filtered.length}</span> registros
+              {filtered.length !== logs.length && ` (filtrado de ${logs.length} totales)`}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border bg-background text-foreground text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                title="Página anterior"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Anterior
+              </button>
+
+              <div className="flex items-center gap-1 px-2 font-medium">
+                <span>Página</span>
+                <span className="font-bold text-foreground">{page}</span>
+                <span>de</span>
+                <span className="font-bold text-foreground">{Math.max(1, totalPages)}</span>
+              </div>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border bg-background text-foreground text-xs font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                title="Página siguiente"
+              >
+                Siguiente
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </div>
