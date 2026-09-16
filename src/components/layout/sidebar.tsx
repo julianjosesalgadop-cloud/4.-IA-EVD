@@ -257,7 +257,12 @@ export function Sidebar({ collapsed, onToggle, onItemClick, userRole }: SidebarP
     if (!href) return false;
     if (href === "/dashboard") return pathname === "/dashboard";
     if (href === "/evaluaciones") {
-      return pathname === "/evaluaciones" || (pathname.startsWith("/evaluaciones/") && pathname !== "/evaluaciones/nueva");
+      return (
+        pathname === "/evaluaciones" ||
+        (pathname.startsWith("/evaluaciones/") &&
+          pathname !== "/evaluaciones/nueva" &&
+          !pathname.startsWith("/evaluaciones/firmas-pendientes"))
+      );
     }
     if (href === "/colaboradores") {
       return pathname === "/colaboradores" || (pathname.startsWith("/colaboradores/") && pathname !== "/colaboradores/nuevo");

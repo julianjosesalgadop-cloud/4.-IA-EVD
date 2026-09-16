@@ -45,6 +45,7 @@ export function Topbar({ collapsed, onMenuToggle, title }: TopbarProps) {
     if (path.startsWith("/colaboradores/")) return "Detalle de Colaborador";
     
     if (path === "/evaluaciones/nueva") return "Nueva Evaluación";
+    if (path === "/evaluaciones/firmas-pendientes") return "Firmas Pendientes";
     if (path === "/evaluaciones") return "Listado de Evaluaciones";
     if (path.startsWith("/evaluaciones/") && path.endsWith("/editar")) return "Editar Evaluación";
     if (path.startsWith("/evaluaciones/")) return "Detalle de Evaluación";
