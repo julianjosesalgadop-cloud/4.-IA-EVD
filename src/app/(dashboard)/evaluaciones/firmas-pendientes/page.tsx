@@ -15,15 +15,20 @@ import {
   User,
   Award,
   CheckCircle,
-  FileSignature
+  FileSignature,
+  Send,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, getResultLabel, formatScore, getScoreLabel, formatDate, formatDateTime, getStatusLabel } from "@/lib/utils";
 import { SignatureInput } from "@/components/ui/signature-input";
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
+import { generateEvaluationPdfDocument } from "@/lib/pdf/generate-evaluation-pdf";
 import { 
   getPendingSignatureEvaluations, 
   completeCollaboratorSignature, 
-  getEvaluationById 
+  getEvaluationById,
+  sendEvaluationEmail
 } from "@/app/actions/evaluations";
 
 // Define evaluation interface based on schema
@@ -59,6 +64,18 @@ export default function FirmasPendientesPage() {
   const [habeasData, setHabeasData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNarratives, setShowNarratives] = useState(false);
+
+  // PDF Preview State
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
+  const [previewPdfFileName, setPreviewPdfFileName] = useState("");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  // Post-Signature Success & Email Modal State
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [finalizedEvaluation, setFinalizedEvaluation] = useState<any | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Load Data
   const loadEvaluations = async () => {
@@ -159,6 +176,37 @@ export default function FirmasPendientesPage() {
     return 'text-danger';
   };
 
+  // Handle previewing PDF
+  const handlePreviewEvaluationPdf = async (
+    evaluationId: string,
+    pdfType: 'colaborador' | 'evaluador' = 'evaluador',
+    overrideSig?: string | null
+  ) => {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    const toastId = toast.loading("Obteniendo detalles y generando PDF...");
+    try {
+      const res = await getEvaluationById(evaluationId);
+      if (res.error || !res.data) {
+        toast.error("Error al obtener datos: " + (res.error || "No encontrado"), { id: toastId });
+        return;
+      }
+      const { fileName, blob } = await generateEvaluationPdfDocument(res.data, {
+        pdfType,
+        overrideCollaboratorSig: overrideSig
+      });
+      setPreviewPdfBlob(blob);
+      setPreviewPdfFileName(fileName);
+      setShowPdfPreview(true);
+      toast.success("PDF generado exitosamente", { id: toastId });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Error al generar PDF: " + (err?.message || err), { id: toastId });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   // Handle open modal
   const handleOpenModal = (ev: Evaluation) => {
     setSelectedEval(ev);
@@ -176,10 +224,22 @@ export default function FirmasPendientesPage() {
     try {
       const { success, error } = await completeCollaboratorSignature(selectedEval.id, signature);
       if (success) {
-        toast.success("Firma guardada correctamente", {
-          description: "La evaluación ha finalizado exitosamente."
+        toast.success("Firma registrada exitosamente", {
+          description: "La evaluación ha finalizado formalmente."
         });
+
+        // Obtener detalles completos para el modal de éxito y envío de correo
+        const evalDetails = await getEvaluationById(selectedEval.id);
+        const collab = getCollabObj(selectedEval.collaborator);
+
         setIsModalOpen(false);
+        setFinalizedEvaluation(evalDetails.data || {
+          ...selectedEval,
+          draft_data: { collaborator_signature: signature },
+          status: 'finalizada'
+        });
+        setEmailInput(collab?.email || "");
+        setIsSuccessModalOpen(true);
         loadEvaluations();
       } else {
         toast.error("Error al guardar la firma", { description: error });
@@ -188,6 +248,48 @@ export default function FirmasPendientesPage() {
       toast.error("Error inesperado al procesar la firma");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handle sending email
+  const handleSendEmail = async () => {
+    if (!emailInput || !emailInput.trim()) {
+      toast.error("Por favor ingresa un correo electrónico.");
+      return;
+    }
+    if (!finalizedEvaluation) return;
+
+    setIsSendingEmail(true);
+    const toastId = toast.loading("Generando PDF y enviando reporte...");
+    try {
+      const { base64, fileName } = await generateEvaluationPdfDocument(finalizedEvaluation, {
+        pdfType: 'colaborador'
+      });
+      
+      const collab = getCollabObj(finalizedEvaluation.collaborator);
+      const resObj = getResultObj(finalizedEvaluation.result);
+      
+      const emailResult = await sendEvaluationEmail({
+        evaluationId: finalizedEvaluation.id,
+        pdfBase64: base64,
+        fileName,
+        recipientEmail: emailInput.trim(),
+        recipientName: collab?.full_name || "Colaborador",
+        evaluationYear: finalizedEvaluation.evaluation_year || new Date().getFullYear(),
+        score: Number(resObj?.overall_average || 0),
+        result: resObj?.result || "pendiente"
+      });
+
+      if (emailResult.error) {
+        toast.error("Error al enviar correo: " + emailResult.error, { id: toastId });
+      } else {
+        toast.success("Correo enviado exitosamente.", { id: toastId });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Error al enviar correo: " + (err?.message || err), { id: toastId });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -282,7 +384,7 @@ export default function FirmasPendientesPage() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Resultado</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground hidden sm:table-cell">Fecha</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Días Pendiente</th>
-                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Acción</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -336,13 +438,32 @@ export default function FirmasPendientesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleOpenModal(ev)}
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-brand text-brand-foreground text-xs font-medium rounded-lg hover:bg-brand/90 transition-colors"
-                        >
-                          <PenTool className="w-3.5 h-3.5" />
-                          <span>Firmar</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenModal(ev)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-brand text-brand-foreground text-xs font-semibold rounded-lg hover:bg-brand/90 transition-colors shadow-sm"
+                            title="Registrar firma del colaborador"
+                          >
+                            <PenTool className="w-3.5 h-3.5" />
+                            <span>Firmar</span>
+                          </button>
+                          <button
+                            onClick={() => handlePreviewEvaluationPdf(ev.id, 'colaborador')}
+                            disabled={isGeneratingPdf}
+                            className="p-1.5 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                            title="Previsualizar PDF Colaborador"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-brand" />
+                          </button>
+                          <button
+                            onClick={() => handlePreviewEvaluationPdf(ev.id, 'evaluador')}
+                            disabled={isGeneratingPdf}
+                            className="p-1.5 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                            title="Previsualizar PDF Evaluador"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#012169] dark:text-[#38bdf8]" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -474,6 +595,34 @@ export default function FirmasPendientesPage() {
                   </div>
                 </div>
 
+                {/* PDF Preview buttons inside Modal */}
+                <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/20 border rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand" />
+                    <span className="text-xs font-semibold text-foreground">Previsualizar Reporte PDF:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePreviewEvaluationPdf(selectedEval.id, 'colaborador', signature)}
+                      disabled={isGeneratingPdf}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-brand" />
+                      PDF Colaborador
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePreviewEvaluationPdf(selectedEval.id, 'evaluador', signature)}
+                      disabled={isGeneratingPdf}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-[#012169] dark:text-[#38bdf8]" />
+                      PDF Evaluador
+                    </button>
+                  </div>
+                </div>
+
                 {/* Collapsible Narrative Section */}
                 <div className="border rounded-xl overflow-hidden bg-card">
                   <button 
@@ -598,6 +747,153 @@ export default function FirmasPendientesPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Post-Signature Success & Email Modal */}
+      <AnimatePresence>
+        {isSuccessModalOpen && finalizedEvaluation && (
+          <div 
+            onClick={() => {
+              setIsSuccessModalOpen(false);
+              setFinalizedEvaluation(null);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm sm:p-6 cursor-pointer"
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-card rounded-2xl shadow-2xl w-full max-w-lg border p-6 space-y-5 text-foreground cursor-default relative"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSuccessModalOpen(false);
+                  setFinalizedEvaluation(null);
+                }}
+                className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+                title="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 rounded-full bg-success-100 dark:bg-success-950/40 flex items-center justify-center text-success-600">
+                  <CheckCircle className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold">¡Firma Registrada y Evaluación Finalizada!</h3>
+                <p className="text-sm text-muted-foreground">
+                  La evaluación de <strong>{getCollabObj(finalizedEvaluation.collaborator)?.full_name}</strong> ha sido formalmente completada con ambas firmas digitales.
+                </p>
+              </div>
+
+              {/* Summary Card */}
+              <div className="rounded-xl bg-muted/30 border p-4 space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Puntuación Obtenida:</span>
+                  <span className="font-bold text-base text-foreground">
+                    {formatScore(getResultObj(finalizedEvaluation.result)?.overall_average || 0)} / 5.0
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Resultado General:</span>
+                  <span className={cn(
+                    "font-bold uppercase text-xs px-2 py-0.5 rounded border",
+                    getResultBadgeStyles(getResultObj(finalizedEvaluation.result)?.result || "")
+                  )}>
+                    {getResultLabel(getResultObj(finalizedEvaluation.result)?.result || "pendiente")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Estado Actual:</span>
+                  <span className="font-bold text-xs px-2 py-0.5 rounded border text-success-600 bg-success-50 border-success-200">
+                    Finalizada con Firma
+                  </span>
+                </div>
+              </div>
+
+              {/* Previsualizar PDFs */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Previsualizar o Descargar PDF
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePreviewEvaluationPdf(finalizedEvaluation.id, 'colaborador')}
+                    disabled={isGeneratingPdf}
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border text-foreground hover:bg-accent text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    <FileText className="w-4 h-4 text-brand" />
+                    PDF Colaborador
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePreviewEvaluationPdf(finalizedEvaluation.id, 'evaluador')}
+                    disabled={isGeneratingPdf}
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border text-foreground hover:bg-accent text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    <FileText className="w-4 h-4 text-[#012169] dark:text-[#38bdf8]" />
+                    PDF Evaluador
+                  </button>
+                </div>
+              </div>
+
+              {/* Enviar reporte por correo */}
+              <div className="space-y-2 border-t pt-4">
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Enviar reporte por correo electrónico
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="correo@ejemplo.com"
+                    className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm text-foreground focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail || !emailInput.trim()}
+                    className="px-4 py-2 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1.5 min-w-[100px]"
+                  >
+                    {isSendingEmail ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Enviar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSuccessModalOpen(false);
+                    setFinalizedEvaluation(null);
+                  }}
+                  className="w-full px-4 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity text-center"
+                >
+                  Finalizar y Volver al Listado
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <PdfPreviewModal
+        isOpen={showPdfPreview}
+        onClose={() => setShowPdfPreview(false)}
+        pdfBlob={previewPdfBlob}
+        fileName={previewPdfFileName}
+      />
     </div>
   );
 }
