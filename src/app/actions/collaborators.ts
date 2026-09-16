@@ -149,7 +149,7 @@ export async function getCollaborators() {
       const collabId = ev.evaluatee_id || (ev as any).collaborator_id;
       if (collabId && Number(year) === currentYear) {
         const st = (ev.status || "").toLowerCase();
-        if (st === "finalizada" || st === "completada" || st === "completado" || st === "aprobada" || st === "activo") {
+        if (st === "finalizada" || st === "pendiente_firma" || st === "completada" || st === "completado" || st === "aprobada" || st === "activo") {
           completedCurrentYearCollabs.add(collabId);
         }
       }

@@ -407,6 +407,10 @@ export async function saveEvaluation(payload: any) {
     }
   }
 
+  // Determinar modo: 'finalizar' (default) o 'pendiente_firma'
+  const mode = payload.mode || 'finalizar';
+  const isPendienteFirma = mode === 'pendiente_firma';
+
   const { data: evalData, error: evalError } = await supabase
     .from("evaluations")
     .insert({
@@ -416,17 +420,17 @@ export async function saveEvaluation(payload: any) {
       evaluator_id: userData.user.id,
       evaluation_year: payload.evaluation_year || new Date().getFullYear(),
       evaluation_type: '90',
-      status: 'finalizada',
+      status: isPendienteFirma ? 'pendiente_firma' : 'finalizada',
       observations: payload.observations,
       strengths: payload.strengths,
       improvement_opportunities: payload.improvement_opportunities,
       training_needs: payload.training_needs,
-      finalized_at: new Date().toISOString(),
-      finalized_by: userData.user.id,
-      draft_data: payload.signature ? { collaborator_signature: payload.signature } : null,
-      evaluatee_signed_at: payload.signature ? new Date().toISOString() : null,
+      finalized_at: isPendienteFirma ? null : new Date().toISOString(),
+      finalized_by: isPendienteFirma ? null : userData.user.id,
+      draft_data: isPendienteFirma ? null : (payload.signature ? { collaborator_signature: payload.signature } : null),
+      evaluatee_signed_at: isPendienteFirma ? null : (payload.signature ? new Date().toISOString() : null),
       evaluator_signed_at: new Date().toISOString(),
-      evaluatee_accepted: payload.signature ? true : false,
+      evaluatee_accepted: isPendienteFirma ? false : (payload.signature ? true : false),
     })
     .select()
     .single();
@@ -455,19 +459,138 @@ export async function saveEvaluation(payload: any) {
   if (rpcError) return { error: rpcError.message };
 
   revalidatePath("/evaluaciones");
+  revalidatePath("/evaluaciones/firmas-pendientes");
+  revalidatePath("/dashboard");
+
+  // Registrar en auditoría
+  try {
+    const auditAction = isPendienteFirma ? "guardar_pendiente_firma" : "finalizar";
+    const auditDesc = isPendienteFirma
+      ? `Evaluación guardada pendiente de firma del colaborador ID: ${payload.evaluatee_id}. Resultado calculado.`
+      : `Evaluación finalizada para colaborador ID: ${payload.evaluatee_id}. Resultado calculado.`;
+    await logAudit(
+      auditAction,
+      "evaluations",
+      evalData.id,
+      auditDesc
+    );
+  } catch (_) { /* no bloquear si falla la auditoría */ }
+
+  return { success: true, evaluation_id: evalData.id, result: resultData, mode };
+}
+
+// ==========================================
+// FIRMA PENDIENTE — Completar firma del colaborador
+// ==========================================
+
+export async function completeCollaboratorSignature(evaluationId: string, signatureBase64: string) {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error("No autenticado");
+
+  const adminClient = await getSupabaseAdmin();
+
+  // Verificar que la evaluación existe y está en estado pendiente_firma
+  const { data: evaluation, error: fetchError } = await adminClient
+    .from("evaluations")
+    .select("id, status, evaluatee_id")
+    .eq("id", evaluationId)
+    .single();
+
+  if (fetchError || !evaluation) {
+    return { error: "Evaluación no encontrada." };
+  }
+
+  if (evaluation.status !== "pendiente_firma") {
+    return { error: "Esta evaluación no está pendiente de firma." };
+  }
+
+  // Actualizar con la firma del colaborador y finalizar
+  const { error: updateError } = await adminClient
+    .from("evaluations")
+    .update({
+      status: "finalizada",
+      draft_data: { collaborator_signature: signatureBase64 },
+      evaluatee_signed_at: new Date().toISOString(),
+      evaluatee_accepted: true,
+      finalized_at: new Date().toISOString(),
+      finalized_by: userData.user.id,
+    })
+    .eq("id", evaluationId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath("/evaluaciones");
+  revalidatePath("/evaluaciones/firmas-pendientes");
   revalidatePath("/dashboard");
 
   // Registrar en auditoría
   try {
     await logAudit(
-      "finalizar",
+      "completar_firma",
       "evaluations",
-      evalData.id,
-      `Evaluación finalizada para colaborador ID: ${payload.evaluatee_id}. Resultado calculado.`
+      evaluationId,
+      `Firma del colaborador completada. Evaluación finalizada para colaborador ID: ${evaluation.evaluatee_id}.`
     );
   } catch (_) { /* no bloquear si falla la auditoría */ }
 
-  return { success: true, evaluation_id: evalData.id, result: resultData };
+  return { success: true };
+}
+
+export async function getPendingSignatureEvaluations() {
+  const supabase = await getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { error: "No autenticado", data: [] };
+
+  const adminClient = await getSupabaseAdmin();
+
+  // Obtener perfil y rol del usuario
+  const { data: profile } = await adminClient
+    .from("profiles")
+    .select("id, roles(name)")
+    .eq("id", userData.user.id)
+    .single();
+
+  const roleName = (profile?.roles as any)?.name;
+
+  let query = adminClient
+    .from("evaluations")
+    .select(`
+      id,
+      code,
+      evaluation_year,
+      evaluation_date,
+      created_at,
+      status,
+      evaluator_id,
+      evaluatee_id,
+      strengths,
+      improvement_opportunities,
+      training_needs,
+      observations,
+      collaborator:collaborators(
+        id,
+        full_name,
+        document_type,
+        document_number,
+        email,
+        position:positions(name),
+        areas:areas(name)
+      ),
+      evaluator:profiles!evaluations_evaluator_id_fkey(id, first_name, last_name, email, avatar_url),
+      result:evaluation_results(*)
+    `)
+    .eq("status", "pendiente_firma");
+
+  // Si es rol líder, filtrar para que solo vea las evaluaciones donde él fue el evaluador
+  if (roleName === "lider") {
+    query = query.eq("evaluator_id", userData.user.id);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) return { error: error.message, data: [] };
+  return { data };
 }
 
 export async function sendEvaluationEmail({

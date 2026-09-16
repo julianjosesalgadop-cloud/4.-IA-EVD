@@ -96,6 +96,7 @@ export function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
     borrador: "Borrador",
     en_proceso: "En Proceso",
+    pendiente_firma: "Pendiente de Firma",
     finalizada: "Finalizada",
     reabierta: "Reabierta",
     anulada: "Anulada",

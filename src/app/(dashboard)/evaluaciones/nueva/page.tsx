@@ -98,8 +98,10 @@ function NuevaEvaluacionContent() {
   const [savedEvaluation, setSavedEvaluation] = useState<any | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
   const [collaboratorSignature, setCollaboratorSignature] = useState<string | null>(null);
   const [acceptedCollaboratorDataPolicy, setAcceptedCollaboratorDataPolicy] = useState(false);
+  const [pendienteFirmaMode, setPendienteFirmaMode] = useState(false);
   
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
@@ -288,10 +290,66 @@ function NuevaEvaluacionContent() {
       return;
     }
 
-    // Open signature modal first
+    // Show choice modal: signature now or save for later
+    setShowChoiceModal(true);
+  };
+
+  // Option A: Collaborator present → open signature modal (existing flow)
+  const handleChoiceWithSignature = () => {
+    setShowChoiceModal(false);
     setCollaboratorSignature(null);
     setAcceptedCollaboratorDataPolicy(false);
+    setPendienteFirmaMode(false);
     setShowSignatureModal(true);
+  };
+
+  // Option B: Collaborator absent → save with pendiente_firma
+  const handleSavePendienteFirma = async () => {
+    setShowChoiceModal(false);
+    setIsSubmitting(true);
+    setPendienteFirmaMode(true);
+
+    const formattedAnswers = Object.entries(answers).map(([question_id, data]) => ({
+      question_id,
+      category_id: data.category_id,
+      score: data.score,
+      comment: data.comment,
+    }));
+
+    const payload = {
+      version_id: versionId,
+      evaluatee_id: selectedCollaboratorId,
+      evaluation_year: parseInt(evaluationYear) || new Date().getFullYear(),
+      answers: formattedAnswers,
+      mode: 'pendiente_firma',
+      ...narrativa
+    };
+
+    const res = await saveEvaluation(payload);
+
+    if (res.error) {
+      toast.error("Error al guardar la evaluación: " + res.error);
+      setIsSubmitting(false);
+      return;
+    }
+
+    toast.success("Evaluación guardada. Pendiente de firma del colaborador.");
+
+    try {
+      const evalDetails = await getEvaluationById(res.evaluation_id);
+      if (evalDetails.data) {
+        setSavedEvaluation(evalDetails.data);
+        setSavedEvaluationId(res.evaluation_id);
+        setShowSuccessModal(true);
+      } else {
+        router.push("/evaluaciones/firmas-pendientes");
+      }
+    } catch (err) {
+      console.error(err);
+      router.push("/evaluaciones/firmas-pendientes");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFinalizeConfirm = async (signature: string | null) => {
@@ -302,6 +360,7 @@ function NuevaEvaluacionContent() {
 
     setShowSignatureModal(false);
     setIsSubmitting(true);
+    setPendienteFirmaMode(false);
     
     const formattedAnswers = Object.entries(answers).map(([question_id, data]) => ({
       question_id,
@@ -316,6 +375,7 @@ function NuevaEvaluacionContent() {
       evaluation_year: parseInt(evaluationYear) || new Date().getFullYear(),
       answers: formattedAnswers,
       signature: signature, // Pass the base64 signature
+      mode: 'finalizar',
       ...narrativa
     };
 
@@ -1424,7 +1484,7 @@ function NuevaEvaluacionContent() {
           <div 
             onClick={() => {
               setShowSuccessModal(false);
-              router.push("/evaluaciones");
+              router.push(pendienteFirmaMode ? "/evaluaciones/firmas-pendientes" : "/evaluaciones");
             }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 cursor-pointer"
           >
@@ -1439,7 +1499,7 @@ function NuevaEvaluacionContent() {
                 type="button"
                 onClick={() => {
                   setShowSuccessModal(false);
-                  router.push("/evaluaciones");
+                  router.push(pendienteFirmaMode ? "/evaluaciones/firmas-pendientes" : "/evaluaciones");
                 }}
                 className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                 title="Cerrar"
@@ -1448,13 +1508,30 @@ function NuevaEvaluacionContent() {
               </button>
 
               <div className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 rounded-full bg-success-100 dark:bg-success-950/30 flex items-center justify-center text-success-600 dark:text-success-400">
-                  <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold">¡Evaluación Finalizada!</h3>
-                <p className="text-sm text-muted-foreground">
-                  La evaluación de <strong>{savedEvaluation.collaborator?.full_name}</strong> se ha guardado correctamente.
-                </p>
+                {pendienteFirmaMode ? (
+                  <>
+                    <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-bold">Evaluación Guardada</h3>
+                    <p className="text-sm text-muted-foreground">
+                      La evaluación de <strong>{savedEvaluation.collaborator?.full_name}</strong> ha sido guardada exitosamente. <span className="text-amber-600 font-semibold">Queda pendiente la firma del colaborador.</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Podrás recoger la firma desde la sección <strong>&quot;Firmas Pendientes&quot;</strong> cuando el colaborador esté presente.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="mx-auto w-12 h-12 rounded-full bg-success-100 dark:bg-success-950/30 flex items-center justify-center text-success-600 dark:text-success-400">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-bold">¡Evaluación Finalizada!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      La evaluación de <strong>{savedEvaluation.collaborator?.full_name}</strong> se ha guardado correctamente.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Results Summary */}
@@ -1475,9 +1552,18 @@ function NuevaEvaluacionContent() {
                     {getResultLabel(evalResult?.result || "pendiente")}
                   </span>
                 </div>
+                {pendienteFirmaMode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Estado:</span>
+                    <span className="font-bold text-xs px-2 py-0.5 rounded border text-amber-600 bg-amber-50 border-amber-200">
+                      Pendiente de Firma
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Email Form */}
+              {/* Email Form - only for finalized evaluations */}
+              {!pendienteFirmaMode && (
               <div className="space-y-2">
                 <label className="block text-xs font-semibold text-muted-foreground uppercase">
                   Enviar reporte por correo
@@ -1542,9 +1628,11 @@ function NuevaEvaluacionContent() {
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-2 border-t pt-4">
+                {!pendienteFirmaMode && (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() => handlePreviewPDF('colaborador')}
@@ -1561,14 +1649,95 @@ function NuevaEvaluacionContent() {
                     PDF Evaluador
                   </button>
                 </div>
+                )}
                 <button
                   onClick={() => {
                     setShowSuccessModal(false);
-                    router.push("/evaluaciones");
+                    router.push(pendienteFirmaMode ? "/evaluaciones/firmas-pendientes" : "/evaluaciones");
                   }}
                   className="w-full px-4 py-2.5 rounded-xl gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity text-center"
                 >
-                  Volver a Evaluaciones
+                  {pendienteFirmaMode ? "Ir a Firmas Pendientes" : "Volver a Evaluaciones"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Choice Modal — Select finalization mode */}
+      <AnimatePresence>
+        {showChoiceModal && selectedCollaborator && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl space-y-5 text-foreground"
+            >
+              <div className="flex justify-between items-center border-b pb-3 bg-muted/20 -mx-6 -mt-6 px-6 py-4 rounded-t-2xl">
+                <h3 className="text-lg font-bold">¿Cómo desea finalizar?</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowChoiceModal(false)}
+                  className="p-1 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Seleccione cómo desea guardar la evaluación de <strong>{selectedCollaborator.full_name}</strong>:
+              </p>
+
+              <div className="space-y-3">
+                {/* Option A: With collaborator signature */}
+                <button
+                  type="button"
+                  onClick={handleChoiceWithSignature}
+                  className="w-full text-left rounded-xl border-2 border-success-200 bg-success-50/50 dark:bg-success-950/20 hover:border-success-400 hover:bg-success-50 dark:hover:bg-success-950/40 p-4 transition-all group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 w-8 h-8 rounded-full bg-success-100 dark:bg-success-900/50 flex items-center justify-center text-success-600 flex-shrink-0">
+                      <CheckCircle2 className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Finalizar con Firma del Colaborador</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        El colaborador está presente y firmará ahora. La evaluación quedará completa.
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Option B: Save for later signature */}
+                <button
+                  type="button"
+                  onClick={handleSavePendienteFirma}
+                  disabled={isSubmitting}
+                  className="w-full text-left rounded-xl border-2 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 p-4 transition-all group disabled:opacity-60"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 flex-shrink-0">
+                      <AlertCircle className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Guardar para Firma Posterior</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        El colaborador no está presente. Se guardará la evaluación con su firma de evaluador y el colaborador firmará después desde &quot;Firmas Pendientes&quot;.
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowChoiceModal(false)}
+                  className="w-full px-4 py-2 rounded-xl border text-sm font-medium hover:bg-muted transition-colors text-muted-foreground"
+                >
+                  Cancelar
                 </button>
               </div>
             </motion.div>

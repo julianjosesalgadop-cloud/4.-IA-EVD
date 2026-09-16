@@ -11,6 +11,7 @@ import { formatDate, formatDateTime, getStatusLabel } from "@/lib/utils";
 const statusOptions = [
   { value: "borrador", label: "Borrador" },
   { value: "en_proceso", label: "En proceso" },
+  { value: "pendiente_firma", label: "Pendiente de Firma" },
   { value: "finalizada", label: "Finalizada" },
 ];
 
@@ -55,7 +56,7 @@ export default function EvaluationEditPage() {
     loadEvaluation();
   }, [evaluationId]);
 
-  const isFinalized = useMemo(() => evaluation?.status === "finalizada", [evaluation]);
+  const isFinalized = useMemo(() => evaluation?.status === "finalizada" || evaluation?.status === "pendiente_firma", [evaluation]);
 
   const handleChange = (field: string, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));

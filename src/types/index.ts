@@ -5,7 +5,7 @@
 // ---- ENUMS ----
 export type UserRole = "admin" | "rrhh" | "gerencia" | "lider" | "colaborador";
 export type ContractType = "indefinido" | "fijo" | "obra_labor" | "aprendizaje" | "prestacion_servicios" | "temporal";
-export type EvaluationStatus = "borrador" | "en_proceso" | "finalizada" | "reabierta" | "anulada";
+export type EvaluationStatus = "borrador" | "en_proceso" | "pendiente_firma" | "finalizada" | "reabierta" | "anulada";
 export type EvaluationResult = "aprobado" | "plan_mejoramiento" | "no_aprobado" | "pendiente";
 export type PMIStatus = "activo" | "en_seguimiento" | "cerrado" | "vencido";
 export type FollowupStatus = "pendiente" | "completado" | "vencido";

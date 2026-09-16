@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ClipboardList, Plus, Search, Filter, Eye,
   Edit, FileDown, MoreHorizontal, ChevronLeft, ChevronRight, FileText,
-  ArrowUpDown, ChevronUp, ChevronDown
+  ArrowUpDown, ChevronUp, ChevronDown, PenTool
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,7 @@ const STATUS_STYLE: Record<string, string> = {
   borrador: "text-muted-foreground bg-muted border-border",
   en_proceso: "text-brand-600 bg-brand-50 border-brand-200 dark:bg-brand-950/30",
   finalizada: "text-success-600 bg-success-50 border-success-200 dark:bg-success-950/30",
+  pendiente_firma: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/30",
   reabierta: "text-warning-600 bg-warning-50 border-warning-200 dark:bg-warning-950/30",
   anulada: "text-danger-600 bg-danger-50 border-danger-200 dark:bg-danger-950/30",
 };
@@ -1062,6 +1063,13 @@ export default function EvaluacionesPage() {
                           <FileText className="w-4 h-4" />
                         </button>
                       )}
+                      {ev.status === "pendiente_firma" && (
+                        <Link href="/evaluaciones/firmas-pendientes">
+                          <button className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors text-amber-600 hover:text-amber-700" title="Firmar (Pendiente de firma)">
+                            <PenTool className="w-4 h-4" />
+                          </button>
+                        </Link>
+                      )}
                       {(ev.status === "borrador" || ev.status === "en_proceso") && (
                         <Link href={`/evaluaciones/${ev.id}/editar`}>
                           <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground" title="Editar">
@@ -1085,6 +1093,14 @@ export default function EvaluacionesPage() {
                         >
                           Ver detalle
                         </Link>
+                        {ev.status === "pendiente_firma" && (
+                          <Link
+                            href="/evaluaciones/firmas-pendientes"
+                            className="block px-3 py-2 text-sm text-left text-amber-600 hover:bg-muted font-medium"
+                          >
+                            Firmar Evaluación
+                          </Link>
+                        )}
                         {ev.status === "finalizada" && (
                           <>
                             <button

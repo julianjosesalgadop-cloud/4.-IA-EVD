@@ -64,7 +64,7 @@ export async function getDashboardStats() {
     .order("created_at", { ascending: false });
     
   const allEvals = evals || [];
-  const completed = allEvals.filter(e => e.status === 'finalizada');
+  const completed = allEvals.filter(e => e.status === 'finalizada' || e.status === 'pendiente_firma');
   
   let aprobados = 0;
   let conPMI = 0;

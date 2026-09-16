@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, ClipboardList, Settings, TrendingUp,
   FileBarChart2, Shield, ChevronLeft, ChevronRight,
   Building2, BookOpen, LogOut, ChevronDown, ChevronUp, User,
-  Sun, Moon, Plus, List, UserPlus, ClipboardPlus, UsersRound, ClipboardCheck
+  Sun, Moon, Plus, List, UserPlus, ClipboardPlus, UsersRound, ClipboardCheck, PenTool
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
@@ -51,6 +51,7 @@ const navGroups: NavGroup[] = [
         children: [
           { title: "Nueva Evaluación", href: "/evaluaciones/nueva", icon: ClipboardPlus },
           { title: "Resultados Evaluaciones", href: "/evaluaciones", icon: ClipboardCheck },
+          { title: "Firmas Pendientes", href: "/evaluaciones/firmas-pendientes", icon: PenTool },
         ],
       },
       {
