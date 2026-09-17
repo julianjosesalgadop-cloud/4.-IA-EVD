@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Plus, Search, Filter, Eye,
@@ -48,6 +48,7 @@ export default function EvaluacionesPage() {
   const [search, setSearch] = useState("");
   const [filterAreas, setFilterAreas] = useState<string[]>([]);
   const [filterPositions, setFilterPositions] = useState<string[]>([]);
+  const [filterEvaluators, setFilterEvaluators] = useState<string[]>([]);
   const [filterResult, setFilterResult] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -60,6 +61,18 @@ export default function EvaluacionesPage() {
 
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const evaluatorOptions = useMemo(() => {
+    const names = new Set<string>();
+    evaluations.forEach((e) => {
+      if (e.evaluator && e.evaluator !== "—" && e.evaluator !== "Desconocido") {
+        names.add(e.evaluator.trim());
+      }
+    });
+    return Array.from(names)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ id: name, name }));
+  }, [evaluations]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -619,6 +632,7 @@ export default function EvaluacionesPage() {
 
     const matchArea = filterAreas.length === 0 || filterAreas.includes(e.area);
     const matchPosition = filterPositions.length === 0 || filterPositions.includes(e.position);
+    const matchEvaluator = filterEvaluators.length === 0 || filterEvaluators.includes(e.evaluator.trim());
 
     const matchResult = !filterResult || e.result === filterResult;
     
@@ -641,7 +655,7 @@ export default function EvaluacionesPage() {
       }
     }
     
-    return matchSearch && matchResult && matchDate && matchArea && matchPosition;
+    return matchSearch && matchResult && matchDate && matchArea && matchPosition && matchEvaluator;
   });
 
   const handleSort = (field: string) => {
@@ -800,17 +814,26 @@ export default function EvaluacionesPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-12 gap-2.5 items-center">
-        <div className="relative xl:col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-[minmax(140px,1.2fr)_minmax(130px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(195px,1.3fr)_minmax(130px,1fr)_auto] gap-2 items-center">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Buscar por colaborador..."
-            className="w-full h-10 pl-9 pr-3 rounded-xl border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+            className="w-full h-10 pl-9 pr-2.5 rounded-xl border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all truncate"
           />
         </div>
-        <div className="xl:col-span-2">
+        <div className="w-full">
+          <MultiSelectSearch
+            options={evaluatorOptions}
+            selectedValues={filterEvaluators}
+            onChange={(vals) => { setFilterEvaluators(vals); setPage(1); }}
+            placeholder="Todos los evaluadores"
+            searchPlaceholder="Buscar evaluador..."
+          />
+        </div>
+        <div className="w-full">
           <MultiSelectSearch
             options={dbAreas}
             selectedValues={filterAreas}
@@ -819,7 +842,7 @@ export default function EvaluacionesPage() {
             searchPlaceholder="Buscar área..."
           />
         </div>
-        <div className="xl:col-span-2">
+        <div className="w-full">
           <MultiSelectSearch
             options={dbPositions}
             selectedValues={filterPositions}
@@ -828,12 +851,12 @@ export default function EvaluacionesPage() {
             searchPlaceholder="Buscar cargo..."
           />
         </div>
-        <div className="xl:col-span-3 flex items-center gap-1.5 w-full min-w-0">
+        <div className="flex items-center gap-1 w-full min-w-0">
           <input
             type="date"
             value={startDate}
             onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-            className="w-full min-w-0 h-10 px-2.5 rounded-xl border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+            className="w-full min-w-0 h-10 px-2 rounded-xl border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
             title="Fecha Inicio"
           />
           <span className="text-muted-foreground text-xs font-semibold px-0.5 shrink-0">a</span>
@@ -841,15 +864,15 @@ export default function EvaluacionesPage() {
             type="date"
             value={endDate}
             onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-            className="w-full min-w-0 h-10 px-2.5 rounded-xl border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+            className="w-full min-w-0 h-10 px-2 rounded-xl border bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
             title="Fecha Fin"
           />
         </div>
-        <div className="xl:col-span-2">
+        <div className="w-full">
           <select
             value={filterResult}
             onChange={(e) => { setFilterResult(e.target.value); setPage(1); }}
-            className="w-full h-10 px-3 rounded-xl border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full h-10 px-2.5 rounded-xl border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="">Todos los resultados</option>
             <option value="aprobado">Aprobado</option>
@@ -857,10 +880,11 @@ export default function EvaluacionesPage() {
             <option value="no_aprobado">No Aprobado</option>
           </select>
         </div>
-        <div className="xl:col-span-1">
+        <div className="w-full xl:w-auto">
           <button
             onClick={() => {
               setSearch("");
+              setFilterEvaluators([]);
               setFilterAreas([]);
               setFilterPositions([]);
               setStartDate("");
@@ -868,7 +892,7 @@ export default function EvaluacionesPage() {
               setFilterResult("");
               setPage(1);
             }}
-            className="w-full h-10 rounded-xl border bg-muted hover:bg-accent font-semibold text-xs text-muted-foreground hover:text-foreground transition-all truncate px-2"
+            className="w-full xl:w-auto h-10 rounded-xl border bg-muted hover:bg-accent font-semibold text-xs text-muted-foreground hover:text-foreground transition-all truncate px-3 whitespace-nowrap"
           >
             Limpiar
           </button>
