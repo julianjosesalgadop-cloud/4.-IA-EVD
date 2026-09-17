@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { cn, getResultLabel, getStatusLabel, formatDate, formatDateTime, formatScore, getInitials, compressImageIfNeeded } from "@/lib/utils";
 import { toast } from "sonner";
 
-import { getEvaluations, getEvaluationById } from "@/app/actions/evaluations";
+import { getEvaluations, getEvaluationById, getLeaderProfiles } from "@/app/actions/evaluations";
 import { getAreas, getPositions } from "@/app/actions/config";
 import MultiSelectSearch from "@/components/ui/MultiSelectSearch";
 import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
@@ -54,6 +54,7 @@ export default function EvaluacionesPage() {
   const [endDate, setEndDate] = useState("");
   const [dbAreas, setDbAreas] = useState<any[]>([]);
   const [dbPositions, setDbPositions] = useState<any[]>([]);
+  const [dbLeaders, setDbLeaders] = useState<{ id: string; name: string }[]>([]);
   const [sortField, setSortField] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
@@ -63,6 +64,7 @@ export default function EvaluacionesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const evaluatorOptions = useMemo(() => {
+    if (dbLeaders.length > 0) return dbLeaders;
     const names = new Set<string>();
     evaluations.forEach((e) => {
       if (e.evaluator && e.evaluator !== "—" && e.evaluator !== "Desconocido") {
@@ -72,7 +74,7 @@ export default function EvaluacionesPage() {
     return Array.from(names)
       .sort((a, b) => a.localeCompare(b))
       .map((name) => ({ id: name, name }));
-  }, [evaluations]);
+  }, [dbLeaders, evaluations]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -592,7 +594,7 @@ export default function EvaluacionesPage() {
             collaborator_document: e.collaborator?.document_number || "—",
             area: e.collaborator?.areas?.name || "—",
           position: e.collaborator?.positions?.name || e.collaborator?.position?.name || "—",
-            evaluator: e.evaluator ? `${e.evaluator.first_name} ${e.evaluator.last_name}` : "—",
+            evaluator: e.evaluator ? `${e.evaluator.first_name || ""} ${e.evaluator.last_name || ""}`.replace(/\s+/g, " ").trim() : "—",
             date: e.created_at,
             year: e.evaluation_year,
             status: e.status,
@@ -608,14 +610,16 @@ export default function EvaluacionesPage() {
     }
     async function loadConfigData() {
       try {
-        const [areasRes, positionsRes] = await Promise.all([
+        const [areasRes, positionsRes, leadersRes] = await Promise.all([
           getAreas(),
-          getPositions()
+          getPositions(),
+          getLeaderProfiles()
         ]);
         if (areasRes) setDbAreas(areasRes);
         if (positionsRes) setDbPositions(positionsRes);
+        if (leadersRes?.data) setDbLeaders(leadersRes.data);
       } catch (err) {
-        console.error("Error loading areas/positions filter data:", err);
+        console.error("Error loading areas/positions/leaders filter data:", err);
       }
     }
     loadEvaluations();

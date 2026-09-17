@@ -920,3 +920,40 @@ export async function cloneEvaluationVersion(versionId: string) {
   revalidatePath("/configuracion/versiones");
   return { success: true };
 }
+
+export async function getLeaderProfiles(): Promise<{ data: { id: string; name: string }[]; error?: string }> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, roles!inner(id, name, display_name)")
+      .eq("roles.name", "lider")
+      .order("first_name", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching leader profiles:", error);
+      return { data: [], error: error.message };
+    }
+
+    const seen = new Set<string>();
+    const leaders: { id: string; name: string }[] = [];
+
+    for (const p of data || []) {
+      const fullName = `${p.first_name || ""} ${p.last_name || ""}`.replace(/\s+/g, " ").trim();
+      if (fullName && !seen.has(fullName.toLowerCase())) {
+        seen.add(fullName.toLowerCase());
+        leaders.push({
+          id: p.id,
+          name: fullName,
+        });
+      }
+    }
+
+    leaders.sort((a, b) => a.name.localeCompare(b.name));
+
+    return { data: leaders };
+  } catch (err: any) {
+    console.error("Exception fetching leader profiles:", err);
+    return { data: [], error: err?.message || "Error al obtener líderes" };
+  }
+}
