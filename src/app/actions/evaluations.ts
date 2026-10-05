@@ -957,3 +957,163 @@ export async function getLeaderProfiles(): Promise<{ data: { id: string; name: s
     return { data: [], error: err?.message || "Error al obtener líderes" };
   }
 }
+
+export interface LeaderReportItem {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  active: boolean;
+  totalEvaluations: number;
+  finalizedCount: number;
+  pendingSignatureCount: number;
+  inProgressCount: number;
+  draftCount: number;
+  averageScore: number;
+  hasEvaluations: boolean;
+  lastEvaluationDate: string | null;
+}
+
+export async function getLeadersReportData(): Promise<{
+  data: LeaderReportItem[];
+  summary: {
+    totalLeaders: number;
+    leadersWithEvaluations: number;
+    leadersWithoutEvaluations: number;
+    totalEvaluations: number;
+    completionPercentage: number;
+  };
+  error?: string;
+}> {
+  try {
+    const supabase = await getSupabaseAdmin();
+    
+    // 1. Fetch all leader profiles
+    const { data: leaders, error: leadersError } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name, email, phone, active, roles!inner(id, name, display_name)")
+      .eq("roles.name", "lider")
+      .order("first_name", { ascending: true });
+
+    if (leadersError) {
+      console.error("Error fetching leaders for report:", leadersError);
+      return {
+        data: [],
+        summary: { totalLeaders: 0, leadersWithEvaluations: 0, leadersWithoutEvaluations: 0, totalEvaluations: 0, completionPercentage: 0 },
+        error: leadersError.message
+      };
+    }
+
+    // 2. Fetch all evaluations with status and results
+    const { data: evaluations, error: evalError } = await supabase
+      .from("evaluations")
+      .select(`
+        id,
+        evaluator_id,
+        status,
+        created_at,
+        finalized_at,
+        result:evaluation_results(overall_average, result)
+      `);
+
+    if (evalError) {
+      console.error("Error fetching evaluations for leaders report:", evalError);
+    }
+
+    const evalsByLeader: Record<string, any[]> = {};
+    (evaluations || []).forEach((ev) => {
+      if (ev.evaluator_id) {
+        if (!evalsByLeader[ev.evaluator_id]) {
+          evalsByLeader[ev.evaluator_id] = [];
+        }
+        evalsByLeader[ev.evaluator_id].push(ev);
+      }
+    });
+
+    const reportItems: LeaderReportItem[] = (leaders || []).map((l: any) => {
+      const fullName = `${l.first_name || ""} ${l.last_name || ""}`.replace(/\s+/g, " ").trim();
+      const myEvals = evalsByLeader[l.id] || [];
+      const total = myEvals.length;
+      
+      const finalized = myEvals.filter((e) => e.status === "finalizada").length;
+      const pendingSig = myEvals.filter((e) => e.status === "pendiente_firma").length;
+      const inProgress = myEvals.filter((e) => e.status === "en_proceso").length;
+      const draft = myEvals.filter((e) => e.status === "borrador").length;
+
+      let scoreSum = 0;
+      let scoreCount = 0;
+      let lastDate: string | null = null;
+
+      myEvals.forEach((e) => {
+        const dateVal = e.finalized_at || e.created_at;
+        if (dateVal && (!lastDate || new Date(dateVal) > new Date(lastDate))) {
+          lastDate = dateVal;
+        }
+
+        const resObj = Array.isArray(e.result) ? e.result[0] : e.result;
+        if (resObj && resObj.overall_average != null) {
+          const score = Number(resObj.overall_average);
+          if (!isNaN(score) && score > 0) {
+            scoreSum += score;
+            scoreCount++;
+          }
+        }
+      });
+
+      const avgScore = scoreCount > 0 ? Number((scoreSum / scoreCount).toFixed(2)) : 0;
+
+      return {
+        id: l.id,
+        name: fullName,
+        firstName: l.first_name || "",
+        lastName: l.last_name || "",
+        email: l.email || "—",
+        phone: l.phone || null,
+        active: l.active !== false,
+        totalEvaluations: total,
+        finalizedCount: finalized,
+        pendingSignatureCount: pendingSig,
+        inProgressCount: inProgress,
+        draftCount: draft,
+        averageScore: avgScore,
+        hasEvaluations: total > 0,
+        lastEvaluationDate: lastDate,
+      };
+    });
+
+    // Sort by total evaluations descending by default, then alphabetically
+    reportItems.sort((a, b) => {
+      if (b.totalEvaluations !== a.totalEvaluations) {
+        return b.totalEvaluations - a.totalEvaluations;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const totalLeaders = reportItems.length;
+    const leadersWithEvaluations = reportItems.filter((l) => l.hasEvaluations).length;
+    const leadersWithoutEvaluations = totalLeaders - leadersWithEvaluations;
+    const totalEvalsCount = reportItems.reduce((acc, curr) => acc + curr.totalEvaluations, 0);
+    const completionPercentage = totalLeaders > 0 ? Number(((leadersWithEvaluations / totalLeaders) * 100).toFixed(1)) : 0;
+
+    return {
+      data: reportItems,
+      summary: {
+        totalLeaders,
+        leadersWithEvaluations,
+        leadersWithoutEvaluations,
+        totalEvaluations: totalEvalsCount,
+        completionPercentage,
+      },
+    };
+  } catch (err: any) {
+    console.error("Exception in getLeadersReportData:", err);
+    return {
+      data: [],
+      summary: { totalLeaders: 0, leadersWithEvaluations: 0, leadersWithoutEvaluations: 0, totalEvaluations: 0, completionPercentage: 0 },
+      error: err?.message || "Error al obtener informe de líderes",
+    };
+  }
+}
+
