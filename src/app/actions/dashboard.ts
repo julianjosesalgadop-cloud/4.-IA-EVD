@@ -27,6 +27,8 @@ async function getSupabase() {
   );
 }
 
+import { getLeadersReportData } from "@/app/actions/evaluations";
+
 function isEligibleByHireDate(hireDateStr: string | null | undefined): boolean {
   if (!hireDateStr) return true;
   const hireDate = new Date(hireDateStr);
@@ -53,17 +55,21 @@ export async function getDashboardStats() {
   const eligibleCollabs = activeCollabs.filter(c => isEligibleByHireDate(c.hire_date)).length;
   const exemptCollabs = totalCollabs - eligibleCollabs;
 
-  // 2. Evaluations
-  const { data: evals } = await supabase
-    .from("evaluations")
-    .select(`
-      id, created_at, evaluation_year, status,
-      result:evaluation_results(*),
-      collaborator:collaborators(full_name, workplace_city, payroll_type, hire_date, positions(name), areas(name))
-    `)
-    .order("created_at", { ascending: false });
-    
-  const allEvals = evals || [];
+  // 2. Evaluations with evaluator profiles
+  const [evalsRes, leadersRes] = await Promise.all([
+    supabase
+      .from("evaluations")
+      .select(`
+        id, created_at, evaluation_year, status, evaluator_id,
+        evaluator:profiles!evaluations_evaluator_id_fkey(id, first_name, last_name),
+        result:evaluation_results(*),
+        collaborator:collaborators(full_name, workplace_city, payroll_type, hire_date, positions(name), areas(name))
+      `)
+      .order("created_at", { ascending: false }),
+    getLeadersReportData()
+  ]);
+
+  const allEvals = evalsRes.data || [];
   const completed = allEvals.filter(e => e.status === 'finalizada' || e.status === 'pendiente_firma');
   
   let aprobados = 0;
@@ -120,8 +126,13 @@ export async function getDashboardStats() {
       const posObj = collab?.positions && !Array.isArray(collab.positions) ? collab.positions : collab?.positions?.[0] || null;
       const areaObj = collab?.areas && !Array.isArray(collab.areas) ? collab.areas : collab?.areas?.[0] || null;
 
+      const evalObj = e.evaluator && !Array.isArray(e.evaluator) ? e.evaluator : e.evaluator?.[0] || null;
+      const evaluatorName = evalObj ? `${evalObj.first_name || ""} ${evalObj.last_name || ""}`.replace(/\s+/g, " ").trim() : "Sin Asignar";
+
       return {
         id: e.id,
+        evaluator_id: e.evaluator_id || null,
+        evaluator_name: evaluatorName,
         collaborator: collab?.full_name || "Desconocido",
         workplace_city: collab?.workplace_city || "Sogamoso",
         position: posObj?.name || "N/A",
@@ -137,6 +148,14 @@ export async function getDashboardStats() {
         date: e.created_at,
         year: e.evaluation_year
       };
-    })
+    }),
+    leadersStats: leadersRes.data || [],
+    leadersSummary: leadersRes.summary || {
+      totalLeaders: 0,
+      leadersWithEvaluations: 0,
+      leadersWithoutEvaluations: 0,
+      totalEvaluations: 0,
+      completionPercentage: 0
+    }
   };
 }

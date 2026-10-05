@@ -965,6 +965,7 @@ export interface LeaderReportItem {
   lastName: string;
   email: string;
   phone: string | null;
+  position: string;
   active: boolean;
   totalEvaluations: number;
   finalizedCount: number;
@@ -990,10 +991,14 @@ export async function getLeadersReportData(): Promise<{
   try {
     const supabase = await getSupabaseAdmin();
     
-    // 1. Fetch all leader profiles
+    // 1. Fetch all leader profiles with positions and document number
     const { data: leaders, error: leadersError } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name, email, phone, active, roles!inner(id, name, display_name)")
+      .select(`
+        id, first_name, last_name, email, phone, active, document_number,
+        roles!inner(id, name, display_name),
+        positions(id, name)
+      `)
       .eq("roles.name", "lider")
       .order("first_name", { ascending: true });
 
@@ -1006,7 +1011,22 @@ export async function getLeadersReportData(): Promise<{
       };
     }
 
-    // 2. Fetch all evaluations with status and results
+    // 2. Fallback positions lookup from collaborators table by doc or email
+    const { data: collabs } = await supabase
+      .from("collaborators")
+      .select("document_number, email, positions(name)");
+
+    const collabsByDoc: Record<string, string> = {};
+    const collabsByEmail: Record<string, string> = {};
+    (collabs || []).forEach((c: any) => {
+      const pName = Array.isArray(c.positions) ? c.positions[0]?.name : c.positions?.name;
+      if (pName) {
+        if (c.document_number) collabsByDoc[c.document_number] = pName;
+        if (c.email) collabsByEmail[c.email.toLowerCase().trim()] = pName;
+      }
+    });
+
+    // 3. Fetch all evaluations with status and results
     const { data: evaluations, error: evalError } = await supabase
       .from("evaluations")
       .select(`
@@ -1037,6 +1057,16 @@ export async function getLeadersReportData(): Promise<{
       const myEvals = evalsByLeader[l.id] || [];
       const total = myEvals.length;
       
+      const posObj = Array.isArray(l.positions) ? l.positions[0] : l.positions;
+      let posName = posObj?.name || "";
+      if (!posName && l.document_number && collabsByDoc[l.document_number]) {
+        posName = collabsByDoc[l.document_number];
+      }
+      if (!posName && l.email && collabsByEmail[l.email.toLowerCase().trim()]) {
+        posName = collabsByEmail[l.email.toLowerCase().trim()];
+      }
+      if (!posName) posName = "Sin Cargo Asignado";
+
       const finalized = myEvals.filter((e) => e.status === "finalizada").length;
       const pendingSig = myEvals.filter((e) => e.status === "pendiente_firma").length;
       const inProgress = myEvals.filter((e) => e.status === "en_proceso").length;
@@ -1071,6 +1101,7 @@ export async function getLeadersReportData(): Promise<{
         lastName: l.last_name || "",
         email: l.email || "—",
         phone: l.phone || null,
+        position: posName,
         active: l.active !== false,
         totalEvaluations: total,
         finalizedCount: finalized,

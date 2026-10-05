@@ -262,10 +262,10 @@ export default function ColaboradoresPage() {
             <div className={cn(
               "p-2 sm:p-2.5 rounded-lg flex-shrink-0",
               stat.color === "institutional" ? "bg-[#012169]/10 text-[#012169] dark:bg-[#0084d5]/20 dark:text-[#38bdf8]" :
-              stat.color === "brand" ? "bg-brand-50 text-brand-500 dark:bg-brand-950/30 dark:text-brand-400" :
-              stat.color === "success" ? "bg-success-50 text-success-600 dark:bg-success-950/30 dark:text-success-400" :
+              stat.color === "brand" ? "bg-[#012169]/10 text-[#012169] dark:bg-[#012169]/30 dark:text-[#0084d5]" :
+              stat.color === "success" ? "bg-[#0084d5]/10 text-[#0084d5] dark:bg-[#0084d5]/30 dark:text-[#38bdf8]" :
               stat.color === "muted" ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" :
-              "bg-warning-50 text-warning-600 dark:bg-warning-950/30 dark:text-warning-400"
+              "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
             )}>
               <stat.icon className="w-4 h-4" />
             </div>

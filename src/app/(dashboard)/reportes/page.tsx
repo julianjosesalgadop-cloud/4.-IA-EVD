@@ -289,18 +289,38 @@ export default function ReportesPage() {
   // MÓDULO 3: FILTROS Y ESTADOS DE GESTIÓN POR LÍDER
   // =========================================================================
   const [searchLeader, setSearchLeader] = useState("");
+  const [selectedPositionsLeader, setSelectedPositionsLeader] = useState<string[]>([]);
   const [leaderStatusFilter, setLeaderStatusFilter] = useState<"all" | "with_evals" | "without_evals">("all");
   const [leaderSortOrder, setLeaderSortOrder] = useState<"evals_desc" | "evals_asc" | "name_asc" | "name_desc" | "score_desc">("evals_desc");
   const [pageLeaders, setPageLeaders] = useState(1);
   const pageSizeLeaders = 10;
 
+  // Unique leader positions options for filter
+  const leaderPositionsOptions = useMemo(() => {
+    const set = new Set<string>();
+    leadersData.forEach((l) => {
+      if (l.position && l.position !== "Sin Cargo Asignado") {
+        set.add(l.position);
+      }
+    });
+    return Array.from(set).sort().map((p) => ({ id: p, name: p }));
+  }, [leadersData]);
+
   const filteredLeaders = useMemo(() => {
     let result = leadersData.filter((item) => {
-      // Text search: Name or Email
+      // Text search: Name, Email or Position
       if (searchLeader) {
         const q = searchLeader.toLowerCase();
-        const matches = item.name.toLowerCase().includes(q) || item.email.toLowerCase().includes(q);
+        const matches =
+          item.name.toLowerCase().includes(q) ||
+          item.email.toLowerCase().includes(q) ||
+          (item.position || "").toLowerCase().includes(q);
         if (!matches) return false;
+      }
+
+      // Position filter
+      if (selectedPositionsLeader.length > 0) {
+        if (!selectedPositionsLeader.includes(item.position)) return false;
       }
 
       // Status filter
@@ -321,7 +341,7 @@ export default function ReportesPage() {
     });
 
     return result;
-  }, [leadersData, searchLeader, leaderStatusFilter, leaderSortOrder]);
+  }, [leadersData, searchLeader, selectedPositionsLeader, leaderStatusFilter, leaderSortOrder]);
 
   const pagedLeaders = useMemo(() => {
     const start = (pageLeaders - 1) * pageSizeLeaders;
@@ -611,6 +631,7 @@ export default function ReportesPage() {
         "N°": idx + 1,
         "Líder / Jefe": item.name,
         "Correo Electrónico": item.email,
+        "Cargo": item.position || "Sin Cargo Asignado",
         "Estado Gestión": item.totalEvaluations > 0 ? "Con Evaluaciones Realizadas" : "Sin Evaluaciones Realizadas",
         "Total Evaluaciones": item.totalEvaluations,
         "Evaluaciones Finalizadas": item.finalizedCount,
@@ -628,6 +649,7 @@ export default function ReportesPage() {
           "N°": idx + 1,
           "Líder / Jefe": item.name,
           "Correo Electrónico": item.email,
+          "Cargo": item.position || "Sin Cargo Asignado",
           "Teléfono": item.phone || "No registrado",
           "Evaluaciones Realizadas": 0,
           "Estado de Cumplimiento": "Pendiente por Iniciar",
@@ -859,7 +881,7 @@ export default function ReportesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <FileBarChart2 className="w-6 h-6 text-brand-500" />
+            <FileBarChart2 className="w-6 h-6 text-[#012169] dark:text-[#0084d5]" />
             Reportes y Estadísticas
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -868,25 +890,28 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      {/* Cards Panel (4 Report Cards) */}
+      {/* Cards Selector Panel (Módulos Integrados sin Duplicidad) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Consolidado General */}
         <div
           onClick={() => setActiveReport("consolidado")}
           className={cn(
-            "p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
+            "p-5 rounded-2xl transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
             activeReport === "consolidado"
-              ? "bg-gradient-to-b from-card to-success-50/20 border-success-500 ring-2 ring-success-500/20 shadow-md"
-              : "bg-card border-border hover:border-success-400 hover:shadow-md"
+              ? "border-2 border-[#012169] dark:border-[#0084d5] bg-gradient-to-b from-[#012169]/5 to-transparent dark:from-[#0084d5]/10 shadow-md ring-2 ring-[#012169]/10"
+              : "border border-border bg-card hover:border-[#012169]/40 hover:bg-muted/20 hover:shadow-xs"
           )}
         >
+          {activeReport === "consolidado" && (
+            <div className="absolute bottom-0 inset-x-0 h-1 bg-[#012169] dark:bg-[#0084d5]" />
+          )}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-success-500/10 flex items-center justify-center text-success-600 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#012169]/10 text-[#012169] dark:bg-[#0084d5]/20 dark:text-[#0084d5] flex items-center justify-center shadow-xs">
                 <FileSpreadsheet className="w-5 h-5" />
               </div>
               {activeReport === "consolidado" ? (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success-500/15 text-success-700 dark:text-success-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#012169] text-white">
                   Módulo Activo
                 </span>
               ) : (
@@ -900,17 +925,26 @@ export default function ReportesPage() {
               Informe completo de evaluaciones por colaborador, cargo y área con desgloses de competencias.
             </p>
           </div>
-          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs font-semibold text-success-600">
-            <span>Filtrar y Ver</span>
+          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs">
+            {activeReport === "consolidado" ? (
+              <span className="flex items-center gap-1.5 font-bold text-[#012169] dark:text-[#0084d5]">
+                <span className="w-2 h-2 rounded-full bg-[#012169] dark:bg-[#0084d5] animate-pulse" />
+                Mostrando datos
+              </span>
+            ) : (
+              <span className="font-medium text-muted-foreground group-hover:text-foreground">
+                Ver y filtrar →
+              </span>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleExportConsolidado();
               }}
-              className="flex items-center gap-1 hover:underline text-[11px] font-medium text-muted-foreground hover:text-success-600"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
               title="Descargar Excel completo"
             >
-              <Download className="w-3.5 h-3.5" /> Excel
+              <Download className="w-3.5 h-3.5 text-[#0084d5]" /> Excel
             </button>
           </div>
         </div>
@@ -919,23 +953,26 @@ export default function ReportesPage() {
         <div
           onClick={() => setActiveReport("pmi")}
           className={cn(
-            "p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
+            "p-5 rounded-2xl transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
             activeReport === "pmi"
-              ? "bg-gradient-to-b from-card to-warning-50/20 border-warning-500 ring-2 ring-warning-500/20 shadow-md"
-              : "bg-card border-border hover:border-warning-400 hover:shadow-md"
+              ? "border-2 border-[#0084d5] bg-gradient-to-b from-[#0084d5]/5 to-transparent shadow-md ring-2 ring-[#0084d5]/10"
+              : "border border-border bg-card hover:border-[#0084d5]/40 hover:bg-muted/20 hover:shadow-xs"
           )}
         >
+          {activeReport === "pmi" && (
+            <div className="absolute bottom-0 inset-x-0 h-1 bg-[#0084d5]" />
+          )}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-warning-500/10 flex items-center justify-center text-warning-600 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#0084d5]/10 text-[#0084d5] dark:bg-[#0084d5]/20 dark:text-[#38bdf8] flex items-center justify-center shadow-xs">
                 <TrendingUp className="w-5 h-5" />
               </div>
               {activeReport === "pmi" ? (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning-500/15 text-warning-700 dark:text-warning-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#0084d5] text-white">
                   Módulo Activo
                 </span>
               ) : (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning-100 text-warning-700 dark:bg-warning-950/40 dark:text-warning-300">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0084d5]/10 text-[#0084d5] dark:text-[#38bdf8]">
                   {pmiList.length} casos
                 </span>
               )}
@@ -945,62 +982,87 @@ export default function ReportesPage() {
               Planes de mejoramiento (PMI), compromisos pactados y fechas límite a 30/60/90 días.
             </p>
           </div>
-          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs font-semibold text-warning-600">
-            <span>Filtrar y Ver</span>
+          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs">
+            {activeReport === "pmi" ? (
+              <span className="flex items-center gap-1.5 font-bold text-[#0084d5] dark:text-[#38bdf8]">
+                <span className="w-2 h-2 rounded-full bg-[#0084d5] animate-pulse" />
+                Mostrando datos
+              </span>
+            ) : (
+              <span className="font-medium text-muted-foreground group-hover:text-foreground">
+                Ver y filtrar →
+              </span>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleExportPMI();
               }}
-              className="flex items-center gap-1 hover:underline text-[11px] font-medium text-muted-foreground hover:text-warning-600"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
               title="Descargar Excel PMI"
             >
-              <Download className="w-3.5 h-3.5" /> Excel
+              <Download className="w-3.5 h-3.5 text-[#0084d5]" /> Excel
             </button>
           </div>
         </div>
 
-        {/* Card 3: Evaluaciones por Líder (NUEVO) */}
+        {/* Card 3: Evaluaciones por Líder */}
         <div
           onClick={() => setActiveReport("lideres")}
           className={cn(
-            "p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
+            "p-5 rounded-2xl transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
             activeReport === "lideres"
-              ? "bg-gradient-to-b from-card to-indigo-50/20 border-indigo-500 ring-2 ring-indigo-500/20 shadow-md"
-              : "bg-card border-border hover:border-indigo-400 hover:shadow-md"
+              ? "border-2 border-[#012169] dark:border-[#0084d5] bg-gradient-to-b from-[#012169]/5 to-transparent dark:from-[#0084d5]/10 shadow-md ring-2 ring-[#012169]/10"
+              : "border border-border bg-card hover:border-[#012169]/40 hover:bg-muted/20 hover:shadow-xs"
           )}
         >
+          {activeReport === "lideres" && (
+            <div className="absolute bottom-0 inset-x-0 h-1 bg-[#012169] dark:bg-[#0084d5]" />
+          )}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#012169]/10 text-[#012169] dark:bg-[#0084d5]/20 dark:text-[#0084d5] flex items-center justify-center shadow-xs">
                 <Users className="w-5 h-5" />
               </div>
               {activeReport === "lideres" ? (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#012169] text-white">
                   Módulo Activo
                 </span>
               ) : leadersSummary.leadersWithoutEvaluations > 0 ? (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger-100 text-danger-700 dark:bg-danger-950/40 dark:text-danger-300">
                   {leadersSummary.leadersWithoutEvaluations} sin evaluar
                 </span>
-              ) : null}
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  {leadersData.length} líderes
+                </span>
+              )}
             </div>
             <h3 className="font-bold text-base text-foreground mb-1">Evaluaciones por Líder</h3>
             <p className="text-xs text-muted-foreground line-clamp-2 mb-4">
               Informe de evaluaciones por líder y detección de líderes sin evaluaciones registradas.
             </p>
           </div>
-          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs font-semibold text-indigo-600">
-            <span>Filtrar y Ver</span>
+          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs">
+            {activeReport === "lideres" ? (
+              <span className="flex items-center gap-1.5 font-bold text-[#012169] dark:text-[#0084d5]">
+                <span className="w-2 h-2 rounded-full bg-[#012169] dark:bg-[#0084d5] animate-pulse" />
+                Mostrando datos
+              </span>
+            ) : (
+              <span className="font-medium text-muted-foreground group-hover:text-foreground">
+                Ver y filtrar →
+              </span>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleExportLeadersExcel();
               }}
-              className="flex items-center gap-1 hover:underline text-[11px] font-medium text-muted-foreground hover:text-indigo-600"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
               title="Descargar Excel Líderes"
             >
-              <Download className="w-3.5 h-3.5" /> Excel
+              <Download className="w-3.5 h-3.5 text-[#0084d5]" /> Excel
             </button>
           </div>
         </div>
@@ -1009,19 +1071,22 @@ export default function ReportesPage() {
         <div
           onClick={() => setActiveReport("ejecutivo")}
           className={cn(
-            "p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
+            "p-5 rounded-2xl transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between group",
             activeReport === "ejecutivo"
-              ? "bg-gradient-to-b from-card to-brand-50/20 border-brand-500 ring-2 ring-brand-500/20 shadow-md"
-              : "bg-card border-border hover:border-brand-400 hover:shadow-md"
+              ? "border-2 border-[#64748b] bg-gradient-to-b from-slate-500/5 to-transparent shadow-md ring-2 ring-slate-500/10"
+              : "border border-border bg-card hover:border-[#64748b]/40 hover:bg-muted/20 hover:shadow-xs"
           )}
         >
+          {activeReport === "ejecutivo" && (
+            <div className="absolute bottom-0 inset-x-0 h-1 bg-[#64748b]" />
+          )}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-600 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#64748b]/10 text-[#475569] dark:bg-[#94a3b8]/20 dark:text-[#94a3b8] flex items-center justify-center shadow-xs">
                 <FileText className="w-5 h-5" />
               </div>
               {activeReport === "ejecutivo" ? (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-700 dark:text-brand-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#475569] text-white">
                   Módulo Activo
                 </span>
               ) : (
@@ -1035,97 +1100,36 @@ export default function ReportesPage() {
               Informe gerencial consolidado con promedios por área y desgloses de competencias.
             </p>
           </div>
-          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs font-semibold text-brand-600">
-            <span>Filtrar y Ver</span>
+          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-xs">
+            {activeReport === "ejecutivo" ? (
+              <span className="flex items-center gap-1.5 font-bold text-[#475569] dark:text-[#94a3b8]">
+                <span className="w-2 h-2 rounded-full bg-[#64748b] animate-pulse" />
+                Mostrando datos
+              </span>
+            ) : (
+              <span className="font-medium text-muted-foreground group-hover:text-foreground">
+                Ver y exportar →
+              </span>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleExportExecutivePDF();
               }}
-              className="flex items-center gap-1 hover:underline text-[11px] font-medium text-muted-foreground hover:text-brand-600"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
               title="Descargar PDF Resumen Ejecutivo"
             >
-              <Download className="w-3.5 h-3.5" /> PDF
+              <Download className="w-3.5 h-3.5 text-[#0084d5]" /> PDF
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Segmented Navigation Tabs */}
-      <div className="flex items-center border-b border-border bg-card rounded-t-2xl px-3 pt-3 gap-1 sm:gap-2 overflow-x-auto shadow-sm">
-        <button
-          onClick={() => setActiveReport("consolidado")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 whitespace-nowrap",
-            activeReport === "consolidado"
-              ? "border-success-500 text-success-600 bg-success-500/5 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          )}
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Consolidado General</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-bold">
-            {filteredGeneral.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveReport("pmi")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 whitespace-nowrap",
-            activeReport === "pmi"
-              ? "border-warning-500 text-warning-600 bg-warning-500/5 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          )}
-        >
-          <TrendingUp className="w-4 h-4" />
-          <span>Seguimiento PMI</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-warning-100 text-warning-700 dark:bg-warning-950/40 dark:text-warning-300 font-bold">
-            {filteredPmi.length}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveReport("lideres")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 whitespace-nowrap",
-            activeReport === "lideres"
-              ? "border-indigo-500 text-indigo-600 bg-indigo-500/5 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          )}
-        >
-          <Users className="w-4 h-4" />
-          <span>Evaluaciones por Líder</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-bold">
-            {filteredLeaders.length}
-          </span>
-          {leadersSummary.leadersWithoutEvaluations > 0 && (
-            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-danger-100 text-danger-700 dark:bg-danger-950/40 dark:text-danger-300 font-bold flex items-center gap-1">
-              <AlertCircle className="w-2.5 h-2.5" />
-              {leadersSummary.leadersWithoutEvaluations} sin evaluar
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveReport("ejecutivo")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 whitespace-nowrap",
-            activeReport === "ejecutivo"
-              ? "border-brand-500 text-brand-600 bg-brand-500/5 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          )}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Resumen Ejecutivo</span>
-        </button>
       </div>
 
       {/* ========================================================================= */}
       {/* MÓDULO 1: VISTA CONSOLIDADO GENERAL                                        */}
       {/* ========================================================================= */}
       {activeReport === "consolidado" && (
-        <div className="rounded-b-2xl border border-t-0 bg-card p-5 sm:p-6 shadow-sm space-y-6">
+        <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
@@ -1410,11 +1414,11 @@ export default function ReportesPage() {
       {/* MÓDULO 2: VISTA SEGUIMIENTO PMI                                            */}
       {/* ========================================================================= */}
       {activeReport === "pmi" && (
-        <div className="rounded-b-2xl border border-t-0 bg-card p-5 sm:p-6 shadow-sm space-y-6">
+        <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-warning-600" />
+                <TrendingUp className="w-5 h-5 text-[#0084d5]" />
                 Filtros: Seguimiento a Planes de Mejoramiento (PMI)
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -1423,7 +1427,7 @@ export default function ReportesPage() {
             </div>
             <button
               onClick={handleExportPMI}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-warning-200 bg-warning-50 text-warning-700 hover:bg-warning-100 dark:bg-warning-950/30 dark:border-warning-800 dark:text-warning-300 text-xs font-semibold transition-colors self-start sm:self-auto"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#0084d5]/30 bg-[#0084d5]/10 text-[#0084d5] hover:bg-[#0084d5]/20 text-xs font-semibold transition-colors self-start sm:self-auto"
             >
               <Download className="w-3.5 h-3.5" />
               Exportar PMI (Excel)
@@ -1563,11 +1567,11 @@ export default function ReportesPage() {
       {/* MÓDULO 3: VISTA EVALUACIONES POR LÍDER (INFORME SOLICITADO)                */}
       {/* ========================================================================= */}
       {activeReport === "lideres" && (
-        <div className="rounded-b-2xl border border-t-0 bg-card p-5 sm:p-6 shadow-sm space-y-6">
+        <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                <Users className="w-5 h-5 text-indigo-600" />
+                <Users className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
                 Informe de Gestión y Evaluaciones por Líder
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -1577,14 +1581,14 @@ export default function ReportesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleExportLeadersExcel(filteredLeaders, true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#0084d5]/30 bg-[#0084d5]/10 text-[#0084d5] hover:bg-[#0084d5]/20 text-xs font-semibold transition-colors"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 Exportar Vista Actual (Excel)
               </button>
               <button
                 onClick={() => handleExportLeadersExcel(leadersData, false)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold shadow hover:bg-indigo-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#012169] text-white text-xs font-semibold shadow hover:bg-[#012169]/90 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
                 Descargar Informe Completo
@@ -1596,42 +1600,42 @@ export default function ReportesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl border bg-background/60 shadow-xs">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <Users className="w-4 h-4 text-indigo-500" />
+                <Users className="w-4 h-4 text-[#012169] dark:text-[#0084d5]" />
                 Total Líderes
               </div>
               <div className="text-2xl font-bold text-foreground">{leadersSummary.totalLeaders}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">Registrados con rol Líder</div>
             </div>
 
-            <div className="p-3.5 rounded-xl border bg-success-50/30 border-success-200/60 dark:bg-success-950/10 shadow-xs">
-              <div className="flex items-center gap-2 text-success-700 dark:text-success-300 text-xs font-semibold mb-1">
-                <CheckCircle className="w-4 h-4 text-success-600" />
+            <div className="p-3.5 rounded-xl border bg-[#012169]/5 border-[#012169]/20 shadow-xs">
+              <div className="flex items-center gap-2 text-[#012169] dark:text-[#0084d5] text-xs font-semibold mb-1">
+                <CheckCircle className="w-4 h-4 text-[#0084d5]" />
                 Con Evaluaciones
               </div>
-              <div className="text-2xl font-bold text-success-700 dark:text-success-300">
+              <div className="text-2xl font-bold text-[#012169] dark:text-[#0084d5]">
                 {leadersSummary.leadersWithEvaluations}
               </div>
-              <div className="text-[11px] text-success-600/90 dark:text-success-400 mt-0.5">
+              <div className="text-[11px] text-[#012169]/80 dark:text-[#0084d5]/80 mt-0.5">
                 {leadersSummary.completionPercentage}% de participación
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl border bg-danger-50/40 border-danger-200/60 dark:bg-danger-950/15 shadow-xs">
-              <div className="flex items-center gap-2 text-danger-700 dark:text-danger-300 text-xs font-semibold mb-1">
-                <AlertCircle className="w-4 h-4 text-danger-600" />
+            <div className="p-3.5 rounded-xl border bg-slate-500/5 border-slate-300 dark:border-slate-800 shadow-xs">
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 text-xs font-semibold mb-1">
+                <AlertCircle className="w-4 h-4 text-[#64748b]" />
                 Sin Evaluaciones Realizadas
               </div>
-              <div className="text-2xl font-bold text-danger-700 dark:text-danger-300">
+              <div className="text-2xl font-bold text-danger-600 dark:text-danger-400">
                 {leadersSummary.leadersWithoutEvaluations}
               </div>
-              <div className="text-[11px] text-danger-600/90 dark:text-danger-400 mt-0.5">
+              <div className="text-[11px] text-muted-foreground mt-0.5">
                 Requieren seguimiento prioritario
               </div>
             </div>
 
             <div className="p-3.5 rounded-xl border bg-background/60 shadow-xs">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium mb-1">
-                <FileSpreadsheet className="w-4 h-4 text-brand-500" />
+                <FileSpreadsheet className="w-4 h-4 text-[#012169] dark:text-[#0084d5]" />
                 Evaluaciones Totales
               </div>
               <div className="text-2xl font-bold text-foreground">{leadersSummary.totalEvaluations}</div>
@@ -1640,9 +1644,9 @@ export default function ReportesPage() {
           </div>
 
           {/* Leaders Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="relative">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">Buscar por Nombre o Correo</label>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">Buscar por Líder, Correo o Cargo</label>
               <div className="relative mt-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <input
@@ -1652,10 +1656,24 @@ export default function ReportesPage() {
                     setSearchLeader(e.target.value);
                     setPageLeaders(1);
                   }}
-                  placeholder="Nombre de líder o correo..."
+                  placeholder="Nombre de líder, correo o cargo..."
                   className="w-full h-[38px] pl-8 pr-2.5 rounded-xl border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
+            </div>
+
+            <div>
+              <MultiSelectSearch
+                options={leaderPositionsOptions}
+                selectedValues={selectedPositionsLeader}
+                onChange={(vals) => {
+                  setSelectedPositionsLeader(vals);
+                  setPageLeaders(1);
+                }}
+                placeholder="Todos los cargos"
+                searchPlaceholder="Buscar cargo..."
+                label="Cargo del Líder"
+              />
             </div>
 
             <div>
@@ -1669,8 +1687,8 @@ export default function ReportesPage() {
                 className="w-full h-[38px] mt-1 px-2.5 rounded-xl border bg-background text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="all">Todos los Líderes ({leadersData.length})</option>
-                <option value="with_evals">✅ Con Evaluaciones Realizadas ({leadersSummary.leadersWithEvaluations})</option>
-                <option value="without_evals">⚠️ Sin Evaluaciones Realizadas ({leadersSummary.leadersWithoutEvaluations})</option>
+                <option value="with_evals">Con Evaluaciones Realizadas ({leadersSummary.leadersWithEvaluations})</option>
+                <option value="without_evals">Sin Evaluaciones Realizadas ({leadersSummary.leadersWithoutEvaluations})</option>
               </select>
             </div>
 
@@ -1701,6 +1719,7 @@ export default function ReportesPage() {
                   <thead>
                     <tr className="bg-muted/40 border-b text-muted-foreground uppercase font-semibold">
                       <th className="p-3">Líder / Jefe Evaluador</th>
+                      <th className="p-3">Cargo</th>
                       <th className="p-3 text-center">Estado de Gestión</th>
                       <th className="p-3 text-center">Evaluaciones Realizadas</th>
                       <th className="p-3 text-center">Finalizadas</th>
@@ -1727,6 +1746,12 @@ export default function ReportesPage() {
                               <Mail className="w-3 h-3 text-muted-foreground/70" />
                               {leader.email}
                             </div>
+                          </td>
+
+                          <td className="p-3">
+                            <span className="font-medium text-foreground text-xs">
+                              {leader.position || "—"}
+                            </span>
                           </td>
 
                           <td className="p-3 text-center">
@@ -1825,11 +1850,11 @@ export default function ReportesPage() {
       {/* MÓDULO 4: VISTA RESUMEN EJECUTIVO                                          */}
       {/* ========================================================================= */}
       {activeReport === "ejecutivo" && (
-        <div className="rounded-b-2xl border border-t-0 bg-card p-5 sm:p-6 shadow-sm space-y-6">
+        <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                <FileText className="w-5 h-5 text-brand-600" />
+                <FileText className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
                 Módulo: Resumen Ejecutivo Gerencial
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">

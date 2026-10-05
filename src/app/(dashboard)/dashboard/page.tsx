@@ -115,7 +115,7 @@ function AlertsPanel() {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-warning-500" />
+          <AlertTriangle className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
           <h3 className="font-semibold">Alertas Pendientes</h3>
         </div>
         <span className="text-xs bg-danger-100 dark:bg-danger-950/30 text-danger-600 px-2 py-0.5 rounded-full font-semibold">
@@ -538,6 +538,29 @@ export default function DashboardPage() {
 
   const displayPayrollData = payrollChartData;
 
+  // Recalculate evaluations count and average by leader
+  const leaderCountsMap: Record<string, { name: string; count: number; sumScore: number; scoreCount: number }> = {};
+  filteredEvals.forEach((e: any) => {
+    const leaderName = e.evaluator_name && e.evaluator_name !== "Sin Asignar" ? e.evaluator_name : null;
+    if (!leaderName) return;
+    if (!leaderCountsMap[leaderName]) {
+      leaderCountsMap[leaderName] = { name: leaderName, count: 0, sumScore: 0, scoreCount: 0 };
+    }
+    leaderCountsMap[leaderName].count += 1;
+    if (e.score > 0) {
+      leaderCountsMap[leaderName].sumScore += e.score;
+      leaderCountsMap[leaderName].scoreCount += 1;
+    }
+  });
+
+  const leaderChartData = Object.values(leaderCountsMap).map(l => ({
+    name: l.name,
+    evaluaciones: l.count,
+    promedio: l.scoreCount > 0 ? Number((l.sumScore / l.scoreCount).toFixed(2)) : 0
+  })).sort((a, b) => b.evaluaciones - a.evaluaciones);
+
+  const displayLeaderData = leaderChartData.slice(0, 10);
+
   // Calculate relation of payroll type by Area
   const areaPayrollCounts: Record<string, Record<string, number>> = {};
   const payrollTypesSet = new Set<string>();
@@ -821,7 +844,7 @@ export default function DashboardPage() {
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
-              <Users className="w-5 h-5 text-muted-foreground" />
+              <Users className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
             </div>
           </div>
           <div className="flex-1 w-full min-h-[240px] flex items-center justify-center">
@@ -891,7 +914,7 @@ export default function DashboardPage() {
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
-              <Award className="w-5 h-5 text-amber-500" />
+              <Award className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
             </div>
           </div>
           <div className="space-y-2.5 max-h-[290px] overflow-y-auto pr-1 flex-1">
@@ -1048,7 +1071,7 @@ export default function DashboardPage() {
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
-              <BarChart3 className="w-5 h-5 text-muted-foreground" />
+              <BarChart3 className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
             </div>
           </div>
           <ResponsiveContainer width="100%" height={isExpanded ? 340 : 260}>
@@ -1255,7 +1278,7 @@ export default function DashboardPage() {
             >
               <Maximize2 className="w-4 h-4" />
             </button>
-            <GitBranch className="w-5 h-5 text-muted-foreground" />
+            <GitBranch className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
           </div>
         </div>
         {dynamicPayrollTypes.length > 0 ? (
@@ -1295,6 +1318,89 @@ export default function DashboardPage() {
         )}
       </motion.div>
 
+      {/* Gráfico: Evaluaciones por Líder */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+        className="rounded-xl border bg-card p-5 space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#012169] dark:text-[#0084d5]" />
+              Evaluaciones Realizadas por Líder
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Cantidad de evaluaciones realizadas y promedio otorgado por líder evaluador (Top 10)
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setExpandedChart("lideres")}
+              className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Expandir gráfico"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {displayLeaderData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={isExpanded ? 340 : 280}>
+            <BarChart
+              data={displayLeaderData}
+              layout="vertical"
+              margin={{ top: 10, right: 65, left: 15, bottom: 5 }}
+              barSize={20}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 10.5, fill: "hsl(var(--muted-foreground))" }}
+                width={150}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                formatter={(value: any, name: any, item: any) => {
+                  const payload = item?.payload;
+                  const avg = payload?.promedio ? ` (Promedio: ${payload.promedio})` : "";
+                  return [`${value} evaluaciones${avg}`, "Evaluaciones Realizadas"];
+                }}
+              />
+              <Bar dataKey="evaluaciones" name="Evaluaciones" radius={[0, 4, 4, 0]} fill="#012169">
+                <LabelList
+                  dataKey="evaluaciones"
+                  position="right"
+                  dx={6}
+                  style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }}
+                />
+                {displayLeaderData.map((_, index) => (
+                  <Cell
+                    key={index}
+                    fill={index === 0 ? "#012169" : index < 3 ? "#0084d5" : "#64748b"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[260px] text-xs text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+            No hay evaluaciones registradas con evaluador asignado en los filtros actuales.
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground">
+          <span>Líderes con evaluaciones: <strong className="text-foreground">{leaderChartData.length}</strong></span>
+          <span className="text-[#012169] dark:text-[#0084d5] font-bold">
+            {leaderChartData.reduce((acc, curr) => acc + curr.evaluaciones, 0)} evaluaciones totales
+          </span>
+        </div>
+      </motion.div>
+
       {/* Modal de Gráfico Expandido */}
       <AnimatePresence>
         {expandedChart && (
@@ -1323,6 +1429,7 @@ export default function DashboardPage() {
                   {expandedChart === "desempeno" && "Niveles de Desempeño"}
                   {expandedChart === "destacados" && "Ranking de Colaboradores Destacados"}
                   {expandedChart === "datos_interes" && "Datos de Interés y Métricas del Proceso"}
+                  {expandedChart === "lideres" && "Evaluaciones Realizadas por Líder"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {expandedChart === "cargo" && "Puntaje promedio obtenido agrupado por cargo de la empresa (Top 10)"}
@@ -1333,6 +1440,7 @@ export default function DashboardPage() {
                   {expandedChart === "desempeno" && "Distribución de colaboradores por rango y escala oficial de calificación EVD"}
                   {expandedChart === "destacados" && "Listado completo y detallado de los colaboradores con mejores promedios en la evaluación"}
                   {expandedChart === "datos_interes" && "Métricas ejecutivas de cumplimiento, tasas de aprobación y consolidado de participación"}
+                  {expandedChart === "lideres" && "Listado completo de evaluaciones realizadas y calificación promedio otorgada por cada líder evaluador"}
                 </p>
               </div>
 
@@ -1689,6 +1797,65 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {expandedChart === "lideres" && (
+                  <div className="w-full space-y-4">
+                    {leaderChartData.length > 0 ? (
+                      <div className="w-full">
+                        <ResponsiveContainer width="100%" height={Math.max(400, leaderChartData.length * 36)}>
+                          <BarChart
+                            data={leaderChartData}
+                            layout="vertical"
+                            margin={{ top: 15, right: 65, left: 20, bottom: 15 }}
+                            barSize={20}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} vertical={true} />
+                            <XAxis type="number" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                            <YAxis
+                              type="category"
+                              dataKey="name"
+                              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                              width={170}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              formatter={(value: any, name: any, item: any) => {
+                                const payload = item?.payload;
+                                const avg = payload?.promedio ? ` (Promedio: ${payload.promedio})` : "";
+                                return [`${value} evaluaciones${avg}`, "Evaluaciones Realizadas"];
+                              }}
+                            />
+                            <Bar dataKey="evaluaciones" name="Evaluaciones" radius={[0, 4, 4, 0]} fill="#012169">
+                              <LabelList
+                                dataKey="evaluaciones"
+                                position="right"
+                                dx={6}
+                                style={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: "bold" }}
+                              />
+                              {leaderChartData.map((_, index) => (
+                                <Cell
+                                  key={index}
+                                  fill={index === 0 ? "#012169" : index < 3 ? "#0084d5" : "#64748b"}
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <div className="flex items-center justify-between pt-3 border-t text-xs text-muted-foreground mt-4">
+                          <span>Total de líderes activos en el proceso: <strong className="text-foreground">{leaderChartData.length}</strong></span>
+                          <span className="text-[#012169] dark:text-[#0084d5] font-bold">
+                            {leaderChartData.reduce((acc, curr) => acc + curr.evaluaciones, 0)} evaluaciones finalizadas en total
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-[300px] text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                        No hay evaluaciones registradas con evaluador asignado.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
