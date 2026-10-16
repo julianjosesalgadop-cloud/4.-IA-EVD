@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { MANDATORY_SAFETY_POSITIONS } from "./constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -313,5 +314,72 @@ export async function compressImageIfNeeded(src: string, maxWidth: number = 400,
       resolve(src);
     };
   });
+}
+
+// ---- Road Safety Evaluation Helpers ----
+
+/**
+ * Normaliza una cadena de texto de cargo eliminando acentos, caracteres especiales y pasando a mayúsculas
+ */
+export function normalizeCargoText(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+}
+
+/**
+ * Determina si un cargo está en la lista de cargos para los cuales las preguntas de Seguridad Vial son obligatorias:
+ * - COORDINADOR OPERATIVO REGIONAL BOYACA
+ * - COORDINADOR OPERATIVO SERVICIO ESPECIAL
+ * - AUXILIAR OPERATIVO DE CALIDAD Y SEGURIDAD
+ * - GERENTE OPERATIVO
+ * - CONDUCTOR SERVICIO ESPECIAL RELEVADOR
+ * - CONDUCTOR
+ * - CONDUCTOR SERVICIO ESPECIAL
+ */
+export function isMandatorySafetyPosition(positionName: string | null | undefined): boolean {
+  if (!positionName) return false;
+  const normalized = normalizeCargoText(positionName);
+  return MANDATORY_SAFETY_POSITIONS.some(
+    (pos) => normalizeCargoText(pos) === normalized
+  );
+}
+
+/**
+ * Obtiene el nombre del cargo de un colaborador de forma segura independientemente de la estructura (objeto o arreglo)
+ */
+export function getCollaboratorCargoName(collaborator: any): string {
+  if (!collaborator) return "";
+  const pos = collaborator.position || collaborator.positions;
+  if (!pos) return "";
+  if (typeof pos === "string") return pos;
+  if (Array.isArray(pos)) return pos[0]?.name || "";
+  return pos.name || "";
+}
+
+/**
+ * Identifica si una pregunta pertenece al área/categoría de Seguridad Vial (preguntas 13 a 17)
+ */
+export function isRoadSafetyQuestion(
+  question: { code?: string; question?: string; [key: string]: any },
+  category?: { name?: string; [key: string]: any }
+): boolean {
+  if (category?.name && normalizeCargoText(category.name).includes("SEGURIDAD VIAL")) {
+    return true;
+  }
+  if (question.code && question.code.toUpperCase().startsWith("SV-")) {
+    return true;
+  }
+  const qText = normalizeCargoText(question.question || "");
+  return (
+    qText.includes("NORMAS DE TRANSITO") ||
+    qText.includes("PREOPERACIONAL") ||
+    qText.includes("NOVEDADES MECANICAS") ||
+    qText.includes("PLAN ESTRATEGICO DE SEGURIDAD VIAL") ||
+    qText.includes("COMPORTAMIENTOS SEGUROS")
+  );
 }
 

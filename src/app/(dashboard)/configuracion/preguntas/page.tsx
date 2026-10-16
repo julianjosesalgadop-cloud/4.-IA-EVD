@@ -7,7 +7,7 @@ import {
   AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Search,
   Copy, Star, Info
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isRoadSafetyQuestion } from "@/lib/utils";
 import { toast } from "sonner";
 import { getEvaluationConfig, saveQuestion, deleteQuestion, updateQuestionStatus } from "@/app/actions/evaluations";
 
@@ -68,7 +68,13 @@ function QuestionRow({ question, onEdit, onDelete, onToggle, onDuplicate }: {
         <p className="text-sm font-medium truncate">{question.question}</p>
         <div className="flex items-center gap-2 mt-0.5">
           {question.is_required && (
-            <span className="text-[10px] text-muted-foreground">Obligatoria</span>
+            isRoadSafetyQuestion(question) ? (
+              <span className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">
+                Obligatoria solo para cargos operativos y conductores
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Obligatoria</span>
+            )
           )}
           <span className="text-[10px] text-muted-foreground">Peso: {question.weight}x</span>
         </div>

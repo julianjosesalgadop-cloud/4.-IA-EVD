@@ -4,9 +4,13 @@ import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, ChevronLeft, ChevronRight, Save,
-  CheckCircle2, AlertCircle, Star, Info, Send, FileText, X
+  CheckCircle2, AlertCircle, Star, Info, Send, FileText, X, ShieldAlert
 } from "lucide-react";
-import { cn, getScoreLabel, formatScore, getResultLabel, compressImageIfNeeded, formatDateTime } from "@/lib/utils";
+import {
+  cn, getScoreLabel, formatScore, getResultLabel,
+  compressImageIfNeeded, formatDateTime, isMandatorySafetyPosition,
+  getCollaboratorCargoName, isRoadSafetyQuestion
+} from "@/lib/utils";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -185,6 +189,18 @@ function NuevaEvaluacionContent() {
   const totalCategories = categories.length;
   const isLastCategory = currentCategoryIndex === totalCategories - 1;
   const selectedCollaborator = collaborators.find((c) => c.id === selectedCollaboratorId) ?? null;
+  const collabCargo = getCollaboratorCargoName(selectedCollaborator);
+  const isCollabSafetyMandatory = isMandatorySafetyPosition(collabCargo);
+
+  // Determina si una pregunta es obligatoria para el colaborador evaluado
+  const isQuestionMandatoryForCollab = (q: Question, cat?: Category) => {
+    if (!q.is_required) return false;
+    if (isRoadSafetyQuestion(q, cat)) {
+      if (!selectedCollaborator) return true;
+      return isCollabSafetyMandatory;
+    }
+    return true;
+  };
   
   // Filter collaborators based on search term
   const filteredCollaborators = collaborators.filter((c) => {
@@ -194,10 +210,31 @@ function NuevaEvaluacionContent() {
     return fullName.includes(search) || docNumber.includes(search);
   });
 
-  // Calculate progress
+  // Calculate progress and required counts
   const totalQuestions = categories.reduce((sum, c) => sum + c.questions.length, 0);
   const answeredQuestions = Object.keys(answers).length;
-  const progress = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
+
+  const totalRequiredQuestions = categories.reduce(
+    (sum, c) => sum + c.questions.filter((q) => isQuestionMandatoryForCollab(q, c)).length,
+    0
+  );
+  const answeredRequiredQuestions = categories.reduce(
+    (sum, c) => sum + c.questions.filter((q) => isQuestionMandatoryForCollab(q, c) && answers[q.id]?.score).length,
+    0
+  );
+
+  const categoryComplete = (cat: Category | undefined) => {
+    if (!cat) return false;
+    const reqQuestions = cat.questions.filter((q) => isQuestionMandatoryForCollab(q, cat));
+    if (reqQuestions.length === 0) return true;
+    return reqQuestions.every((q) => answers[q.id]?.score);
+  };
+
+  const allRequiredComplete = categories.length > 0 && categories.every(categoryComplete);
+
+  const progress = totalRequiredQuestions > 0
+    ? Math.min(100, Math.round((answeredRequiredQuestions / totalRequiredQuestions) * 100))
+    : (totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0);
 
   // Auto-save
   useEffect(() => {
@@ -225,7 +262,14 @@ function NuevaEvaluacionContent() {
   }, [currentCategoryIndex]);
 
   const setAnswer = (questionId: string, categoryId: string, score: number) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], category_id: categoryId, score } }));
+    setAnswers((prev) => {
+      if (prev[questionId]?.score === score) {
+        const next = { ...prev };
+        delete next[questionId];
+        return next;
+      }
+      return { ...prev, [questionId]: { ...prev[questionId], category_id: categoryId, score } };
+    });
   };
 
   const setComment = (questionId: string, categoryId: string, comment: string) => {
@@ -262,6 +306,10 @@ function NuevaEvaluacionContent() {
     let failed = false;
     categories.forEach((cat) => {
       if (cat.is_critical) {
+        // Si es Seguridad Vial y no es obligatorio para el cargo, no genera falla crítica
+        if (isRoadSafetyQuestion({ question: "" }, cat) && !isCollabSafetyMandatory) {
+          return;
+        }
         const avg = getCategoryAverage(cat);
         const minRequired = cat.min_score_required ?? 4.0;
         if (avg !== null && avg < minRequired) {
@@ -271,9 +319,6 @@ function NuevaEvaluacionContent() {
     });
     return failed;
   };
-
-  const categoryComplete = (cat: Category | undefined) =>
-    cat ? cat.questions.filter((q) => q.is_required).every((q) => answers[q.id]?.score) : false;
 
   const canProceed = category ? categoryComplete(category) : false;
 
@@ -1126,8 +1171,13 @@ function NuevaEvaluacionContent() {
             <span>Progreso de la Evaluación</span>
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-semibold bg-muted px-2.5 py-0.5 rounded-full">
+            <span className="text-muted-foreground font-semibold bg-muted px-2.5 py-0.5 rounded-full text-xs">
               {answeredQuestions} de {totalQuestions} preguntas respondidas
+              {totalRequiredQuestions < totalQuestions && (
+                <span className="ml-1 text-brand-600 dark:text-brand-400 font-bold">
+                  ({answeredRequiredQuestions}/{totalRequiredQuestions} obligatorias)
+                </span>
+              )}
             </span>
             <span className="font-extrabold text-brand-600 dark:text-brand-400 text-base">
               {progress}%
@@ -1161,6 +1211,9 @@ function NuevaEvaluacionContent() {
               {categories.map((cat, i) => {
                 const catAvg = getCategoryAverage(cat);
                 const catComplete = categoryComplete(cat);
+                const isCatRoadSafety = isRoadSafetyQuestion({ question: "" }, cat);
+                const isCatOptional = isCatRoadSafety && !isCollabSafetyMandatory;
+
                 return (
                   <button
                     key={cat.id}
@@ -1181,6 +1234,11 @@ function NuevaEvaluacionContent() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs lg:text-xs font-medium leading-tight line-clamp-2">{cat.name}</p>
+                        {isCatOptional && (
+                          <span className="inline-block text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1 rounded mt-0.5 border border-slate-200 dark:border-slate-700">
+                            Opcional
+                          </span>
+                        )}
                         {catAvg !== null && (
                           <p className={cn(
                             "text-xs font-bold mt-0.5",
@@ -1221,7 +1279,7 @@ function NuevaEvaluacionContent() {
               {/* Category Header */}
               <div className="p-3 sm:p-5 border-b bg-muted/20">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-xs font-semibold text-muted-foreground uppercase">
                         Categoría {currentCategoryIndex + 1} de {totalCategories}
@@ -1230,15 +1288,53 @@ function NuevaEvaluacionContent() {
                         Peso: {category.weight}%
                       </span>
                       {category.is_critical && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-100 dark:bg-danger-950/30 text-danger-600 border border-danger-200 whitespace-nowrap">
-                          <AlertCircle className="w-3 h-3" />
-                          Criterio Crítico (Mínimo {category.min_score_required ?? 4.0})
-                        </span>
+                        isRoadSafetyQuestion({ question: "" }, category) && !isCollabSafetyMandatory ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                            Opcional para este cargo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-danger-100 dark:bg-danger-950/30 text-danger-600 border border-danger-200 whitespace-nowrap">
+                            <AlertCircle className="w-3 h-3" />
+                            Criterio Crítico (Mínimo {category.min_score_required ?? 4.0})
+                          </span>
+                        )
                       )}
                     </div>
                     <h2 className="font-semibold text-base sm:text-lg">{category.name}</h2>
                     {category.description && (
                       <p className="text-xs sm:text-sm text-muted-foreground mt-1">{category.description}</p>
+                    )}
+
+                    {/* Notice for Road Safety Category */}
+                    {isRoadSafetyQuestion({ question: "" }, category) && selectedCollaborator && (
+                      <div className={cn(
+                        "flex items-start gap-2.5 p-3 rounded-xl text-xs border transition-colors mt-3",
+                        isCollabSafetyMandatory
+                          ? "bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-200"
+                          : "bg-blue-500/10 border-blue-500/20 text-blue-800 dark:text-blue-200"
+                      )}>
+                        {isCollabSafetyMandatory ? (
+                          <>
+                            <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold">Módulo obligatorio para el cargo actual</p>
+                              <p className="text-[11px] mt-0.5 opacity-90 leading-relaxed">
+                                Las 5 preguntas de Seguridad Vial son obligatorias para el cargo <strong>{collabCargo}</strong>.
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold">Módulo opcional para el cargo actual</p>
+                              <p className="text-[11px] mt-0.5 opacity-90 leading-relaxed">
+                                Las preguntas de Seguridad Vial <strong>no son obligatorias</strong> para el cargo <strong>{collabCargo || "Sin Cargo"}</strong>. Puede responderlas si aplican a sus funciones o dejarlas sin responder para continuar.
+                              </p>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1257,7 +1353,13 @@ function NuevaEvaluacionContent() {
                         <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
                           <p className="text-xs sm:text-sm font-medium leading-relaxed">
                             {question.question}
-                            {question.is_required && <span className="text-danger-500 ml-1">*</span>}
+                            {isQuestionMandatoryForCollab(question, category) ? (
+                              <span className="text-danger-500 ml-1 font-bold" title="Pregunta obligatoria">*</span>
+                            ) : (
+                              <span className="inline-flex items-center text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded ml-2 border border-slate-200 dark:border-slate-700">
+                                Opcional
+                              </span>
+                            )}
                           </p>
                         </div>
                         {question.description && (
@@ -1360,7 +1462,7 @@ function NuevaEvaluacionContent() {
               {isLastCategory ? (
                 <button
                   onClick={handleFinalize}
-                  disabled={isSubmitting || progress < 100}
+                  disabled={isSubmitting || !allRequiredComplete}
                   className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 rounded-xl gradient-brand text-white text-xs sm:text-sm font-semibold hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 flex-1 sm:flex-none justify-center"
                 >
                   {isSubmitting ? (
@@ -1432,7 +1534,14 @@ function NuevaEvaluacionContent() {
               <div className="space-y-1">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Avance</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-muted-foreground">{answeredQuestions} de {totalQuestions} preguntas</span>
+                  <span className="text-xs text-muted-foreground">
+                    {answeredQuestions} de {totalQuestions} preguntas
+                    {totalRequiredQuestions < totalQuestions && (
+                      <span className="block text-[10px] text-brand-600 dark:text-brand-400 font-semibold mt-0.5">
+                        ({answeredRequiredQuestions}/{totalRequiredQuestions} obligatorias)
+                      </span>
+                    )}
+                  </span>
                   <span className="text-sm font-bold text-primary">{progress}%</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden mt-1.5">
@@ -1449,6 +1558,9 @@ function NuevaEvaluacionContent() {
                 <div className="space-y-1.5">
                   {categories.map((cat, idx) => {
                     const isComplete = categoryComplete(cat);
+                    const isCatRoadSafety = isRoadSafetyQuestion({ question: "" }, cat);
+                    const isCatOptional = isCatRoadSafety && !isCollabSafetyMandatory;
+
                     return (
                       <div key={cat.id} className="flex items-center justify-between text-xs">
                         <span className={cn(
@@ -1456,6 +1568,9 @@ function NuevaEvaluacionContent() {
                           isComplete ? "text-foreground font-medium" : "text-muted-foreground"
                         )} title={cat.name}>
                           {idx + 1}. {cat.name}
+                          {isCatOptional && (
+                            <span className="text-[10px] text-muted-foreground font-normal ml-1">(Opcional)</span>
+                          )}
                         </span>
                         {isComplete ? (
                           <span className="text-success-600 font-bold flex-shrink-0">✓</span>
